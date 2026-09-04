@@ -177,7 +177,13 @@ pub struct ElementView {
     pub bounds: Option<[u32; 4]>,
     /// The bounds as fractions of the page.
     pub rect: Option<[f64; 4]>,
+    /// All character data under the element, head included.
     pub text: String,
+    /// The character data of the body alone, which is what a text edit
+    /// replaces.
+    pub body_text: String,
+    /// Whether `SetText` applies to this element.
+    pub editable_text: bool,
     /// The element's markup as it would be written.
     pub markup: String,
     pub parent: Option<ElementId>,
@@ -395,6 +401,8 @@ impl Session {
                 .map(|b| [b.x_min.value, b.y_min.value, b.x_max.value, b.y_max.value]),
             rect: head.bounds.map(|b| b.fractions(resolution)),
             text: el.text(),
+            body_text: body_text(el, head.body.clone()),
+            editable_text: doclang::kind(el).is_some_and(carries_text),
             markup,
             parent: parent.map(Element::id),
             index,

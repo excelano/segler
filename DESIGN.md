@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Status:** the lossless tree, the DocLang vocabulary over it, both validation layers, and the editing session with its view-models, commands, undo and save (`§4`, `§6`; stages one to three of `§10`). No window draws any of it yet.
+**Status:** stages one to four of `§10` on Linux: the lossless tree, the vocabulary over it, both validation layers, the editing session, and a window that draws it (`§7`). The window has not had a keyboard walkthrough yet; nothing in it is packaged.
 **Document version:** 2026-09-04
 **Amendments:** this document is written before the thing it describes. Building it will contradict parts of it. Every change from here on is marked **Amended** and states what was measured, because a design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
@@ -123,6 +123,8 @@ One window, three panes, one selection.
 **The markup pane** shows the XML with the selected element's span highlighted. Editing text content happens here or in a field on the selected element, and the two are the same command. Free-form editing of the XML itself, the language-server mode, is not the first version and may never be; the pane is read-mostly with highlighting until use shows a need, and `egui_code_editor` is the crate to reach for if it does.
 
 **The problems list** sits below and shows validation findings, each linking to its element. It is never hidden while a document has findings.
+
+**Amended: built as described, with three things measured on the way.** The page opens fitted to the pane's width rather than at the image's size, because a page image at a thousand pixels across is wider than the pane on every screen this was tried on; a slider, a Fit button and a 100% button sit in the toolbar. The structure pane shows every semantic element on the page including those inside a picture, which on a figure with recognised labels is forty rows of one-word text and wants collapsing; that is left for the walkthrough to judge. And the Linux theme defect that slipcase-desktop measured reaches this window too, so its `system_theme` module is here unchanged. Text edits commit when the field loses focus, label edits likewise, level and class and layer on change, and removal asks first even though undo restores it, because a keystroke on the wrong row is easy.
 
 What is not here: no preview of the document as a rendered page beyond the reading view the structure gives, no PDF rendering, no model inference. Segler shows what a model said and lets a person fix it.
 

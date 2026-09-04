@@ -34,6 +34,15 @@ David's machine. The spec's `examples/` and `tests/` are the conformance corpus.
     cargo run -p segler -- inspect FILE
     cargo run -p segler-desktop -- [FILE]
 
+**Seeing the window from here.** Launch it under XWayland and capture its own
+window: `env -u WAYLAND_DISPLAY DISPLAY=:0 setsid target/debug/segler-desktop
+FILE &`, find the client window with `xwininfo -root -tree | grep
+'"segler-desktop"'`, then `xwd -id ID | convert xwd:- shot.png`. Drive it with
+`xdotool`; synthetic typing needs `--delay 100` or more, since faster
+keystrokes outrun the window and characters go missing. That proves a code
+path draws; it does not stand in for David's keyboard walkthrough, which every
+slice that touches the window gets.
+
 **The conformance corpus is a command and never a test.** It needs a checkout
 of `doclang-project/doclang`, which `cargo test` does not imply. When the runner
 exists it is `cargo run -p segler -- corpus /path/to/doclang`; until then the

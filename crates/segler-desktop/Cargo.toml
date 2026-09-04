@@ -23,3 +23,15 @@ eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
 # links C through gtk-sys and stays off.
 rfd = "0.17"
+# Decoding page images into textures. Each decoder is pure Rust: `png`,
+# `zune-jpeg`, `image-webp`. The defaults would pull every format.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# `winit` answers the system theme on Windows and macOS and returns `None` on
+# Linux, so every Linux user would see the dark window whatever the desktop is
+# set to. `src/system_theme.rs` asks the XDG portal instead; it is
+# slipcase-desktop's module and the reasoning is there. zbus is pure Rust and
+# already in the tree under `accesskit_unix`; `default-features` is off so
+# `async-io` is named rather than taken.
+zbus = { version = "5", default-features = false, features = ["async-io", "blocking-api"] }
