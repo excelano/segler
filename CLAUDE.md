@@ -39,9 +39,14 @@ window: `env -u WAYLAND_DISPLAY DISPLAY=:0 setsid target/debug/segler-desktop
 FILE &`, find the client window with `xwininfo -root -tree | grep
 '"segler-desktop"'`, then `xwd -id ID | convert xwd:- shot.png`. Drive it with
 `xdotool`; synthetic typing needs `--delay 100` or more, since faster
-keystrokes outrun the window and characters go missing. That proves a code
-path draws; it does not stand in for David's keyboard walkthrough, which every
-slice that touches the window gets.
+keystrokes outrun the window and characters go missing. A one-frame
+defect is invisible to a screenshot: capture a burst instead (`xwd` in a loop
+of fourteen with 30ms sleeps around the click) and compare the mean brightness
+of a cropped region across frames. Run at `WINIT_X11_SCALE_FACTOR=1.25` as
+well as 1x, since David's desktop is at a fractional scale and text at
+fractional offsets behaves differently there. That proves a code path draws;
+it does not stand in for David's keyboard walkthrough, which every slice that
+touches the window gets.
 
 **The conformance corpus is a command and never a test.** It needs a checkout
 of `doclang-project/doclang`, which `cargo test` does not imply. When the runner
