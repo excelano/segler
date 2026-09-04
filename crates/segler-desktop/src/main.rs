@@ -78,6 +78,8 @@ struct App {
     selected_cell: Option<(ElementId, usize, usize)>,
     /// Whether the page scan is shown beside the document.
     show_scan: bool,
+    show_structure: bool,
+    show_element: bool,
     dialog: Dialog,
     /// Set when a selection came from somewhere other than the structure
     /// pane, so that the tree scrolls to it once.
@@ -100,6 +102,8 @@ impl App {
             editor: Editor::default(),
             selected_cell: None,
             show_scan: false,
+            show_structure: true,
+            show_element: true,
             dialog: Dialog::None,
             scroll_to_selection: false,
             allow_close: false,
@@ -224,6 +228,18 @@ impl App {
         let typing = ctx.egui_wants_keyboard_input();
         if !typing && ctx.input(|i| i.key_pressed(Key::Escape)) {
             self.document.cancel_edit();
+        }
+        let (structure, element) = ctx.input_mut(|i| {
+            (
+                i.consume_key(Modifiers::COMMAND, Key::Num1),
+                i.consume_key(Modifiers::COMMAND, Key::Num2),
+            )
+        });
+        if structure {
+            self.show_structure = !self.show_structure;
+        }
+        if element {
+            self.show_element = !self.show_element;
         }
         let (open, save, undo, redo, prev, next, delete) = ctx.input_mut(|i| {
             (
@@ -359,6 +375,11 @@ impl App {
                 ui.toggle_value(&mut self.show_scan, "Page image")
                     .on_hover_text("Show the page image from the archive beside the document");
             });
+            ui.separator();
+            ui.toggle_value(&mut self.show_structure, "Structure")
+                .on_hover_text("Show the structure pane (Ctrl+1)");
+            ui.toggle_value(&mut self.show_element, "Element")
+                .on_hover_text("Show the element pane (Ctrl+2)");
         });
     }
 
@@ -464,10 +485,11 @@ impl eframe::App for App {
         let selected = self.session.as_ref().and_then(Session::selected);
         let scroll = std::mem::take(&mut self.scroll_to_selection);
 
+        let mut show_structure = self.show_structure;
         egui::Panel::left("structure")
             .default_size(300.0)
             .resizable(true)
-            .show(ui, |ui| match &page_view {
+            .show_collapsible(ui, &mut show_structure, |ui| match &page_view {
                 Some(page) => inspector::structure(ui, page, selected, scroll, &mut requests),
                 None => {
                     ui.heading("Structure");
@@ -475,10 +497,11 @@ impl eframe::App for App {
                 }
             });
 
+        let mut show_element = self.show_element;
         egui::Panel::right("element")
             .default_size(360.0)
             .resizable(true)
-            .show(ui, |ui| {
+            .show_collapsible(ui, &mut show_element, |ui| {
                 let view = self.session.as_ref().and_then(Session::selection);
                 if let Some(session) = &self.session {
                     self.editor.show(
