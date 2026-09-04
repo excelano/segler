@@ -12,6 +12,6 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-roxmltree.workspace = true
+xmlparser.workspace = true
 thiserror.workspace = true
 zip.workspace = true

@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Status:** scaffold. Three crates that build, a summary that reads any document, nothing that edits one yet.
+**Status:** the lossless tree and the DocLang vocabulary over it (`§4`, first stage of `§10`). Nothing validates or edits yet.
 **Document version:** 2026-09-04
 **Amendments:** this document is written before the thing it describes. Building it will contradict parts of it. Every change from here on is marked **Amended** and states what was measured, because a design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
@@ -70,6 +70,8 @@ Three crates in one workspace, and one boundary between them that is the design.
 
 **The serializer is canonical.** Output matches the Python reference toolkit's pretty-printed form byte for byte on the conformance corpus, so that a document that was opened and saved without edits diffs clean, and a document that was edited diffs only where it was edited. This is measured by the corpus command in `§6`, not asserted.
 
+**Amended: the reference toolkit has no serializer, so the target is the file itself.** Read before the model was built, the toolkit's `doclang` package does two things, validate and pack, and the pretty-printer the paragraph above had in mind is docling-core's, which writes DocLang from a converter's model and is not a reference for anything. The measurable target is stronger and simpler: a document parsed and written back without edits is the same bytes. The tree keeps the source of every start tag and every text run and writes it back verbatim until an edit touches that node; only an edited node is regenerated, in one fixed form. So an unedited save diffs clean against the original file rather than against somebody's pretty-printer, and an edited save diffs at the edit and nowhere else. `segler corpus` measures identity on every file under the specification checkout.
+
 **Undo is a command log.** Every edit is a command with an inverse, applied to the model and pushed; undo pops and applies the inverse. The model is not persistent or copy-on-write, because documents are small enough that a command log is simpler and simplicity is the priority.
 
 ---
@@ -80,7 +82,7 @@ The rule is slipcase-desktop's, borrowed whole: nothing compiles C. A crate that
 
 The framework is egui, through eframe. It was chosen after Tauri, and the reasons are pipeline rather than performance: slipcase-desktop is an egui application already through Microsoft Store certification with a three-platform packaging tree, and none of that would transfer to a web-view application. It also keeps both of David's desktop applications on one open-source framework, so a problem found in one is fixable for both. What egui does natively covers most of `§7`: images are textures, boxes are painter calls, the tree is collapsing headers, the table grid is `egui_extras`. Its weak surface is free-form text editing, which `§7` confines. Tauri is the fallback if that surface proves inadequate, and the boundary in `§4` is what makes the fallback cheap.
 
-Reading XML is `roxmltree`, pure Rust, which keeps positions so that markup spans can map back to elements. Writing XML is this crate's own, because the serializer has to be canonical and no library promises another tool's pretty-printer byte for byte.
+Reading XML is `xmlparser`, the tokenizer under `roxmltree`, taken directly. A DOM has already decoded entities, merged text runs and dropped the spelling of each start tag, which is the information a lossless tree needs; the tokenizer hands back raw spans and the tree keeps them. Writing XML is this crate's own, for the same reason: the writer's job is to reproduce those spans and regenerate only what changed, and no library does that. Document type declarations are refused on parse, as the reference toolkit refuses them, since DocLang has nothing for one to declare and it is how entity expansion arrives.
 
 Archives are `zip` with default features off and `deflate` named, because the defaults pull `zstd` and `xz` and both compile C. OPC never uses either.
 
@@ -100,7 +102,7 @@ The XSD is ported into the model. A typed model that can only represent valid st
 
 The Schematron is ported by hand. Thirty-six rules is a size a person can carry, and each becomes a Rust check with the rule's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
 
-**The conformance corpus is a command, never a test.** `segler corpus /path/to/doclang` walks the specification checkout's `examples/` and `tests/`, parses and re-serializes each file, and compares three things against the Python toolkit: the serialized bytes, the validation verdict, and the list of findings. All of them must agree. It needs the checkout and the toolkit installed, which `cargo test` does not imply, and a test that has to choose between skipping quietly and failing on a machine that was never going to have those is worse than a command run on purpose. Run it before and after any change to the model, the parser, the serializer or the validator.
+**The conformance corpus is a command, never a test.** `segler corpus /path/to/doclang` walks the specification checkout's `examples/` and `tests/`, parses and re-serializes each file, and compares three things: the serialized bytes against the file itself, and, once validation exists, the verdict and the list of findings against the Python toolkit's. All of them must agree. It needs the checkout and the toolkit installed, which `cargo test` does not imply, and a test that has to choose between skipping quietly and failing on a machine that was never going to have those is worse than a command run on purpose. Run it before and after any change to the model, the parser, the serializer or the validator.
 
 ---
 

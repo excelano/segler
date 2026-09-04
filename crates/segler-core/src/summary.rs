@@ -2,18 +2,19 @@
 //! has, and which elements it uses. This is what `segler inspect` prints and
 //! what the desktop window shows before anything is selected.
 //!
-//! It reads the XML directly rather than through the document model, because
-//! it has to work on documents the model may refuse: a summary of an invalid
-//! file is exactly what a person fixing it wants first.
+//! It asks only for well-formed XML with a `doclang` root, so that a summary
+//! of an invalid document is available: that is what a person fixing one
+//! wants first.
 //!
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
 
 use std::collections::BTreeMap;
 
-use roxmltree::Document;
+use crate::doclang;
+use crate::tree::Document;
 
-/// Counts and declarations gathered from one pass over the markup.
+/// Counts and declarations gathered from one pass over the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Summary {
     /// The root's `version` attribute, or the spec's default when absent.
@@ -25,49 +26,46 @@ pub struct Summary {
     /// Every element name in the document with how often it appears,
     /// including the root.
     pub elements: BTreeMap<String, usize>,
+    /// Semantic elements whose head carries a bounding box.
+    pub located: usize,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("not well-formed XML: {0}")]
-    Xml(#[from] roxmltree::Error),
+    #[error("{0}")]
+    Xml(#[from] crate::tree::Error),
     #[error("root element is <{0}>, not <doclang>")]
     NotDoclang(String),
 }
 
 impl Summary {
-    /// Summarize DocLang markup. Well-formedness and a `doclang` root are the
-    /// only things this insists on.
+    /// Summarize DocLang markup.
     pub fn of(markup: &str) -> Result<Summary, Error> {
         let doc = Document::parse(markup)?;
-        let root = doc.root_element();
-        if root.tag_name().name() != "doclang" {
-            return Err(Error::NotDoclang(root.tag_name().name().to_owned()));
-        }
-
-        let mut elements = BTreeMap::new();
-        for node in doc.descendants().filter(|n| n.is_element()) {
-            *elements
-                .entry(node.tag_name().name().to_owned())
-                .or_insert(0) += 1;
-        }
-        let pages = elements.get("page_break").copied().unwrap_or(0) + 1;
-
-        Ok(Summary {
-            version: root
-                .attribute("version")
-                .unwrap_or(crate::SPEC_VERSION)
-                .to_owned(),
-            namespaced: root.tag_name().namespace() == Some(crate::NAMESPACE),
-            pages,
-            elements,
-        })
+        Summary::of_document(&doc)
     }
 
-    /// Elements that carry geometry: each has four `location` children, so
-    /// this is the `location` count over four, rounded down.
-    pub fn located(&self) -> usize {
-        self.elements.get("location").copied().unwrap_or(0) / 4
+    pub fn of_document(doc: &Document) -> Result<Summary, Error> {
+        if doclang::kind(&doc.root) != Some(doclang::Kind::Doclang) {
+            return Err(Error::NotDoclang(doc.root.name().to_owned()));
+        }
+        let mut elements = BTreeMap::new();
+        let mut located = 0;
+        for el in doc.elements() {
+            *elements.entry(el.name().to_owned()).or_insert(0) += 1;
+            if doclang::kind(el).is_some_and(doclang::Kind::is_semantic)
+                && doclang::head(el).bounds.is_some()
+            {
+                located += 1;
+            }
+        }
+        Ok(Summary {
+            version: doclang::version(doc).to_owned(),
+            namespaced: doclang::namespaced(doc),
+            pages: doclang::pages(doc).len(),
+            elements,
+            located,
+        })
     }
 }
 
@@ -89,7 +87,7 @@ mod tests {
         assert_eq!(s.pages, 2);
         assert_eq!(s.elements["text"], 2);
         assert_eq!(s.elements["doclang"], 1);
-        assert_eq!(s.located(), 1);
+        assert_eq!(s.located, 1);
     }
 
     #[test]
@@ -98,7 +96,7 @@ mod tests {
         assert_eq!(s.version, crate::SPEC_VERSION);
         assert!(!s.namespaced);
         assert_eq!(s.pages, 1);
-        assert_eq!(s.located(), 0);
+        assert_eq!(s.located, 0);
     }
 
     #[test]

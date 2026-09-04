@@ -137,7 +137,7 @@ fn summary_grid(ui: &mut egui::Ui, opened: &Opened) {
             ui.end_row();
         }
         ui.label("Located elements");
-        ui.label(s.located().to_string());
+        ui.label(s.located.to_string());
         ui.end_row();
     });
 
