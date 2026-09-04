@@ -13,7 +13,7 @@ a table cell, move a paragraph. When an archive carries the page scans the
 model read, they can be opened beside the document to check a doubtful line
 against the page. What it saves is a valid DocLang document or archive.
 
-The name is German for sailor. DocLang's logo is a sail; this is who works it.
+The name is German for sailor.
 
 ## The pieces
 

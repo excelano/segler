@@ -144,7 +144,7 @@ The CLI ships the way the fleet's Rust CLIs do, through cargo-dist, with a `dist
 
 ## 9. Naming
 
-The product is **Segler**, German for sailor, after DocLang's sail logo. Everything that is an identifier stays lowercase: the crates `segler-core`, `segler` and `segler-desktop`, the binaries `segler` and `segler-desktop`, the application id `segler-desktop`, the bundle identifier `com.excelano.segler-desktop`. The desktop binary is named in full so that it never collides with the command-line tool on `PATH`, which is slipcase-desktop's arrangement and the reason for it.
+The product is **Segler**, German for sailor. (An earlier draft said the name followed DocLang's logo, read off an asset file named `doclang_v3_sail.svg` without looking at the drawing; the logo is a stylized document, and the name stands on its own.) Everything that is an identifier stays lowercase: the crates `segler-core`, `segler` and `segler-desktop`, the binaries `segler` and `segler-desktop`, the application id `segler-desktop`, the bundle identifier `com.excelano.segler-desktop`. The desktop binary is named in full so that it never collides with the command-line tool on `PATH`, which is slipcase-desktop's arrangement and the reason for it.
 
 Whether the library should also be published under the name `doclang` on crates.io is open. The name is free and it is the name the DocLang project would want for a Rust reference library. Claiming it on their behalf without asking is squatting; the answer is to announce the crate on their list and offer it, and the decision is theirs.
 
