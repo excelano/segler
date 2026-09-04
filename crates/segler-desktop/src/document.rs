@@ -182,7 +182,7 @@ impl Cx<'_> {
             }
             Block::List { id, ordered, items } => {
                 let selected = self.selection.element == Some(*id);
-                let response = framed(ui, selected, color_for(Kind::List), |ui| {
+                let (response, _) = framed(ui, *id, selected, color_for(Kind::List), |ui| {
                     for (n, item) in items.iter().enumerate() {
                         ui.horizontal_top(|ui| {
                             let marker = item.marker.clone().unwrap_or_else(|| {
@@ -236,7 +236,7 @@ impl Cx<'_> {
                     );
                     ui.add(egui::Label::new(job).wrap());
                 }
-                let response = framed(ui, selected, color_for(*kind), |ui| {
+                let (response, _) = framed(ui, *id, selected, color_for(*kind), |ui| {
                     self.table(ui, *id, *rows, *cols, cells);
                 });
                 self.select_on_click(ui, &response, *id);
@@ -249,7 +249,7 @@ impl Cx<'_> {
                 ..
             } => {
                 let selected = self.selection.element == Some(*id);
-                let response = framed(ui, selected, color_for(Kind::Picture), |ui| {
+                let (response, _) = framed(ui, *id, selected, color_for(Kind::Picture), |ui| {
                     match src.as_deref().and_then(|s| self.picture(ui.ctx(), s)) {
                         Some(tex) => {
                             let [w, h] = tex.size();
@@ -310,21 +310,27 @@ impl Cx<'_> {
                 if let Some(l) = language {
                     ui.small(l);
                 }
-                let response = framed(ui, selected, color_for(Kind::Code), |ui| {
-                    self.mono_block(ui, *id, text, *editable, false);
+                let (response, label) = framed(ui, *id, selected, color_for(Kind::Code), |ui| {
+                    self.mono_block(ui, *id, text, *editable, false)
                 });
                 self.select_on_click(ui, &response, *id);
+                if label.is_some_and(|l| l.clicked()) {
+                    self.actions.select = Some(Some(*id));
+                }
             }
             Block::Formula { id, text, editable } => {
                 let selected = self.selection.element == Some(*id);
-                let response = framed(ui, selected, color_for(Kind::Formula), |ui| {
-                    self.mono_block(ui, *id, text, *editable, true);
+                let (response, label) = framed(ui, *id, selected, color_for(Kind::Formula), |ui| {
+                    self.mono_block(ui, *id, text, *editable, true)
                 });
                 self.select_on_click(ui, &response, *id);
+                if label.is_some_and(|l| l.clicked()) {
+                    self.actions.select = Some(Some(*id));
+                }
             }
             Block::Container { id, kind, blocks } => {
                 let selected = self.selection.element == Some(*id);
-                let response = framed(ui, selected, color_for(*kind), |ui| {
+                let (response, _) = framed(ui, *id, selected, color_for(*kind), |ui| {
                     ui.small(kind.name());
                     for b in blocks {
                         self.block(ui, b);
@@ -337,17 +343,18 @@ impl Cx<'_> {
             }
             Block::Other { id, name, runs } => {
                 let selected = self.selection.element == Some(*id);
-                let response = framed(ui, selected, ui.visuals().weak_text_color(), |ui| {
-                    ui.small(format!("<{name}>"));
-                    let job = layout(
-                        runs,
-                        FontId::proportional(15.0),
-                        Style::default(),
-                        ui.visuals().text_color(),
-                        ui.available_width(),
-                    );
-                    ui.add(egui::Label::new(job).wrap());
-                });
+                let (response, _) =
+                    framed(ui, *id, selected, ui.visuals().weak_text_color(), |ui| {
+                        ui.small(format!("<{name}>"));
+                        let job = layout(
+                            runs,
+                            FontId::proportional(15.0),
+                            Style::default(),
+                            ui.visuals().text_color(),
+                            ui.available_width(),
+                        );
+                        ui.add(egui::Label::new(job).wrap());
+                    });
                 self.select_on_click(ui, &response, *id);
             }
         }
@@ -373,16 +380,20 @@ impl Cx<'_> {
         }
         let color = color.unwrap_or(ui.visuals().text_color());
         let job = layout(runs, font, base, color, ui.available_width() - 12.0);
-        let response = framed(ui, selected, color_for(kind), |ui| {
+        let (response, label) = framed(ui, id, selected, color_for(kind), |ui| {
             let text = if runs.is_empty() {
                 egui::WidgetText::from(egui::RichText::new("(empty)").weak().italics())
             } else {
                 job.into()
             };
-            ui.add(egui::Label::new(text).wrap().sense(Sense::click()));
+            ui.add(egui::Label::new(text).wrap().sense(Sense::click()))
         });
         self.select_on_click(ui, &response, id);
-        if response.double_clicked() && editable {
+        if label.clicked() {
+            self.actions.select = Some(Some(id));
+            self.actions.select_cell = None;
+        }
+        if (response.double_clicked() || label.double_clicked()) && editable {
             let body = self
                 .session
                 .element(id)
@@ -403,13 +414,13 @@ impl Cx<'_> {
         text: &str,
         editable: bool,
         italic: bool,
-    ) {
+    ) -> Option<egui::Response> {
         let target = Target::Element(id);
         if self.editing.as_ref().is_some_and(|e| e.target == target) {
             self.editor(ui, target, FontId::monospace(13.5), |text| {
                 Command::SetText { id, text }
             });
-            return;
+            return None;
         }
         let mut rich = egui::RichText::new(text).monospace();
         if italic {
@@ -423,6 +434,7 @@ impl Cx<'_> {
                 fresh: true,
             });
         }
+        Some(response)
     }
 
     /// The in-place text field. Commits on losing focus, cancels on Escape.
@@ -479,100 +491,125 @@ impl Cx<'_> {
             ui.weak("(empty table)");
             return;
         }
-        let width = ui.available_width();
-        let col_w = (width / cols as f32).max(40.0);
-        egui::Grid::new(("table", id))
-            .num_columns(cols)
-            .min_col_width(col_w)
-            .max_col_width(col_w)
-            .spacing([0.0, 0.0])
-            .show(ui, |ui| {
-                for r in 0..rows {
-                    for c in 0..cols {
-                        match cells.iter().find(|cell| cell.row == r && cell.col == c) {
-                            Some(cell) => self.cell(ui, id, cell, col_w),
-                            None => {
-                                // Covered by a span: an empty box so the grid keeps its columns.
-                                let (rect, _) =
-                                    ui.allocate_exact_size(Vec2::new(col_w, 22.0), Sense::hover());
-                                ui.painter()
-                                    .rect_filled(rect, 0.0, ui.visuals().faint_bg_color);
+        let col_w = (ui.available_width() / cols as f32).max(40.0);
+        for r in 0..rows {
+            // Draw the row's cells at fixed widths, then paint borders and
+            // fills to the row's full height, so the grid holds its columns
+            // whatever a cell contains.
+            let mut drawn: Vec<(egui::Rect, Option<&CellBlock>)> = Vec::new();
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                let mut c = 0;
+                while c < cols {
+                    let cell = cells.iter().find(|cell| cell.row == r && cell.col == c);
+                    let span = cell.map_or(1, |cell| cell.colspan.max(1));
+                    let w = col_w * span as f32;
+                    let inner = ui.allocate_ui_with_layout(
+                        Vec2::new(w, 0.0),
+                        egui::Layout::top_down(Align::Min),
+                        |ui| {
+                            ui.set_width(w);
+                            match cell {
+                                Some(cell) => self.cell(ui, id, cell, w),
+                                None => {
+                                    ui.allocate_space(Vec2::new(w, 24.0));
+                                }
                             }
-                        }
-                    }
-                    ui.end_row();
+                        },
+                    );
+                    drawn.push((inner.response.rect, cell));
+                    c += span;
                 }
             });
+            let bottom = drawn
+                .iter()
+                .map(|(rect, _)| rect.bottom())
+                .fold(f32::MIN, f32::max);
+            let painter = ui.painter();
+            for (rect, cell) in &drawn {
+                let full = egui::Rect::from_min_max(rect.min, egui::Pos2::new(rect.max.x, bottom));
+                let fill = match cell {
+                    Some(cell) if self.selection.cell == Some((id, cell.row, cell.col)) => {
+                        ui.visuals().selection.bg_fill.gamma_multiply(0.35)
+                    }
+                    Some(cell) if cell.kind.is_header() => ui.visuals().faint_bg_color,
+                    Some(_) => Color32::TRANSPARENT,
+                    None => ui.visuals().faint_bg_color.gamma_multiply(0.5),
+                };
+                if fill != Color32::TRANSPARENT {
+                    painter.rect_filled(full, 0.0, fill);
+                }
+                painter.rect_stroke(
+                    full,
+                    0.0,
+                    Stroke::new(1.0, ui.visuals().weak_text_color().gamma_multiply(0.5)),
+                    StrokeKind::Inside,
+                );
+            }
+        }
     }
 
-    fn cell(&mut self, ui: &mut egui::Ui, table: ElementId, cell: &CellBlock, col_w: f32) {
+    /// One cell's content, drawn at the cell's width. The text is the
+    /// clickable thing, so it sits above the table's frame in the hit test.
+    fn cell(&mut self, ui: &mut egui::Ui, table: ElementId, cell: &CellBlock, width: f32) {
         let target = Target::Cell(table, cell.row, cell.col);
-        let selected = self.selection.cell == Some((table, cell.row, cell.col));
-        let header = cell.kind.is_header();
-        let fill = if selected {
-            ui.visuals().selection.bg_fill.gamma_multiply(0.35)
-        } else if header {
-            ui.visuals().faint_bg_color
-        } else {
-            Color32::TRANSPARENT
-        };
-        let frame = egui::Frame::new()
-            .fill(fill)
-            .stroke(Stroke::new(
-                1.0,
-                ui.visuals().weak_text_color().gamma_multiply(0.5),
-            ))
-            .inner_margin(4.0);
-        let inner = frame.show(ui, |ui| {
-            ui.set_min_width(col_w - 8.0);
-            ui.set_max_width(col_w * cell.colspan as f32 - 8.0);
-            if self.editing.as_ref().is_some_and(|e| e.target == target) {
-                let (t, r, c) = (table, cell.row, cell.col);
-                self.editor(ui, target, FontId::proportional(14.0), move |text| {
-                    Command::SetCellText {
-                        id: t,
-                        row: r,
-                        col: c,
-                        text,
-                    }
-                });
-                return;
-            }
-            let base = style(header, false);
-            let job = layout(
-                &cell.runs,
-                FontId::proportional(14.0),
-                base,
-                ui.visuals().text_color(),
-                ui.available_width(),
-            );
-            let text = if cell.runs.is_empty() && cell.blocks.is_empty() {
-                egui::WidgetText::from(egui::RichText::new(" ").size(14.0))
-            } else {
-                job.into()
-            };
-            ui.add(egui::Label::new(text).wrap());
-            for b in &cell.blocks {
-                self.block(ui, b);
-            }
-        });
-        let response = inner.response.interact(Sense::click());
-        if response.clicked() {
-            self.actions.select = Some(Some(table));
-            self.actions.select_cell = Some((table, cell.row, cell.col));
-        }
-        if response.double_clicked() && cell.editable {
-            let buffer = cell
-                .runs
-                .iter()
-                .map(|r| r.text.as_str())
-                .collect::<String>();
-            *self.editing = Some(Editing {
-                target,
-                buffer,
-                fresh: true,
+        let pad = 4.0;
+        ui.add_space(pad);
+        ui.horizontal(|ui| {
+            ui.add_space(pad);
+            ui.vertical(|ui| {
+                ui.set_width(width - 2.0 * pad);
+                if self.editing.as_ref().is_some_and(|e| e.target == target) {
+                    let (t, r, c) = (table, cell.row, cell.col);
+                    self.editor(ui, target, FontId::proportional(14.0), move |text| {
+                        Command::SetCellText {
+                            id: t,
+                            row: r,
+                            col: c,
+                            text,
+                        }
+                    });
+                    return;
+                }
+                let base = style(cell.kind.is_header(), false);
+                let job = layout(
+                    &cell.runs,
+                    FontId::proportional(14.0),
+                    base,
+                    ui.visuals().text_color(),
+                    ui.available_width(),
+                );
+                let text: egui::WidgetText = if cell.runs.is_empty() && cell.blocks.is_empty() {
+                    egui::RichText::new(" ").size(14.0).into()
+                } else {
+                    job.into()
+                };
+                let response = ui.add_sized(
+                    Vec2::new(ui.available_width(), 16.0),
+                    egui::Label::new(text).wrap().sense(Sense::click()),
+                );
+                if response.clicked() {
+                    self.actions.select = Some(Some(table));
+                    self.actions.select_cell = Some((table, cell.row, cell.col));
+                }
+                if response.double_clicked() && cell.editable {
+                    let buffer = cell
+                        .runs
+                        .iter()
+                        .map(|r| r.text.as_str())
+                        .collect::<String>();
+                    *self.editing = Some(Editing {
+                        target,
+                        buffer,
+                        fresh: true,
+                    });
+                }
+                for b in &cell.blocks {
+                    self.block(ui, b);
+                }
             });
-        }
+        });
+        ui.add_space(pad);
     }
 
     fn select_on_click(&mut self, ui: &egui::Ui, response: &egui::Response, id: ElementId) {
@@ -633,12 +670,24 @@ fn style(bold: bool, italic: bool) -> Style {
 
 /// A block's frame: a hairline in the element's colour when selected,
 /// nothing otherwise, and a click anywhere on it.
-fn framed(
+///
+/// The click sense is registered before the children draw, over the area
+/// the frame covered last frame, so that anything drawn inside it this
+/// frame sits on top and takes its own clicks; a sense registered after the
+/// children would be the topmost widget and swallow them. The true rect is
+/// remembered under a hover-only sense, which intercepts nothing.
+fn framed<R>(
     ui: &mut egui::Ui,
+    id: ElementId,
     selected: bool,
     color: Color32,
-    add: impl FnOnce(&mut egui::Ui),
-) -> egui::Response {
+    add: impl FnOnce(&mut egui::Ui) -> R,
+) -> (egui::Response, R) {
+    let id = ui.make_persistent_id(("block", id));
+    let early = ui
+        .ctx()
+        .read_response(id.with("rect"))
+        .map(|last| ui.interact(last.rect, id, Sense::click()));
     let frame = egui::Frame::new()
         .inner_margin(6.0)
         .corner_radius(3.0)
@@ -654,9 +703,10 @@ fn framed(
         });
     let inner = frame.show(ui, |ui| {
         ui.set_min_width(ui.available_width());
-        add(ui);
+        add(ui)
     });
-    inner.response.interact(Sense::click())
+    ui.interact(inner.response.rect, id.with("rect"), Sense::hover());
+    (early.unwrap_or(inner.response), inner.inner)
 }
 
 /// Lay runs out in one job, styles applied per run.

@@ -283,9 +283,12 @@ impl Editor {
                     }
                 } else if !view.body_text.trim().is_empty() {
                     ui.label("Text (from its parts)");
-                    ui.add(
-                        egui::Label::new(egui::RichText::new(view.body_text.trim()).weak()).wrap(),
-                    );
+                    let collapsed = view
+                        .body_text
+                        .split_whitespace()
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    ui.add(egui::Label::new(egui::RichText::new(collapsed).weak()).wrap());
                 }
 
                 if let Some((table, row, col)) = cell.filter(|(t, ..)| *t == view.id) {

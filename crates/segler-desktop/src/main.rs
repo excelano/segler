@@ -588,9 +588,14 @@ fn describe(command: &Command) -> String {
         Command::Move { .. } => "Moved".into(),
         Command::Insert { kind, .. } => format!("Inserted {}", kind.name()),
         Command::Remove { .. } => "Element removed".into(),
-        Command::SetCellText { row, col, .. } => format!("Cell {row},{col} changed"),
-        Command::SetCellKind { row, col, kind, .. } => {
-            format!("Cell {row},{col} is now {}", kind.token().name())
+        Command::SetCellText { row, col, .. } => {
+            format!("Cell row {}, column {} changed", row + 1, col + 1)
         }
+        Command::SetCellKind { row, col, kind, .. } => format!(
+            "Cell row {}, column {} is now {}",
+            row + 1,
+            col + 1,
+            document::cell_kind_name(*kind)
+        ),
     }
 }
