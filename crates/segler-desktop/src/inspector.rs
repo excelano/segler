@@ -58,8 +58,18 @@ pub fn structure(
                     if response.clicked() || excerpt.clicked() {
                         out.select = Some(Some(row.id));
                     }
-                    if is_selected && scroll_to_selection {
-                        response.scroll_to_me(Some(Align::Center));
+                    if is_selected
+                        && scroll_to_selection
+                        && !ui.clip_rect().contains_rect(response.rect)
+                    {
+                        // A jump, not an animation: the animated scroll renders the
+                        // tree at fractional offsets for a few frames, and text drawn
+                        // there comes out blurred, which reads as a flash on whichever
+                        // row lands on the seam.
+                        response.scroll_to_me_animation(
+                            Some(Align::Center),
+                            egui::style::ScrollAnimation::none(),
+                        );
                     }
                 });
             }
@@ -136,9 +146,12 @@ impl Editor {
                                 .find(|(n, _)| n == "level")
                                 .and_then(|(_, v)| v.parse().ok())
                                 .unwrap_or(1);
+                            let before = level;
                             let r =
                                 ui.add(egui::DragValue::new(&mut level).range(1..=6).speed(0.1));
-                            if r.changed() {
+                            // The range clamps a typed 0 back to 1: a refusal,
+                            // not a new value, and it must not reach the document.
+                            if r.changed() && level != before {
                                 out.commands.push(Command::SetAttr {
                                     id,
                                     name: "level".into(),
@@ -220,7 +233,10 @@ impl Editor {
                                     let r = ui.add(
                                         egui::DragValue::new(v).range(0..=limit.saturating_sub(1)),
                                     );
-                                    changed |= r.drag_stopped() || (r.lost_focus() && r.changed());
+                                    // A typed value arrives when the field loses
+                                    // focus, a dragged one when the drag stops;
+                                    // `changed()` fires on neither frame.
+                                    changed |= r.drag_stopped() || r.lost_focus();
                                 }
                                 if changed && view.bounds != Some(self.bounds) {
                                     out.commands.push(Command::SetBounds {
