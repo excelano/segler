@@ -126,6 +126,8 @@ Cloned from slipcase-desktop, one directory per platform under `packaging/`, wit
 
 The Microsoft Store name Segler was reserved on 2026-09-04. App Store Connect is pending and needs a Mac; if the bare name is refused there the display name becomes "Segler for DocLang", the way Slipcase became "Slipcase Desktop", and everything that is an identifier rather than a name is unaffected.
 
+**Amended: App Store Connect accepted the bare name the same day.** The App ID `com.excelano.segler-desktop` was registered in the developer portal and the app record Segler, platform macOS, SKU `segler-desktop`, was created on 2026-09-04 with full user access; its App Store Connect Apple ID is 6808761705. The fallback above was not needed and both stores now say Segler. Two things were measured on the way. Apple's API documentation says new apps are created on the App Store Connect website and not through the API, so this was a browser step and will be for any successor; the installed API key is for uploads. And Apple's help says a reserved name expires if no build is uploaded within a period it does not state on that page, so the reservation is a deadline as well as a name: if the window closes on stage four of `§10` before a Store build exists, a scaffold build through the packaging cloned from slipcase-desktop is what holds it.
+
 The CLI ships the way the fleet's Rust CLIs do, through cargo-dist, with a `dist-workspace.toml` that names the `segler` crate alone. The library ships to crates.io. Neither is wired yet; both arrive when there is a version worth cutting.
 
 ---
