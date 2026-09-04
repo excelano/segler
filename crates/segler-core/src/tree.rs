@@ -447,6 +447,11 @@ impl Element {
         })
     }
 
+    /// One child, mutably, by index.
+    pub fn children_mut_at(&mut self, index: usize) -> Option<&mut Node> {
+        self.children.get_mut(index)
+    }
+
     pub fn push(&mut self, node: Node) {
         self.leave_empty_form();
         self.children.push(node);

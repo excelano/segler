@@ -3,7 +3,11 @@
 //!   segler inspect FILE          what a document or archive contains
 //!   segler validate FILE         every finding against the specification
 //!   segler page FILE [N]         the boxes and tree of one page, as the
-//!                                window will draw them
+//!                                scan pane will draw them
+//!   segler render FILE [N]       one page as blocks, the document pane's
+//!                                input, printed as text
+//!   segler table FILE PATH       a table's grid: every cell with its kind,
+//!                                span and text
 //!   segler edit FILE -e EDIT...  apply edits through the session and write
 //!                                the result; --undo proves they undo
 //!   segler corpus DIR [--toolkit]
@@ -26,7 +30,9 @@ use std::process::{Command as Process, ExitCode};
 use clap::{Parser, Subcommand};
 use segler_core::{
     archive,
+    blocks::{Block, Run},
     doclang::{self, Kind},
+    otsl::{CellKind, Grid},
     session::{Command as Edit, Session},
     summary::Summary,
     tree::{Document, ElementId},
@@ -64,11 +70,27 @@ enum Command {
         #[arg(default_value_t = 1)]
         number: usize,
     },
+    /// Print one page as the blocks the document pane draws
+    Render {
+        /// A `.dclg` document or `.dclx` archive
+        file: PathBuf,
+        /// The page number, from one
+        #[arg(default_value_t = 1)]
+        number: usize,
+    },
+    /// Print a table's grid: each cell with its kind, span and text
+    Table {
+        /// A `.dclg` document or `.dclx` archive
+        file: PathBuf,
+        /// The table's path, e.g. /doclang/table[1]
+        path: String,
+    },
     /// Apply edits through the session and write the result. Each edit is
     /// one of:
     ///   text PATH VALUE            attr PATH NAME VALUE|-
     ///   label PATH VALUE|-         layer PATH VALUE|-
     ///   bounds PATH X0 Y0 X1 Y1|-  rename PATH KIND
+    ///   cell PATH ROW COL VALUE    cellkind PATH ROW COL KIND
     ///   move PATH PARENT INDEX     insert PARENT INDEX KIND
     ///   remove PATH
     /// where PATH is as `validate` prints it, e.g. /doclang/text[2].
@@ -117,6 +139,8 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
         Command::Inspect { file } => inspect(&file).map(|()| ExitCode::SUCCESS),
         Command::Validate { file } => validate_file(&file),
         Command::Page { file, number } => page(&file, number).map(|()| ExitCode::SUCCESS),
+        Command::Render { file, number } => render(&file, number).map(|()| ExitCode::SUCCESS),
+        Command::Table { file, path } => table(&file, &path).map(|()| ExitCode::SUCCESS),
         Command::Edit {
             file,
             edits,
@@ -244,6 +268,175 @@ fn page(file: &Path, number: usize) -> Result<(), String> {
     Ok(())
 }
 
+fn render(file: &Path, number: usize) -> Result<(), String> {
+    let session = open_session(file)?;
+    let blocks = session.blocks(number).ok_or_else(|| {
+        format!(
+            "{}: no page {number}; the document has {}",
+            file.display(),
+            session.page_count()
+        )
+    })?;
+    print_blocks(&blocks, 0);
+    Ok(())
+}
+
+fn runs_text(runs: &[Run]) -> String {
+    let mut out = String::new();
+    for r in runs {
+        let mut t = r.text.clone();
+        if r.style.bold {
+            t = format!("**{t}**");
+        }
+        if r.style.italic {
+            t = format!("_{t}_");
+        }
+        out.push_str(&t);
+    }
+    out
+}
+
+fn print_blocks(blocks: &[Block], depth: usize) {
+    let pad = "  ".repeat(depth);
+    for b in blocks {
+        match b {
+            Block::Heading { level, runs, .. } => {
+                println!("{pad}{} {}", "#".repeat(*level as usize), runs_text(runs))
+            }
+            Block::Paragraph {
+                kind, runs, blocks, ..
+            } => {
+                let tag = if *kind == Kind::Text {
+                    String::new()
+                } else {
+                    format!("[{}] ", kind.name())
+                };
+                println!("{pad}{tag}{}", runs_text(runs));
+                print_blocks(blocks, depth + 1);
+            }
+            Block::List { ordered, items, .. } => {
+                for (i, item) in items.iter().enumerate() {
+                    let marker = item.marker.clone().unwrap_or_else(|| {
+                        if *ordered {
+                            format!("{}.", i + 1)
+                        } else {
+                            "-".into()
+                        }
+                    });
+                    println!("{pad}{marker} {}", runs_text(&item.runs));
+                    print_blocks(&item.blocks, depth + 1);
+                }
+            }
+            Block::Table {
+                kind,
+                caption,
+                rows,
+                cols,
+                cells,
+                ..
+            } => {
+                if let Some(c) = caption {
+                    println!("{pad}[{}: {}]", kind.name(), runs_text(c));
+                }
+                for r in 0..*rows {
+                    let mut line = String::new();
+                    for c in 0..*cols {
+                        let text = cells
+                            .iter()
+                            .find(|cell| cell.row == r && cell.col == c)
+                            .map(|cell| {
+                                let mut t = runs_text(&cell.runs);
+                                if t.is_empty() && !cell.blocks.is_empty() {
+                                    t = "(…)".into();
+                                }
+                                if cell.kind.is_header() {
+                                    t = format!("*{t}*");
+                                }
+                                t
+                            })
+                            .unwrap_or_else(|| "^".into());
+                        line.push_str(&format!("| {text} "));
+                    }
+                    println!("{pad}{line}|");
+                }
+            }
+            Block::Picture {
+                src,
+                caption,
+                blocks,
+                ..
+            } => {
+                println!(
+                    "{pad}[picture {}]{}",
+                    src.as_deref().unwrap_or("no src"),
+                    caption
+                        .as_ref()
+                        .map(|c| format!(" {}", runs_text(c)))
+                        .unwrap_or_default()
+                );
+                print_blocks(blocks, depth + 1);
+            }
+            Block::Code { language, text, .. } => {
+                println!("{pad}```{}", language.as_deref().unwrap_or(""));
+                for line in text.lines() {
+                    println!("{pad}{line}");
+                }
+                println!("{pad}```");
+            }
+            Block::Formula { text, .. } => println!("{pad}$ {text} $"),
+            Block::Container { kind, blocks, .. } => {
+                println!("{pad}[{}]", kind.name());
+                print_blocks(blocks, depth + 1);
+            }
+            Block::PageBreak => println!("{pad}----"),
+            Block::Other { name, runs, .. } => println!("{pad}<{name}> {}", runs_text(runs)),
+        }
+    }
+}
+
+fn table(file: &Path, path: &str) -> Result<(), String> {
+    let session = open_session(file)?;
+    let id = session
+        .find_by_path(path)
+        .ok_or_else(|| format!("no element at {path}"))?;
+    let el = session
+        .document()
+        .find(id)
+        .ok_or_else(|| format!("no element at {path}"))?;
+    let grid = Grid::parse(el);
+    println!(
+        "{} rows, {} cols, {} cells",
+        grid.rows,
+        grid.cols,
+        grid.cells.len()
+    );
+    for cell in &grid.cells {
+        let start = segler_core::otsl::body_start(el, cell);
+        let text: String = el.children()[start..cell.content.end]
+            .iter()
+            .map(|n| match n {
+                segler_core::tree::Node::Text(t) => t.value().to_owned(),
+                segler_core::tree::Node::CData(s) => s.clone(),
+                segler_core::tree::Node::Element(e) => e.text(),
+                _ => String::new(),
+            })
+            .collect::<String>()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        println!(
+            "  ({},{}) {:<13} span {}x{}  {:?}",
+            cell.row,
+            cell.col,
+            format!("{:?}", cell.kind),
+            cell.rowspan,
+            cell.colspan,
+            text
+        );
+    }
+    Ok(())
+}
+
 fn edit(file: &Path, edits: &[String], out: Option<&Path>, undo: bool) -> Result<ExitCode, String> {
     let mut session = open_session(file)?;
     let original = session.markup();
@@ -356,6 +549,22 @@ fn parse_edit(session: &Session, line: &str) -> Result<Edit, String> {
             kind: kind(word(3)?)?,
         },
         "remove" => Edit::Remove { id: at(word(1)?)? },
+        "cell" => Edit::SetCellText {
+            id: at(word(1)?)?,
+            row: index(word(2)?)?,
+            col: index(word(3)?)?,
+            text: word(4)?.to_owned(),
+        },
+        "cellkind" => Edit::SetCellKind {
+            id: at(word(1)?)?,
+            row: index(word(2)?)?,
+            col: index(word(3)?)?,
+            kind: CellKind::ALL
+                .iter()
+                .copied()
+                .find(|k| k.token().name() == word(4).unwrap_or(""))
+                .ok_or_else(|| format!("{} is not a cell token", word(4).unwrap_or("")))?,
+        },
         other => return Err(format!("{other} is not an edit")),
     })
 }

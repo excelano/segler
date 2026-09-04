@@ -19,7 +19,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::archive::{self, Kind as SourceKind, Loaded};
+use crate::blocks::{self, Block};
 use crate::doclang::{self, Kind};
+use crate::otsl::{self, CellKind, Grid};
 use crate::tree::{self, Document, Element, ElementId, Node, Text};
 use crate::validate::{self, Finding};
 
@@ -72,6 +74,21 @@ pub enum Command {
     },
     /// Remove an element and everything inside it.
     Remove { id: ElementId },
+    /// Replace the text of a table cell, addressed by the cell's top-left
+    /// position. Refused when the cell holds structure.
+    SetCellText {
+        id: ElementId,
+        row: usize,
+        col: usize,
+        text: String,
+    },
+    /// Change what a table cell is: its token.
+    SetCellKind {
+        id: ElementId,
+        row: usize,
+        col: usize,
+        kind: CellKind,
+    },
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -88,6 +105,8 @@ pub enum CommandError {
     IntoItself,
     #[error("index {index} is past the end of <{parent}>")]
     IndexOutOfRange { parent: String, index: usize },
+    #[error("<{0}> has no cell at row {1}, column {2}")]
+    NoSuchCell(String, usize, usize),
 }
 
 /// What a command did, returned from `apply` and `redo`.
@@ -357,6 +376,15 @@ impl Session {
         })
     }
 
+    /// The blocks of page `number`, one-based, for a renderer.
+    pub fn blocks(&self, number: usize) -> Option<Vec<Block>> {
+        let pages = doclang::pages(&self.doc);
+        let page = pages.iter().find(|p| p.number == number)?;
+        Some(blocks::blocks_of(
+            &self.doc.root.children()[page.children.clone()],
+        ))
+    }
+
     pub fn select(&mut self, id: Option<ElementId>) -> Result<(), CommandError> {
         if let Some(id) = id {
             if self.doc.find(id).is_none() {
@@ -402,7 +430,8 @@ impl Session {
             rect: head.bounds.map(|b| b.fractions(resolution)),
             text: el.text(),
             body_text: body_text(el, head.body.clone()),
-            editable_text: doclang::kind(el).is_some_and(carries_text),
+            editable_text: doclang::kind(el).is_some_and(carries_text)
+                && blocks::is_plain(&el.children()[head.body.clone()]),
             markup,
             parent: parent.map(Element::id),
             index,
@@ -540,41 +569,7 @@ impl Session {
                 }
                 let before = el.children().to_vec();
                 let body = doclang::head(el).body;
-                // A body that was text keeps its shape: the whitespace that
-                // framed it, and CDATA if that is how the file carried it.
-                let body_nodes = &before[body.clone()];
-                let textual = |n: &Node| matches!(n, Node::Text(_) | Node::CData(_));
-                let (lead, trail, cdata) =
-                    if !body_nodes.is_empty() && body_nodes.iter().all(textual) {
-                        let joined: String = body_nodes
-                            .iter()
-                            .map(|n| match n {
-                                Node::Text(t) => t.value(),
-                                Node::CData(s) => s.as_str(),
-                                _ => "",
-                            })
-                            .collect();
-                        let (lead, trail) = frame(&joined);
-                        (
-                            lead,
-                            trail,
-                            body_nodes.iter().any(|n| matches!(n, Node::CData(_))),
-                        )
-                    } else {
-                        (String::new(), String::new(), false)
-                    };
-                let mut nodes = before[..body.start].to_vec();
-                if cdata {
-                    if !lead.is_empty() {
-                        nodes.push(Node::Text(Text::new(lead)));
-                    }
-                    nodes.push(Node::CData(text.clone()));
-                    if !trail.is_empty() {
-                        nodes.push(Node::Text(Text::new(trail)));
-                    }
-                } else {
-                    nodes.push(Node::Text(Text::new(format!("{lead}{text}{trail}"))));
-                }
+                let nodes = retext(&before, body, text);
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -681,6 +676,58 @@ impl Session {
                 let old = el.name().to_owned();
                 el.set_name(kind.name());
                 Ok((*id, Restore::Name { id: *id, name: old }))
+            }
+            Command::SetCellText { id, row, col, text } => {
+                if let Some(c) = text.chars().find(|c| !tree::is_xml_char(*c)) {
+                    return Err(CommandError::NotXmlText(c as u32));
+                }
+                let el = self
+                    .doc
+                    .find_mut(*id)
+                    .ok_or(CommandError::NoSuchElement(*id))?;
+                let grid = Grid::parse(el);
+                let cell = grid
+                    .at(*row, *col)
+                    .ok_or_else(|| CommandError::NoSuchCell(el.name().to_owned(), *row, *col))?;
+                let start = otsl::body_start(el, cell);
+                let range = start..cell.content.end;
+                if !blocks::is_plain(&el.children()[range.clone()]) {
+                    return Err(CommandError::NotText(format!("{} cell", el.name())));
+                }
+                let before = el.children().to_vec();
+                let nodes = retext(&before, range, text);
+                el.replace_children(nodes);
+                Ok((
+                    *id,
+                    Restore::Children {
+                        id: *id,
+                        nodes: before,
+                    },
+                ))
+            }
+            Command::SetCellKind { id, row, col, kind } => {
+                let el = self
+                    .doc
+                    .find_mut(*id)
+                    .ok_or(CommandError::NoSuchElement(*id))?;
+                let grid = Grid::parse(el);
+                let cell = grid
+                    .at(*row, *col)
+                    .ok_or_else(|| CommandError::NoSuchCell(el.name().to_owned(), *row, *col))?;
+                let token = cell.token;
+                let Some(Node::Element(tok)) = el.children_mut_at(token) else {
+                    return Err(CommandError::NoSuchCell(el.name().to_owned(), *row, *col));
+                };
+                let old = tok.name().to_owned();
+                let tok_id = tok.id();
+                tok.set_name(kind.token().name());
+                Ok((
+                    *id,
+                    Restore::Name {
+                        id: tok_id,
+                        name: old,
+                    },
+                ))
             }
             Command::Remove { id } => {
                 if *id == self.doc.root.id() {
@@ -894,6 +941,42 @@ fn carries_text(k: Kind) -> bool {
             | Kind::FieldHeading
             | Kind::Content
     )
+}
+
+/// `before` with the nodes in `range` replaced by one run of `text`. A
+/// range that was text keeps its shape: the whitespace that framed it, and
+/// CDATA if that is how the file carried it.
+fn retext(before: &[Node], range: std::ops::Range<usize>, text: &str) -> Vec<Node> {
+    let old = &before[range.clone()];
+    let textual = |n: &Node| matches!(n, Node::Text(_) | Node::CData(_));
+    let (lead, trail, cdata) = if !old.is_empty() && old.iter().all(textual) {
+        let joined: String = old
+            .iter()
+            .map(|n| match n {
+                Node::Text(t) => t.value(),
+                Node::CData(s) => s.as_str(),
+                _ => "",
+            })
+            .collect();
+        let (lead, trail) = frame(&joined);
+        (lead, trail, old.iter().any(|n| matches!(n, Node::CData(_))))
+    } else {
+        (String::new(), String::new(), false)
+    };
+    let mut nodes = before[..range.start].to_vec();
+    if cdata {
+        if !lead.is_empty() {
+            nodes.push(Node::Text(Text::new(lead)));
+        }
+        nodes.push(Node::CData(text.to_owned()));
+        if !trail.is_empty() {
+            nodes.push(Node::Text(Text::new(trail)));
+        }
+    } else {
+        nodes.push(Node::Text(Text::new(format!("{lead}{text}{trail}"))));
+    }
+    nodes.extend_from_slice(&before[range.end..]);
+    nodes
 }
 
 /// The leading and trailing whitespace of a text run.
@@ -1232,6 +1315,61 @@ mod tests {
             s.undo();
         }
         assert_eq!(s.markup(), src);
+    }
+
+    #[test]
+    fn cell_edits_address_the_grid() {
+        let src = "<doclang><table>\n  <ched/>A<ched/>B<nl/>\n  <fcel/>1<fcel/><text>two</text><nl/>\n</table></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let table = id_at(&s, "/doclang/table[1]");
+        s.apply(Command::SetCellText {
+            id: table,
+            row: 0,
+            col: 1,
+            text: "Bee".into(),
+        })
+        .unwrap();
+        s.apply(Command::SetCellKind {
+            id: table,
+            row: 1,
+            col: 0,
+            kind: CellKind::RowHeader,
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(table).unwrap().markup,
+            "<table>\n  <ched/>A<ched/>Bee<nl/>\n  <rhed/>1<fcel/><text>two</text><nl/>\n</table>"
+        );
+        assert_eq!(
+            s.apply(Command::SetCellText {
+                id: table,
+                row: 1,
+                col: 1,
+                text: "x".into()
+            }),
+            Err(CommandError::NotText("table cell".into()))
+        );
+        assert!(matches!(
+            s.apply(Command::SetCellText {
+                id: table,
+                row: 5,
+                col: 0,
+                text: "x".into()
+            }),
+            Err(CommandError::NoSuchCell(..))
+        ));
+        s.undo();
+        s.undo();
+        assert_eq!(s.markup(), src);
+        let blocks = s.blocks(1).unwrap();
+        assert!(matches!(
+            blocks[0],
+            Block::Table {
+                rows: 2,
+                cols: 2,
+                ..
+            }
+        ));
     }
 
     #[test]

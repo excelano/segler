@@ -15,7 +15,9 @@
 #![forbid(unsafe_code)]
 
 pub mod archive;
+pub mod blocks;
 pub mod doclang;
+pub mod otsl;
 pub mod session;
 pub mod summary;
 pub mod tree;
