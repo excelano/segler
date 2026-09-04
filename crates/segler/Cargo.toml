@@ -1,0 +1,20 @@
+[package]
+name = "segler"
+description = "Command-line tools for DocLang documents and archives"
+readme = "../../README.md"
+keywords = ["doclang", "cli", "xml", "dclx"]
+categories = ["command-line-utilities", "text-processing"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "segler"
+path = "src/main.rs"
+
+[dependencies]
+segler-core.workspace = true
+clap = { version = "4.6", features = ["derive"] }

@@ -1,0 +1,17 @@
+[package]
+name = "segler-core"
+description = "DocLang document model, parsing, validation, and archive packaging"
+readme = "../../README.md"
+keywords = ["doclang", "document", "xml", "dclx", "otsl"]
+categories = ["parser-implementations", "text-processing"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roxmltree.workspace = true
+thiserror.workspace = true
+zip.workspace = true

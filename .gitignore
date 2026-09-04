@@ -1,0 +1,5 @@
+/target
+/dist
+
+# Test corpora are a checkout of doclang-project/doclang, never vendored here.
+/corpus

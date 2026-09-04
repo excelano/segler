@@ -1,0 +1,25 @@
+[package]
+name = "segler-desktop"
+description = "Review and correct DocLang documents beside their page images"
+readme = "../../README.md"
+keywords = ["doclang", "gui", "egui", "review", "dclx"]
+categories = ["gui", "text-processing"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "segler-desktop"
+path = "src/main.rs"
+
+[dependencies]
+segler-core.workspace = true
+# Defaults carry accesskit, which stays on. Same framework as slipcase-desktop
+# on purpose: one set of platform lessons for both applications.
+eframe = "0.36"
+# Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
+# links C through gtk-sys and stays off.
+rfd = "0.17"

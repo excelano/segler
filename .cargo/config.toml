@@ -1,0 +1,7 @@
+# The Visual C++ runtime is not part of Windows; it arrives with a
+# redistributable. A binary that imports VCRUNTIME140.dll installs on a clean
+# machine and will not start, which is how slipcase-desktop 0.1.1 failed
+# Microsoft Store policy 10.2.4.1. Linking the runtime in removes the
+# dependency rather than declaring it. DESIGN.md §8.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

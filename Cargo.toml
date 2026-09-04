@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = ["crates/segler-core", "crates/segler", "crates/segler-desktop"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["David M. Anderson"]
+license = "Apache-2.0"
+repository = "https://github.com/excelano/segler"
+# eframe's number, not this code's; it rises whenever egui raises its own.
+rust-version = "1.95"
+
+[workspace.dependencies]
+segler-core = { path = "crates/segler-core", version = "0.1.0" }
+# Pure Rust and no build script. Every dependency in this tree has to say the
+# same; DESIGN.md §5 is the rule and `cargo tree -i cc` is the check.
+roxmltree = "0.21"
+thiserror = "2"
+# Defaults pull zstd and xz, which compile C. A DocLang archive is an OPC
+# package and OPC only ever stores or deflates, so deflate is the whole need.
+zip = { version = "8.6", default-features = false, features = ["deflate"] }
