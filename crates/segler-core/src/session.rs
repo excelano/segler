@@ -540,14 +540,41 @@ impl Session {
                 }
                 let before = el.children().to_vec();
                 let body = doclang::head(el).body;
-                // Keep the whitespace that framed a single text run, so a
-                // pretty-printed file stays pretty.
-                let (lead, trail) = match &el.children()[body.clone()] {
-                    [Node::Text(t)] => frame(t.value()),
-                    _ => (String::new(), String::new()),
-                };
+                // A body that was text keeps its shape: the whitespace that
+                // framed it, and CDATA if that is how the file carried it.
+                let body_nodes = &before[body.clone()];
+                let textual = |n: &Node| matches!(n, Node::Text(_) | Node::CData(_));
+                let (lead, trail, cdata) =
+                    if !body_nodes.is_empty() && body_nodes.iter().all(textual) {
+                        let joined: String = body_nodes
+                            .iter()
+                            .map(|n| match n {
+                                Node::Text(t) => t.value(),
+                                Node::CData(s) => s.as_str(),
+                                _ => "",
+                            })
+                            .collect();
+                        let (lead, trail) = frame(&joined);
+                        (
+                            lead,
+                            trail,
+                            body_nodes.iter().any(|n| matches!(n, Node::CData(_))),
+                        )
+                    } else {
+                        (String::new(), String::new(), false)
+                    };
                 let mut nodes = before[..body.start].to_vec();
-                nodes.push(Node::Text(Text::new(format!("{lead}{text}{trail}"))));
+                if cdata {
+                    if !lead.is_empty() {
+                        nodes.push(Node::Text(Text::new(lead)));
+                    }
+                    nodes.push(Node::CData(text.clone()));
+                    if !trail.is_empty() {
+                        nodes.push(Node::Text(Text::new(trail)));
+                    }
+                } else {
+                    nodes.push(Node::Text(Text::new(format!("{lead}{text}{trail}"))));
+                }
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -590,17 +617,51 @@ impl Session {
                     .find_mut(*id)
                     .ok_or(CommandError::NoSuchElement(*id))?;
                 let before = el.children().to_vec();
-                let mut nodes: Vec<Node> = before
-                    .iter()
-                    .filter(|n| !matches!(n, Node::Element(e) if doclang::kind(e) == Some(Kind::Location)))
-                    .cloned()
-                    .collect();
-                if let Some(values) = bounds {
-                    let at = head_insert_index(&nodes, Kind::Location);
-                    for (i, v) in values.iter().enumerate() {
-                        let mut loc = Element::new("location");
-                        loc.set_attr("value", v.to_string());
-                        nodes.insert(at + i, Node::Element(loc));
+                let is_location = |n: &Node| matches!(n, Node::Element(e) if doclang::kind(e) == Some(Kind::Location));
+                let first = before.iter().position(is_location);
+                let last = before.iter().rposition(is_location);
+                // The whitespace the file put between its locations, kept
+                // for the new ones so the head keeps its shape.
+                let separator = match (first, last) {
+                    (Some(f), Some(l)) if l > f => match &before[f + 1] {
+                        Node::Text(t) if t.value().trim().is_empty() => Some(t.value().to_owned()),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let mut nodes = before.clone();
+                let at = match (first, last) {
+                    (Some(f), Some(l)) => {
+                        nodes.drain(f..=l);
+                        f
+                    }
+                    _ => head_insert_index(&nodes, Kind::Location),
+                };
+                match bounds {
+                    Some(values) => {
+                        let mut fresh = Vec::new();
+                        for (i, v) in values.iter().enumerate() {
+                            if i > 0 {
+                                if let Some(sep) = &separator {
+                                    fresh.push(Node::Text(Text::new(sep.clone())));
+                                }
+                            }
+                            let mut loc = Element::new("location");
+                            loc.set_attr("value", v.to_string());
+                            fresh.push(Node::Element(loc));
+                        }
+                        nodes.splice(at..at, fresh);
+                    }
+                    None => {
+                        // The whitespace that led into the block would be a
+                        // blank line without it.
+                        if first.is_some() && at > 0 {
+                            if let Node::Text(t) = &nodes[at - 1] {
+                                if t.value().trim().is_empty() {
+                                    nodes.remove(at - 1);
+                                }
+                            }
+                        }
                     }
                 }
                 el.replace_children(nodes);
@@ -1137,6 +1198,40 @@ mod tests {
             }),
             Err(CommandError::NotXmlText(0))
         );
+    }
+
+    #[test]
+    fn box_and_text_edits_keep_the_file_shape() {
+        let src = "<doclang>\n  <text>\n    <location value=\"54\"/>\n    <location value=\"153\"/>\n    <location value=\"236\"/>\n    <location value=\"274\"/>\n<![CDATA[We introduce <Docling>.]]>  </text>\n</doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        s.apply(Command::SetBounds {
+            id: text,
+            bounds: Some([1, 2, 3, 4]),
+        })
+        .unwrap();
+        s.apply(Command::SetText {
+            id: text,
+            text: "Revised <text>".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>\n    <location value=\"1\"/>\n    <location value=\"2\"/>\n    <location value=\"3\"/>\n    <location value=\"4\"/>\n<![CDATA[Revised <text>]]>  </text>"
+        );
+        s.apply(Command::SetBounds {
+            id: text,
+            bounds: None,
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>\n<![CDATA[Revised <text>]]>  </text>"
+        );
+        for _ in 0..3 {
+            s.undo();
+        }
+        assert_eq!(s.markup(), src);
     }
 
     #[test]
