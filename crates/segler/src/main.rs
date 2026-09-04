@@ -2,10 +2,15 @@
 //!
 //!   segler inspect FILE          what a document or archive contains
 //!   segler validate FILE         every finding against the specification
+//!   segler page FILE [N]         the boxes and tree of one page, as the
+//!                                window will draw them
+//!   segler edit FILE -e EDIT...  apply edits through the session and write
+//!                                the result; --undo proves they undo
 //!   segler corpus DIR [--toolkit]
 //!                                parse and write back every document under
 //!                                DIR, validate each against what its
-//!                                directory says it should be, and with
+//!                                directory says it should be, edit and undo
+//!                                each to prove undo is exact, and with
 //!                                --toolkit compare verdicts with the
 //!                                reference toolkit's `doclang validate`
 //!
@@ -20,9 +25,11 @@ use std::process::{Command as Process, ExitCode};
 
 use clap::{Parser, Subcommand};
 use segler_core::{
-    archive, doclang,
+    archive,
+    doclang::{self, Kind},
+    session::{Command as Edit, Session},
     summary::Summary,
-    tree::Document,
+    tree::{Document, ElementId},
     validate::{self, Layer},
 };
 
@@ -48,6 +55,37 @@ enum Command {
     Validate {
         /// A `.dclg` document or `.dclx` archive
         file: PathBuf,
+    },
+    /// Show one page as the window will draw it: its boxes and its tree
+    Page {
+        /// A `.dclg` document or `.dclx` archive
+        file: PathBuf,
+        /// The page number, from one
+        #[arg(default_value_t = 1)]
+        number: usize,
+    },
+    /// Apply edits through the session and write the result. Each edit is
+    /// one of:
+    ///   text PATH VALUE            attr PATH NAME VALUE|-
+    ///   label PATH VALUE|-         layer PATH VALUE|-
+    ///   bounds PATH X0 Y0 X1 Y1|-  rename PATH KIND
+    ///   move PATH PARENT INDEX     insert PARENT INDEX KIND
+    ///   remove PATH
+    /// where PATH is as `validate` prints it, e.g. /doclang/text[2].
+    #[command(verbatim_doc_comment)]
+    Edit {
+        /// A `.dclg` document or `.dclx` archive
+        file: PathBuf,
+        /// An edit to apply, in order; repeatable
+        #[arg(short = 'e', long = "edit", required = true)]
+        edits: Vec<String>,
+        /// Where to write; the markup goes to stdout without it
+        #[arg(short = 'o', long)]
+        out: Option<PathBuf>,
+        /// After applying, undo every edit and confirm the document is
+        /// byte-identical to what was opened
+        #[arg(long)]
+        undo: bool,
     },
     /// Round-trip and validate every document under a directory. Point it
     /// at a checkout of doclang-project/doclang: files under a `valid`
@@ -78,6 +116,13 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
     match cli.command {
         Command::Inspect { file } => inspect(&file).map(|()| ExitCode::SUCCESS),
         Command::Validate { file } => validate_file(&file),
+        Command::Page { file, number } => page(&file, number).map(|()| ExitCode::SUCCESS),
+        Command::Edit {
+            file,
+            edits,
+            out,
+            undo,
+        } => edit(&file, &edits, out.as_deref(), undo),
         Command::Corpus { dir, toolkit } => corpus(&dir, toolkit),
     }
 }
@@ -132,6 +177,292 @@ fn validate_file(file: &Path) -> Result<ExitCode, String> {
     }
     println!("{}: {} findings", file.display(), findings.len());
     Ok(ExitCode::FAILURE)
+}
+
+fn open_session(file: &Path) -> Result<Session, String> {
+    Session::open(file).map_err(|e| format!("{}: {e}", file.display()))
+}
+
+fn page(file: &Path, number: usize) -> Result<(), String> {
+    let session = open_session(file)?;
+    let view = session.page(number).ok_or_else(|| {
+        format!(
+            "{}: no page {number}; the document has {}",
+            file.display(),
+            session.page_count()
+        )
+    })?;
+    println!(
+        "page {} of {}{}",
+        view.number,
+        view.count,
+        view.image
+            .as_ref()
+            .map(|i| format!(", image {i}"))
+            .unwrap_or_default()
+    );
+    println!("boxes {}", view.boxes.len());
+    for b in &view.boxes {
+        let [x0, y0, x1, y1] = b.rect;
+        println!(
+            "  {:<14} {:.3} {:.3} {:.3} {:.3}",
+            b.kind.name(),
+            x0,
+            y0,
+            x1,
+            y1
+        );
+    }
+    println!("tree");
+    for r in &view.rows {
+        let mut tag = r.kind.name().to_owned();
+        if let Some(d) = &r.detail {
+            tag.push_str(&format!("[{d}]"));
+        }
+        let mut notes = Vec::new();
+        if let Some(l) = &r.label {
+            notes.push(format!("label={l}"));
+        }
+        if r.layer != "body" {
+            notes.push(format!("layer={}", r.layer));
+        }
+        if r.located {
+            notes.push("located".to_owned());
+        }
+        println!(
+            "  {}{:<16} {:?}{}",
+            "  ".repeat(r.depth),
+            tag,
+            r.excerpt,
+            if notes.is_empty() {
+                String::new()
+            } else {
+                format!("  ({})", notes.join(", "))
+            }
+        );
+    }
+    Ok(())
+}
+
+fn edit(file: &Path, edits: &[String], out: Option<&Path>, undo: bool) -> Result<ExitCode, String> {
+    let mut session = open_session(file)?;
+    let original = session.markup();
+    let mut applied = 0;
+    for line in edits {
+        let command = parse_edit(&session, line)?;
+        session
+            .apply(command)
+            .map_err(|e| format!("edit {line:?}: {e}"))?;
+        applied += 1;
+    }
+    let findings = session.findings().len();
+    if undo {
+        for _ in 0..applied {
+            session.undo();
+        }
+        let same = session.markup() == original;
+        println!(
+            "{applied} edits applied and undone; document {} the original",
+            if same { "matches" } else { "DIFFERS FROM" }
+        );
+        return Ok(if same {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        });
+    }
+    match out {
+        Some(path) => {
+            session
+                .save_to(path)
+                .map_err(|e| format!("{}: {e}", path.display()))?;
+            println!(
+                "{applied} edits applied, {findings} findings, written to {}",
+                path.display()
+            );
+        }
+        None => print!("{}", session.markup()),
+    }
+    Ok(ExitCode::SUCCESS)
+}
+
+/// One edit line into a command. Values may be double-quoted.
+fn parse_edit(session: &Session, line: &str) -> Result<Edit, String> {
+    let words = split_words(line);
+    let word = |i: usize| {
+        words
+            .get(i)
+            .map(String::as_str)
+            .ok_or_else(|| format!("edit {line:?} is incomplete"))
+    };
+    let at = |path: &str| -> Result<ElementId, String> {
+        session
+            .find_by_path(path)
+            .ok_or_else(|| format!("no element at {path}"))
+    };
+    let optional = |v: &str| (v != "-").then(|| v.to_owned());
+    let kind = |name: &str| {
+        Kind::from_name(name).ok_or_else(|| format!("{name} is not a DocLang element"))
+    };
+    let index = |v: &str| {
+        v.parse::<usize>()
+            .map_err(|_| format!("{v} is not an index"))
+    };
+    Ok(match word(0)? {
+        "text" => Edit::SetText {
+            id: at(word(1)?)?,
+            text: word(2)?.to_owned(),
+        },
+        "attr" => Edit::SetAttr {
+            id: at(word(1)?)?,
+            name: word(2)?.to_owned(),
+            value: optional(word(3)?),
+        },
+        "label" => Edit::SetLabel {
+            id: at(word(1)?)?,
+            value: optional(word(2)?),
+        },
+        "layer" => Edit::SetLayer {
+            id: at(word(1)?)?,
+            value: optional(word(2)?),
+        },
+        "bounds" => {
+            let id = at(word(1)?)?;
+            let bounds = if word(2)? == "-" {
+                None
+            } else {
+                let mut b = [0u32; 4];
+                for (i, slot) in b.iter_mut().enumerate() {
+                    *slot = word(2 + i)?.parse().map_err(|_| {
+                        format!("{} is not a grid value", word(2 + i).unwrap_or(""))
+                    })?;
+                }
+                Some(b)
+            };
+            Edit::SetBounds { id, bounds }
+        }
+        "rename" => Edit::Rename {
+            id: at(word(1)?)?,
+            kind: kind(word(2)?)?,
+        },
+        "move" => Edit::Move {
+            id: at(word(1)?)?,
+            parent: at(word(2)?)?,
+            index: index(word(3)?)?,
+        },
+        "insert" => Edit::Insert {
+            parent: at(word(1)?)?,
+            index: index(word(2)?)?,
+            kind: kind(word(3)?)?,
+        },
+        "remove" => Edit::Remove { id: at(word(1)?)? },
+        other => return Err(format!("{other} is not an edit")),
+    })
+}
+
+fn split_words(line: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut quoted = false;
+    let mut pending = false;
+    for c in line.chars() {
+        match c {
+            '"' => {
+                quoted = !quoted;
+                pending = true;
+            }
+            c if c.is_whitespace() && !quoted => {
+                if pending {
+                    words.push(std::mem::take(&mut current));
+                    pending = false;
+                }
+            }
+            c => {
+                current.push(c);
+                pending = true;
+            }
+        }
+    }
+    if pending {
+        words.push(current);
+    }
+    words
+}
+
+/// Edit every element a session offers, then undo it all: the document
+/// must come back byte-identical. Returns what differed, if anything.
+fn edit_undo_identity(file: &Path) -> Result<Option<String>, String> {
+    let mut session = open_session(file)?;
+    let original = session.markup();
+    let ids: Vec<ElementId> = session.document().elements().map(|e| e.id()).collect();
+    let mut applied = 0;
+    for id in &ids {
+        let attempts = [
+            Edit::SetText {
+                id: *id,
+                text: "edited".into(),
+            },
+            Edit::SetLabel {
+                id: *id,
+                value: Some("edited".into()),
+            },
+            Edit::SetLayer {
+                id: *id,
+                value: Some("furniture".into()),
+            },
+            Edit::SetBounds {
+                id: *id,
+                bounds: Some([1, 2, 3, 4]),
+            },
+            Edit::SetAttr {
+                id: *id,
+                name: "class".into(),
+                value: Some("edited".into()),
+            },
+        ];
+        for command in attempts {
+            if session.apply(command).is_ok() {
+                applied += 1;
+            }
+        }
+    }
+    let root = session.document().root.id();
+    if let Some(last) = session
+        .document()
+        .root
+        .child_elements()
+        .last()
+        .map(|e| e.id())
+    {
+        if session
+            .apply(Edit::Move {
+                id: last,
+                parent: root,
+                index: 0,
+            })
+            .is_ok()
+        {
+            applied += 1;
+        }
+        if session.apply(Edit::Remove { id: last }).is_ok() {
+            applied += 1;
+        }
+    }
+    for _ in 0..applied {
+        session.undo();
+    }
+    let back = session.markup();
+    if back == original {
+        return Ok(None);
+    }
+    let at = original
+        .bytes()
+        .zip(back.bytes())
+        .position(|(a, b)| a != b)
+        .unwrap_or(original.len().min(back.len()));
+    Ok(Some(format!(
+        "after {applied} edits and undos, first difference at byte {at}"
+    )))
 }
 
 /// What a corpus file is expected to be, from the directory it sits in.
@@ -237,6 +568,18 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
             invalid += 1;
         }
 
+        match edit_undo_identity(file) {
+            Ok(None) => {}
+            Ok(Some(why)) => {
+                problems += 1;
+                println!("undo        {}: {why}", file.display());
+            }
+            Err(e) => {
+                problems += 1;
+                println!("undo        {e}");
+            }
+        }
+
         if toolkit {
             match toolkit_verdict(file) {
                 Ok((their_schema, their_rules)) => {
@@ -268,7 +611,7 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
         }
     }
     println!(
-        "{} files: {identical} identical after round trip; {valid} valid, {invalid} invalid, {skipped} not DocLang{}",
+        "{} files: {identical} identical after round trip; {valid} valid, {invalid} invalid, {skipped} not DocLang; every DocLang file edited and undone to identity{}",
         files.len(),
         if toolkit { format!("; toolkit agrees on {agreed}") } else { String::new() }
     );

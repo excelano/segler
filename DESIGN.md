@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Status:** the lossless tree, the DocLang vocabulary over it, and both validation layers (`§4`, `§6`; stages one and two of `§10`). Nothing edits yet.
+**Status:** the lossless tree, the DocLang vocabulary over it, both validation layers, and the editing session with its view-models, commands, undo and save (`§4`, `§6`; stages one to three of `§10`). No window draws any of it yet.
 **Document version:** 2026-09-04
 **Amendments:** this document is written before the thing it describes. Building it will contradict parts of it. Every change from here on is marked **Amended** and states what was measured, because a design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
@@ -73,6 +73,10 @@ Three crates in one workspace, and one boundary between them that is the design.
 **Amended: the reference toolkit has no serializer, so the target is the file itself.** Read before the model was built, the toolkit's `doclang` package does two things, validate and pack, and the pretty-printer the paragraph above had in mind is docling-core's, which writes DocLang from a converter's model and is not a reference for anything. The measurable target is stronger and simpler: a document parsed and written back without edits is the same bytes. The tree keeps the source of every start tag and every text run and writes it back verbatim until an edit touches that node; only an edited node is regenerated, in one fixed form. So an unedited save diffs clean against the original file rather than against somebody's pretty-printer, and an edited save diffs at the edit and nowhere else. `segler corpus` measures identity on every file under the specification checkout.
 
 **Undo is a command log.** Every edit is a command with an inverse, applied to the model and pushed; undo pops and applies the inverse. The model is not persistent or copy-on-write, because documents are small enough that a command log is simpler and simplicity is the priority.
+
+**Amended: the inverse is a snapshot, not a command.** An inverse command would regenerate the nodes it puts back, and a regenerated node has lost its raw source, so a document edited and undone would serialize differently from the file it came from and the lossless property in this section would hold only until the first undo. What the log records instead is what a command displaced: the children of the element it touched, an attribute's old value, an old name. Undo puts those nodes back as they were, raw source and all, and redo re-runs the command. Measured by `segler corpus`, which edits every element of every file in the corpus through every command that applies to it and undoes it all: every file comes back byte-identical. The session also refuses what it cannot represent, text carrying a character XML cannot hold among them, before it reaches a node.
+
+**The session is the boundary, and it exists before the window does.** `segler-core::session` holds the document, the original archive bytes, the selection, and both stacks, and offers three view-models: the document (version, resolution, page count, whether it is dirty), a page (its image part, its boxes as fractions of the page, its semantic elements as tree rows with an excerpt each), and one element in full (head, attributes, text, markup, position). Commands are plain data addressed by element id: set text, set attribute, set label, set layer, set bounds, rename, move, insert, remove. The CLI's `page` and `edit` commands drive all of it, which is how the boundary was tested against real files before anything drew a pixel.
 
 ---
 

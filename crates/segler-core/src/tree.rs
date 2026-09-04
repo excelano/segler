@@ -389,6 +389,12 @@ impl Element {
         &self.name
     }
 
+    /// Rename the element. Both tags are regenerated on the next write.
+    pub fn set_name(&mut self, name: impl Into<String>) {
+        self.name = name.into();
+        self.touch_tag();
+    }
+
     /// The name without any prefix.
     pub fn local_name(&self) -> &str {
         self.name.rsplit(':').next().unwrap_or(&self.name)
@@ -453,6 +459,14 @@ impl Element {
 
     pub fn remove(&mut self, index: usize) -> Node {
         self.children.remove(index)
+    }
+
+    /// Replace all content with the given nodes.
+    pub fn replace_children(&mut self, nodes: Vec<Node>) {
+        if !nodes.is_empty() {
+            self.leave_empty_form();
+        }
+        self.children = nodes;
     }
 
     /// Replace all content with one text run.

@@ -23,3 +23,5 @@ thiserror = "2"
 # Defaults pull zstd and xz, which compile C. A DocLang archive is an OPC
 # package and OPC only ever stores or deflates, so deflate is the whole need.
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
+# A save writes beside the target and renames into place.
+tempfile = "3"

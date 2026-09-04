@@ -126,6 +126,46 @@ fn load_archive(bytes: &[u8]) -> Result<Loaded, Error> {
     })
 }
 
+/// One part of an archive, by name, or `None` if the archive has no such
+/// part.
+pub fn read_part(bytes: &[u8], name: &str) -> Result<Option<Vec<u8>>, Error> {
+    let mut zip = ZipArchive::new(Cursor::new(bytes))?;
+    let found = match zip.by_name(name) {
+        Ok(mut part) => {
+            let mut raw = Vec::new();
+            part.read_to_end(&mut raw)?;
+            Some(raw)
+        }
+        Err(zip::result::ZipError::FileNotFound) => None,
+        Err(e) => return Err(e.into()),
+    };
+    Ok(found)
+}
+
+/// A new archive with `markup` as its document and every other part of
+/// `original` carried over byte for byte, compression included. The
+/// document is deflated, as the reference toolkit packs it.
+pub fn repack(original: &[u8], markup: &str) -> Result<Vec<u8>, Error> {
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+
+    let mut zip = ZipArchive::new(Cursor::new(original))?;
+    let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for i in 0..zip.len() {
+        let part = zip.by_index_raw(i)?;
+        if part.name() == DOCUMENT_PART {
+            continue;
+        }
+        out.raw_copy_file(part)?;
+    }
+    out.start_file(
+        DOCUMENT_PART,
+        SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated),
+    )?;
+    out.write_all(markup.as_bytes())?;
+    Ok(out.finish()?.into_inner())
+}
+
 /// `pages/12.png` → page 12. Anything else under `pages/`, or anywhere else,
 /// is not a page part.
 fn page_part(name: &str) -> Option<PagePart> {
@@ -188,6 +228,24 @@ mod tests {
         let numbers: Vec<u32> = loaded.pages.iter().map(|p| p.number).collect();
         assert_eq!(numbers, [1, 2, 10]);
         assert_eq!(loaded.assets, ["assets/chart.svg"]);
+    }
+
+    #[test]
+    fn repack_replaces_the_document_and_keeps_the_rest() {
+        let bytes = archive(&[
+            ("[Content_Types].xml", b"<Types/>"),
+            (DOCUMENT_PART, MARKUP.as_bytes()),
+            ("pages/1.png", b"png"),
+        ]);
+        let again = repack(&bytes, "<doclang/>").unwrap();
+        let loaded = load_bytes(&again).unwrap();
+        assert_eq!(loaded.markup, "<doclang/>");
+        assert_eq!(read_part(&again, "pages/1.png").unwrap().unwrap(), b"png");
+        assert_eq!(
+            read_part(&again, "[Content_Types].xml").unwrap().unwrap(),
+            b"<Types/>"
+        );
+        assert!(read_part(&again, "missing").unwrap().is_none());
     }
 
     #[test]

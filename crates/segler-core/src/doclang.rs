@@ -127,6 +127,30 @@ impl Kind {
     pub fn is_semantic(self) -> bool {
         self.category() == Category::Semantic
     }
+
+    /// Whether the element belongs in an element head.
+    pub fn is_property(self) -> bool {
+        self.category() == Category::Property
+    }
+
+    /// The position of a property element in the head's fixed order:
+    /// label, thread, xref or href, layer, the four locations, caption,
+    /// description, summary, custom. `None` for anything that is not a
+    /// property element.
+    pub fn head_slot(self) -> Option<u8> {
+        Some(match self {
+            Kind::Label => 0,
+            Kind::Thread => 1,
+            Kind::Xref | Kind::Href => 2,
+            Kind::Layer => 3,
+            Kind::Location => 4,
+            Kind::Caption => 5,
+            Kind::Description => 6,
+            Kind::Summary => 7,
+            Kind::Custom => 8,
+            _ => return None,
+        })
+    }
 }
 
 /// The spec's grid size when `default_resolution` says nothing.

@@ -16,6 +16,7 @@
 
 pub mod archive;
 pub mod doclang;
+pub mod session;
 pub mod summary;
 pub mod tree;
 pub mod validate;
