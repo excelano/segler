@@ -26,6 +26,8 @@ rfd = "0.17"
 # Decoding page images into textures. Each decoder is pure Rust: `png`,
 # `zune-jpeg`, `image-webp`. The defaults would pull every format.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+# A picture's `src` may be a data: URI with a base64 payload (spec §src).
+base64 = "0.23"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # `winit` answers the system theme on Windows and macOS and returns `None` on

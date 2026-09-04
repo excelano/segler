@@ -7,10 +7,12 @@
 
 use eframe::egui::{self, Align};
 use segler_core::doclang::Kind;
+use segler_core::otsl::{CellKind, Grid};
 use segler_core::session::{Command, ElementView, PageView, Session};
 use segler_core::tree::ElementId;
 use segler_core::validate::Finding;
 
+use crate::document::cell_kind_name;
 use crate::page::color_for;
 
 /// What a pane asked for this frame.
@@ -99,6 +101,7 @@ impl Editor {
         ui: &mut egui::Ui,
         session: &Session,
         view: Option<&ElementView>,
+        cell: Option<(ElementId, usize, usize)>,
         out: &mut Requests,
     ) {
         ui.heading("Element");
@@ -283,6 +286,35 @@ impl Editor {
                     ui.add(
                         egui::Label::new(egui::RichText::new(view.body_text.trim()).weak()).wrap(),
                     );
+                }
+
+                if let Some((table, row, col)) = cell.filter(|(t, ..)| *t == view.id) {
+                    let current = session
+                        .document()
+                        .find(table)
+                        .and_then(|el| Grid::parse(el).at(row, col).map(|c| c.kind));
+                    if let Some(current) = current {
+                        ui.add_space(8.0);
+                        ui.label(format!("Cell row {}, column {}", row + 1, col + 1));
+                        egui::ComboBox::from_id_salt("cell-kind")
+                            .selected_text(cell_kind_name(current))
+                            .show_ui(ui, |ui| {
+                                for k in CellKind::ALL {
+                                    if ui
+                                        .selectable_label(current == k, cell_kind_name(k))
+                                        .clicked()
+                                        && current != k
+                                    {
+                                        out.commands.push(Command::SetCellKind {
+                                            id: table,
+                                            row,
+                                            col,
+                                            kind: k,
+                                        });
+                                    }
+                                }
+                            });
+                    }
                 }
 
                 ui.add_space(8.0);

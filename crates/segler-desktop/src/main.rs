@@ -14,6 +14,7 @@
 
 #![deny(unsafe_code)]
 
+mod document;
 mod inspector;
 mod page;
 mod system_theme;
@@ -24,6 +25,7 @@ use eframe::egui::{self, Key, Modifiers, ViewportCommand};
 use segler_core::session::{Command, Session};
 use segler_core::tree::ElementId;
 
+use document::{DocumentPane, Selection};
 use inspector::{Editor, Requests};
 use page::{PagePane, Pick};
 
@@ -70,7 +72,12 @@ struct App {
     /// The factor the page pane used last frame, for the toolbar.
     zoom_shown: f32,
     pane: PagePane,
+    document: DocumentPane,
     editor: Editor,
+    /// A selected table cell, as (table, row, column).
+    selected_cell: Option<(ElementId, usize, usize)>,
+    /// Whether the page scan is shown beside the document.
+    show_scan: bool,
     dialog: Dialog,
     /// Set when a selection came from somewhere other than the structure
     /// pane, so that the tree scrolls to it once.
@@ -89,7 +96,10 @@ impl App {
             zoom: None,
             zoom_shown: 1.0,
             pane: PagePane::default(),
+            document: DocumentPane::default(),
             editor: Editor::default(),
+            selected_cell: None,
+            show_scan: false,
             dialog: Dialog::None,
             scroll_to_selection: false,
             allow_close: false,
@@ -109,6 +119,8 @@ impl App {
                 self.page_number = 1;
                 self.zoom = None;
                 self.pane.forget();
+                self.document.forget();
+                self.selected_cell = None;
                 self.editor = Editor::default();
                 self.status = format!("Opened {}", path.display());
             }
@@ -201,12 +213,18 @@ impl App {
         if let Some(session) = &mut self.session {
             if session.select(id).is_ok() {
                 self.scroll_to_selection = scroll;
+                if self.selected_cell.is_some_and(|(t, ..)| Some(t) != id) {
+                    self.selected_cell = None;
+                }
             }
         }
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
         let typing = ctx.egui_wants_keyboard_input();
+        if !typing && ctx.input(|i| i.key_pressed(Key::Escape)) {
+            self.document.cancel_edit();
+        }
         let (open, save, undo, redo, prev, next, delete) = ctx.input_mut(|i| {
             (
                 i.consume_key(Modifiers::COMMAND, Key::O),
@@ -331,6 +349,16 @@ impl App {
             if ui.small_button("100%").clicked() {
                 self.zoom = Some(1.0);
             }
+            ui.separator();
+            let has_scan = self
+                .session
+                .as_ref()
+                .and_then(|s| s.page(self.page_number))
+                .is_some_and(|p| p.image.is_some());
+            ui.add_enabled_ui(has_scan, |ui| {
+                ui.toggle_value(&mut self.show_scan, "Scan")
+                    .on_hover_text("Show the page scan beside the document");
+            });
         });
     }
 
@@ -453,7 +481,13 @@ impl eframe::App for App {
             .show(ui, |ui| {
                 let view = self.session.as_ref().and_then(Session::selection);
                 if let Some(session) = &self.session {
-                    self.editor.show(ui, session, view.as_ref(), &mut requests);
+                    self.editor.show(
+                        ui,
+                        session,
+                        view.as_ref(),
+                        self.selected_cell,
+                        &mut requests,
+                    );
                 }
             });
 
@@ -467,14 +501,34 @@ impl eframe::App for App {
                 }
             });
 
+        let mut doc_actions = document::Actions::default();
         egui::CentralPanel::default().show(ui, |ui| match (&self.session, &page_view) {
             (Some(session), Some(page)) => {
-                let (pick, used) = self.pane.show(ui, session, page, self.zoom, selected);
-                self.zoom_shown = used;
-                if let Pick::Select(id) = pick {
-                    requests.select = Some(id);
-                    self.scroll_to_selection = true;
+                if self.show_scan && page.image.is_some() {
+                    egui::Panel::right("scan")
+                        .default_size(ui.available_width() * 0.45)
+                        .resizable(true)
+                        .show(ui, |ui| {
+                            let (pick, used) =
+                                self.pane.show(ui, session, page, self.zoom, selected);
+                            self.zoom_shown = used;
+                            if let Pick::Select(id) = pick {
+                                requests.select = Some(id);
+                                self.scroll_to_selection = true;
+                            }
+                        });
                 }
+                let blocks = session.blocks(page.number).unwrap_or_default();
+                doc_actions = self.document.show(
+                    ui,
+                    session,
+                    &blocks,
+                    Selection {
+                        element: selected,
+                        cell: self.selected_cell,
+                    },
+                    scroll,
+                );
             }
             _ => {
                 ui.centered_and_justified(|ui| {
@@ -482,6 +536,15 @@ impl eframe::App for App {
                 });
             }
         });
+
+        if let Some(id) = doc_actions.select {
+            requests.select = Some(id);
+            self.scroll_to_selection = true;
+        }
+        if let Some(cell) = doc_actions.select_cell {
+            self.selected_cell = Some(cell);
+        }
+        requests.commands.extend(doc_actions.commands);
 
         if let Some(page) = requests.go_to_page {
             self.go_to_page(page);
