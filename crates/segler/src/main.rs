@@ -1,8 +1,13 @@
 //! The `segler` command-line tool.
 //!
-//!   segler inspect FILE     what a document or archive contains
-//!   segler corpus DIR       parse and write back every document under DIR,
-//!                           and report any that do not come back identical
+//!   segler inspect FILE          what a document or archive contains
+//!   segler validate FILE         every finding against the specification
+//!   segler corpus DIR [--toolkit]
+//!                                parse and write back every document under
+//!                                DIR, validate each against what its
+//!                                directory says it should be, and with
+//!                                --toolkit compare verdicts with the
+//!                                reference toolkit's `doclang validate`
 //!
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
@@ -11,10 +16,15 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{Command as Process, ExitCode};
 
 use clap::{Parser, Subcommand};
-use segler_core::{archive, summary::Summary, tree::Document};
+use segler_core::{
+    archive, doclang,
+    summary::Summary,
+    tree::Document,
+    validate::{self, Layer},
+};
 
 #[derive(Parser)]
 #[command(
@@ -34,11 +44,22 @@ enum Command {
         /// A `.dclg` document or `.dclx` archive
         file: PathBuf,
     },
-    /// Round-trip every document under a directory and report any that
-    /// come back changed. Point it at a checkout of doclang-project/doclang.
+    /// Check a document or archive against the specification
+    Validate {
+        /// A `.dclg` document or `.dclx` archive
+        file: PathBuf,
+    },
+    /// Round-trip and validate every document under a directory. Point it
+    /// at a checkout of doclang-project/doclang: files under a `valid`
+    /// directory must produce no findings and files under `invalid` must
+    /// produce at least one.
     Corpus {
         /// A directory to walk for `.dclg`, `.xml` and `.dclx` files
         dir: PathBuf,
+        /// Also run the reference toolkit's `doclang validate` on each file
+        /// and report any file where the two disagree on either layer
+        #[arg(long)]
+        toolkit: bool,
     },
 }
 
@@ -56,8 +77,15 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<ExitCode, String> {
     match cli.command {
         Command::Inspect { file } => inspect(&file).map(|()| ExitCode::SUCCESS),
-        Command::Corpus { dir } => corpus(&dir),
+        Command::Validate { file } => validate_file(&file),
+        Command::Corpus { dir, toolkit } => corpus(&dir, toolkit),
     }
+}
+
+fn load(file: &Path) -> Result<String, String> {
+    archive::load(file)
+        .map(|loaded| loaded.markup)
+        .map_err(|e| format!("{}: {e}", file.display()))
 }
 
 fn inspect(file: &Path) -> Result<(), String> {
@@ -91,37 +119,76 @@ fn inspect(file: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Walk `dir`, and for every document parse it and write it back. A file
-/// that comes back byte-identical passes. One that does not is a defect in
-/// the tree, and the command says where the first differing byte is.
-fn corpus(dir: &Path) -> Result<ExitCode, String> {
+fn validate_file(file: &Path) -> Result<ExitCode, String> {
+    let markup = load(file)?;
+    let doc = Document::parse(&markup).map_err(|e| format!("{}: {e}", file.display()))?;
+    let findings = validate::validate(&doc);
+    if findings.is_empty() {
+        println!("{}: valid", file.display());
+        return Ok(ExitCode::SUCCESS);
+    }
+    for f in &findings {
+        println!("{}  {}  {}\n    {}", f.layer, f.rule, f.path, f.message);
+    }
+    println!("{}: {} findings", file.display(), findings.len());
+    Ok(ExitCode::FAILURE)
+}
+
+/// What a corpus file is expected to be, from the directory it sits in.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Expect {
+    Valid,
+    Invalid,
+    Unknown,
+}
+
+fn expectation(file: &Path) -> Expect {
+    let mut expect = Expect::Unknown;
+    for part in file.components() {
+        match part.as_os_str().to_str() {
+            Some("valid") => expect = Expect::Valid,
+            Some("invalid") => expect = Expect::Invalid,
+            _ => {}
+        }
+    }
+    expect
+}
+
+/// Walk `dir`, and for every document parse it, write it back, and
+/// validate it. A file that comes back byte-identical and matches its
+/// directory's expectation passes; anything else is printed, with the first
+/// differing byte for a round-trip mismatch.
+fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
     let mut files = Vec::new();
     collect(dir, &mut files).map_err(|e| format!("{}: {e}", dir.display()))?;
     files.sort();
 
-    let (mut identical, mut mismatched, mut unparseable) = (0usize, 0usize, 0usize);
+    let mut problems = 0usize;
+    let (mut identical, mut valid, mut invalid, mut skipped, mut agreed) =
+        (0usize, 0usize, 0usize, 0usize, 0usize);
     for file in &files {
-        let markup = match archive::load(file) {
-            Ok(loaded) => loaded.markup,
+        let markup = match load(file) {
+            Ok(markup) => markup,
             Err(e) => {
-                unparseable += 1;
-                println!("unreadable  {}: {e}", file.display());
+                problems += 1;
+                println!("unreadable  {e}");
                 continue;
             }
         };
         let doc = match Document::parse(&markup) {
             Ok(doc) => doc,
             Err(e) => {
-                unparseable += 1;
+                problems += 1;
                 println!("unparseable {}: {e}", file.display());
                 continue;
             }
         };
+
         let back = doc.to_string();
         if back == markup {
             identical += 1;
         } else {
-            mismatched += 1;
+            problems += 1;
             let at = markup
                 .bytes()
                 .zip(back.bytes())
@@ -132,16 +199,117 @@ fn corpus(dir: &Path) -> Result<ExitCode, String> {
                 file.display()
             );
         }
+
+        if doclang::kind(&doc.root) != Some(doclang::Kind::Doclang) {
+            skipped += 1;
+            continue;
+        }
+        let findings = validate::validate(&doc);
+        let schema = findings.iter().any(|f| f.layer == Layer::Schema);
+        let rules = findings.iter().any(|f| f.layer == Layer::Rules);
+        match (expectation(file), findings.is_empty()) {
+            (Expect::Valid, false) => {
+                problems += 1;
+                println!(
+                    "unexpected  {} has {} findings:",
+                    file.display(),
+                    findings.len()
+                );
+                for f in &findings {
+                    println!(
+                        "              {} {} {}: {}",
+                        f.layer, f.rule, f.path, f.message
+                    );
+                }
+            }
+            (Expect::Invalid, true) => {
+                problems += 1;
+                println!(
+                    "missed      {} should have findings and has none",
+                    file.display()
+                );
+            }
+            _ => {}
+        }
+        if findings.is_empty() {
+            valid += 1;
+        } else {
+            invalid += 1;
+        }
+
+        if toolkit {
+            match toolkit_verdict(file) {
+                Ok((their_schema, their_rules)) => {
+                    if (their_schema, their_rules) == (schema, rules) {
+                        agreed += 1;
+                    } else {
+                        problems += 1;
+                        println!(
+                            "disagree    {}: schema ours={} toolkit={}, rules ours={} toolkit={}",
+                            file.display(),
+                            verdict(schema),
+                            verdict(their_schema),
+                            verdict(rules),
+                            verdict(their_rules)
+                        );
+                        for f in &findings {
+                            println!(
+                                "              {} {} {}: {}",
+                                f.layer, f.rule, f.path, f.message
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    problems += 1;
+                    println!("toolkit     {}: {e}", file.display());
+                }
+            }
+        }
     }
     println!(
-        "{} files: {identical} identical, {mismatched} mismatched, {unparseable} unparseable",
-        files.len()
+        "{} files: {identical} identical after round trip; {valid} valid, {invalid} invalid, {skipped} not DocLang{}",
+        files.len(),
+        if toolkit { format!("; toolkit agrees on {agreed}") } else { String::new() }
     );
-    Ok(if mismatched == 0 {
+    Ok(if problems == 0 {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
     })
+}
+
+fn verdict(has_findings: bool) -> &'static str {
+    if has_findings {
+        "invalid"
+    } else {
+        "valid"
+    }
+}
+
+/// Run the reference toolkit on a file and return whether its XSD and
+/// Schematron layers found problems. Uses `-n` so that a document without
+/// the namespace is judged on its content, as this validator judges it.
+fn toolkit_verdict(file: &Path) -> Result<(bool, bool), String> {
+    let output = Process::new("doclang")
+        .args(["validate", "--format", "json", "-n"])
+        .arg(file)
+        .output()
+        .map_err(|e| format!("cannot run doclang: {e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if output.status.success() && !stdout.trim_start().starts_with('{') {
+        return Ok((false, false));
+    }
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).map_err(|e| format!("toolkit output is not JSON: {e}"))?;
+    let layer = |name: &str| {
+        json.get(name)
+            .and_then(|l| l.get("valid"))
+            .and_then(|v| v.as_bool())
+            .map(|valid| !valid)
+            .ok_or_else(|| format!("toolkit output has no {name}.valid"))
+    };
+    Ok((layer("xsd")?, layer("schematron")?))
 }
 
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {

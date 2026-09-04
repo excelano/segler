@@ -18,6 +18,7 @@ pub mod archive;
 pub mod doclang;
 pub mod summary;
 pub mod tree;
+pub mod validate;
 
 /// The DocLang namespace. Documents may omit it, and the spec's own validator
 /// has a switch for injecting it, so a missing namespace is not an error here.

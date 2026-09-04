@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Status:** the lossless tree and the DocLang vocabulary over it (`§4`, first stage of `§10`). Nothing validates or edits yet.
+**Status:** the lossless tree, the DocLang vocabulary over it, and both validation layers (`§4`, `§6`; stages one and two of `§10`). Nothing edits yet.
 **Document version:** 2026-09-04
 **Amendments:** this document is written before the thing it describes. Building it will contradict parts of it. Every change from here on is marked **Amended** and states what was measured, because a design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
@@ -34,7 +34,7 @@ An archive is an OPC package. `.dclx` is a ZIP with `[Content_Types].xml`, `_rel
 
 Version 0.x breaks on every minor. A 0.7 document is incompatible with a 0.8 schema by the spec's own rule. Segler targets one version at a time and says which; it does not pretend to read a version it was not built against.
 
-Validation is an XSD and a Schematron. The XSD is structural. The Schematron is thirty-six rules in XPath 3.1 with `queryBinding="xslt3"`, which no Rust engine runs. `§6` says what that costs.
+Validation is an XSD and a Schematron. The XSD is structural. The Schematron is thirteen patterns, eighteen assertions, in XPath 3.1 with `queryBinding="xslt3"`, which no Rust engine runs. `§6` says what that costs.
 
 ---
 
@@ -100,7 +100,9 @@ Two layers, and neither is the reference toolkit called out of process. Segler r
 
 The XSD is ported into the model. A typed model that can only represent valid structure catches most of what the schema catches at parse time, and what remains, cardinalities and attribute value sets, is a pass over the model. The port is per spec version, and a spec bump is a regeneration, which is why the model's shape follows the schema's rather than any convenience of the editor's.
 
-The Schematron is ported by hand. Thirty-six rules is a size a person can carry, and each becomes a Rust check with the rule's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
+The Schematron is ported by hand. Thirteen patterns holding eighteen assertions is a size a person can carry, and each becomes a Rust check with the pattern's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
+
+**Amended: the reference toolkit does not run the Schematron as written, and the port follows the corpus where the two part.** Measured on the first comparison run, 101 of 104 files agreed and the three that did not were all one rule, `element-head-placement`, on a list or a table. The toolkit transpiles the Schematron to XSLT itself, and it prefixes every rule context with `//`, which in XPath binds only to the first alternative of a union: in `dl:text | dl:heading | … | dl:list | dl:table` only `text` is ever selected, and the other twenty contexts are evaluated relative to the document node and match nothing. The same defect leaves `index` out of both table patterns and checks only `fcel` cells for text before a head. So the corpus was never judged by those rules, and three of its valid files contain text in one cell or item followed by a head element in a later one, which the rule's XPath would flag and which is not wrong: the per-cell and per-item patterns are what the rule meant. The port scopes that rule to a list's or table's own head and otherwise implements each pattern as written, which means it reports things the toolkit misses, a head element after text in a `heading` among them. Those are defects in the document, not disagreements to paper over, and the toolkit's transpiler is a finding to take upstream.
 
 **The conformance corpus is a command, never a test.** `segler corpus /path/to/doclang` walks the specification checkout's `examples/` and `tests/`, parses and re-serializes each file, and compares three things: the serialized bytes against the file itself, and, once validation exists, the verdict and the list of findings against the Python toolkit's. All of them must agree. It needs the checkout and the toolkit installed, which `cargo test` does not imply, and a test that has to choose between skipping quietly and failing on a machine that was never going to have those is worse than a command run on purpose. Run it before and after any change to the model, the parser, the serializer or the validator.
 
@@ -148,7 +150,7 @@ The core first, proved by the CLI, with a window only when there is a model for 
 
 First, the model and the round trip: parse every file in the conformance corpus and serialize it back to the reference toolkit's bytes. Nothing above this can be built until it holds, and it is a shippable library and CLI by itself.
 
-Second, validation: the XSD port and the thirty-six rules, agreeing with the reference toolkit on the corpus.
+Second, validation: the XSD port and the Schematron patterns, agreeing with the reference toolkit on the corpus.
 
 Third, the session boundary: view-models, commands, undo, save, exercised by the CLI before any window exists.
 
