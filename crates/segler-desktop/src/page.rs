@@ -70,9 +70,14 @@ impl PagePane {
         });
         let size = base * zoom;
 
+        // The pane claims the width it was given. Left to shrink to its
+        // content, it and a resizable panel around it size each other down
+        // a little every frame until the panel is a sliver.
+        ui.set_min_width(ui.available_width());
         let mut pick = Pick::Nothing;
         egui::ScrollArea::both()
             .id_salt("page-scroll")
+            .auto_shrink([false, false])
             .show(ui, |ui| {
                 let response = match &texture {
                     Some(t) => {

@@ -532,7 +532,9 @@ impl Cx<'_> {
                     Some(cell) if self.selection.cell == Some((id, cell.row, cell.col)) => {
                         ui.visuals().selection.bg_fill.gamma_multiply(0.35)
                     }
-                    Some(cell) if cell.kind.is_header() => ui.visuals().faint_bg_color,
+                    // The faint background is invisible against a dark panel;
+                    // the inactive-widget fill reads in both themes.
+                    Some(cell) if cell.kind.is_header() => ui.visuals().widgets.inactive.bg_fill,
                     Some(_) => Color32::TRANSPARENT,
                     None => ui.visuals().faint_bg_color.gamma_multiply(0.5),
                 };

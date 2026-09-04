@@ -356,8 +356,8 @@ impl App {
                 .and_then(|s| s.page(self.page_number))
                 .is_some_and(|p| p.image.is_some());
             ui.add_enabled_ui(has_scan, |ui| {
-                ui.toggle_value(&mut self.show_scan, "Scan")
-                    .on_hover_text("Show the page scan beside the document");
+                ui.toggle_value(&mut self.show_scan, "Page image")
+                    .on_hover_text("Show the page image from the archive beside the document");
             });
         });
     }
@@ -507,6 +507,7 @@ impl eframe::App for App {
                 if self.show_scan && page.image.is_some() {
                     egui::Panel::right("scan")
                         .default_size(ui.available_width() * 0.45)
+                        .min_size(160.0)
                         .resizable(true)
                         .show(ui, |ui| {
                             let (pick, used) =
