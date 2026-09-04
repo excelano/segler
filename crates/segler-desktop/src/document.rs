@@ -497,6 +497,11 @@ impl Cx<'_> {
             // fills to the row's full height, so the grid holds its columns
             // whatever a cell contains.
             let mut drawn: Vec<(egui::Rect, Option<&CellBlock>)> = Vec::new();
+            // Fills go under the text, so their slots in the paint list are
+            // reserved before the row draws and filled in after it.
+            let slots: Vec<egui::layers::ShapeIdx> = (0..cols)
+                .map(|_| ui.painter().add(egui::Shape::Noop))
+                .collect();
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
                 let mut c = 0;
@@ -526,7 +531,7 @@ impl Cx<'_> {
                 .map(|(rect, _)| rect.bottom())
                 .fold(f32::MIN, f32::max);
             let painter = ui.painter();
-            for (rect, cell) in &drawn {
+            for (n, (rect, cell)) in drawn.iter().enumerate() {
                 let full = egui::Rect::from_min_max(rect.min, egui::Pos2::new(rect.max.x, bottom));
                 let fill = match cell {
                     Some(cell) if self.selection.cell == Some((id, cell.row, cell.col)) => {
@@ -539,7 +544,9 @@ impl Cx<'_> {
                     None => ui.visuals().faint_bg_color.gamma_multiply(0.5),
                 };
                 if fill != Color32::TRANSPARENT {
-                    painter.rect_filled(full, 0.0, fill);
+                    if let Some(slot) = slots.get(n) {
+                        painter.set(*slot, egui::Shape::rect_filled(full, 0.0, fill));
+                    }
                 }
                 painter.rect_stroke(
                     full,
