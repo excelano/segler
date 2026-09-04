@@ -7,8 +7,10 @@ is where the reasoning lives; read that before touching anything.
 
 ## What this is
 
-A review-and-correction tool for DocLang documents, and the lossless Rust
-library underneath it. Three crates in one workspace:
+An editor for DocLang documents, and the lossless Rust library underneath
+it. The main pane is the document rendered from the tree and edited in place;
+the page scans an archive may carry are a reference pane, not the document.
+DESIGN.md §3 records the walkthrough that settled that. Three crates in one workspace:
 
 - `crates/segler-core` — the library. Document model, parser, serializer,
   validation, `.dclx` archives, edit commands, undo. `#![forbid(unsafe_code)]`.

@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Status:** stages one to four of `§10` on Linux: the lossless tree, the vocabulary over it, both validation layers, the editing session, and a window that draws it (`§7`). The window has had its first keyboard walkthrough; nothing in it is packaged.
+**Status:** stages one to four of `§10` on Linux, and `§3` and `§7` revised on 2026-09-04 after the first walkthrough: the main pane becomes the rendered, editable document and the page scan moves to a reference pane. That rendered pane is stage five and is not built yet; nothing is packaged.
 **Document version:** 2026-09-04
 **Amendments:** this document is written before the thing it describes. Building it will contradict parts of it. Every change from here on is marked **Amended** and states what was measured, because a design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
@@ -10,7 +10,7 @@
 
 ## 1. What this repository is
 
-A desktop application that opens a DocLang document or archive, shows the page image beside the structure a model found in it, and lets a person correct that structure and save a valid document back. Underneath it, the first Rust library that represents DocLang without losing anything.
+A desktop application that opens a DocLang document or archive, renders it as a reader would see it, and lets a person edit it there and save a valid document back. Underneath it, the first Rust library that represents DocLang without losing anything.
 
 The library is a deliverable in its own right. DocLang's reference toolkit is Python, the official viewer is JavaScript and view-only, and docling.rs, the Rust port of IBM's converter, reads DocLang into a model built for conversion rather than editing. A lossless Rust model is the missing piece, and it is licensed and organised so that the DocLang project could take it in whole.
 
@@ -40,19 +40,17 @@ Validation is an XSD and a Schematron. The XSD is structural. The Schematron is 
 
 ## 3. The product
 
-Three things could be called an editor for a machine-native format, and one of them is this.
+**Revised 2026-09-04, after the first walkthrough.** The section as first written chose a review-and-correction tool and gave it the page scan as the centre of the window, with the structure beside it and edits visible only in a markup box. David's objection after using it: that is a QA console, and the point of the tool is to edit the document, and editing it should show the edits. The section is rewritten on that premise; what it said before is in `git log`.
 
-An XML editor with DocLang awareness, meaning syntax colouring, schema-driven completion and live validation, is a language server plus a shell. A VS Code extension would do it better and sooner. It survives here as a mode, the markup pane in `§7`, not as the product.
+Segler is an editor for DocLang documents. A DocLang document is the `<doclang>` tree, whichever file carries it: a `.dclg` is the tree alone, a `.dclx` is the same tree in a package with two optional extras, page scans under `pages/` that the spec itself calls raster images for review, and files under `assets/` that the markup refers to. Everything a person would call the content is in the tree, and so is everything the model said about it: labels, layers, bounding boxes, threads and cross-references. Editing a DocLang document means editing that tree, and what Segler saves is that tree, bare or repacked with the extras untouched.
 
-An authoring tool, a word processor that writes DocLang, fights the format. DocLang is produced by models from existing documents; a person composing it from nothing has no page image and no reason to prefer it over Markdown.
+An editor shows the document. The main pane renders the tree the way a reader would see it, headings as headings, paragraphs as paragraphs, lists, tables as grids, pictures from their `src`, captions under them, and edits happen there: click into a paragraph and retype it, change a heading's level and watch it change, fix a table cell in the grid. The view is drawn from the tree, so an edit shows because the thing it changed is the thing on screen, and it works identically for both file types because it needs nothing but the tree.
 
-A review-and-correction tool is the gap. Model output is sometimes wrong, and the people who find out are the ones building training data, auditing conversions, or checking that a contract's tables survived the pipeline. What they need is the page image next to the structure, every box linked to its markup in both directions, and the ability to fix a label, a heading level, a cell, a reading order or a box and save a document that still validates. The official viewer draws the first half of that and edits nothing.
+The page scans keep a job, a secondary one. When a paragraph reads wrong and a person wants to see what the scanner saw, or a bounding box is off, the scan belongs beside the rendered document with the boxes drawn on it. That is a reference pane, shown on request for an archive that carries scans, and absent by design for a bare file. Putting it at the centre was the error: it is empty for a whole class of documents and it never changes when the document does.
 
-The user is the DocLang community: whoever opens a `.dclx` from disk and wants to see and fix what is in it. If governance engagements follow from that, they follow; nothing in the design is shaped for them.
+Two readings of "editor" remain out. An XML editor with DocLang awareness is a language server plus a shell, which a VS Code extension would do better; it survives as the markup pane. And there is no reason to keep authoring out any longer than it keeps itself out: a rendered, editable document can be started from nothing as easily as opened, and the only thing that costs is a New command. The user is the DocLang community: whoever has a document and wants to change what is in it.
 
-A session looks like this. Open an archive. The page shows with boxes over it; the structure tree lists the elements on that page in reading order; the markup pane shows the XML. Click a box or a tree row or a tag and the other two follow. Change the heading level from a dropdown, retype a misread word, drag a box edge, mark a table header row as `ched`, move an element earlier in reading order. Validation runs on every edit and the problems list stays visible. Save, and what lands on disk is the archive with a new `document.xml` and the same pages and assets.
-
----
+A session looks like this. Open a document. It renders. Click a heading and change its level from the element pane, or click into its text and retype it; the rendering follows. Select a paragraph in the rendered view and the same element highlights in the tree on the left and fills the element pane on the right. Fix a misread word. Move a paragraph earlier. Set a table's header row. If the archive has scans, open the reference pane to check a doubtful line against the page. Validation runs on every edit and the problems list stays visible. Save.
 
 ## 4. Architecture
 
@@ -114,23 +112,23 @@ The Schematron is ported by hand. Thirteen patterns holding eighteen assertions 
 
 ## 7. Shape
 
-One window, three panes, one selection.
+**Revised 2026-09-04 with `§3`.** The first version of this section put the page scan in the middle and is superseded; its amendment paragraphs, which record what the first walkthrough measured, are kept at the end because they are still true of the panes that survive.
 
-**The page pane** draws the page image with a rectangle over every located element. Zoom and pan. Click a rectangle to select; drag an edge to move it, and the model gets a command with the new normalised coordinates. Elements without a location draw nothing here and are reachable from the other two panes. Page images load lazily and unload when far from the current page, because a hundred-page archive at a megabyte a page is not a texture set to hold at once.
+One window. The rendered document in the middle, the structure tree on the left, the element pane on the right, the problems list below, and one selection across all of them.
 
-**The structure pane** is the tree of the current page's elements in reading order: label, kind, and the first words of the content. Select a row and the box and the markup follow. Drag a row to change reading order. A dropdown on a row changes what can be changed from a list, a heading level or a picture class or a list kind. A table row opens the grid editor, where cell kinds are set and the OTSL sequence is recomputed from the grid.
+**The document pane** renders the tree as a reader would see it and is where editing happens. Headings at their level, paragraphs with their inline formatting, lists with their markers, tables as grids, pictures from their `src` with captions under them, formulas and code set apart, page breaks as rules. Clicking an element selects it. Clicking into text edits it in place, in a field styled like the element it belongs to, committing when the field is left. Structural edits, a heading's level, a list's kind, a table cell's role, a picture's class, are on the element pane and take effect in the rendering at once. What the model said about geometry, the bounding boxes, is not drawn here; that is the reference pane's business. The reading view of the official viewer is the nearest existing thing, and it is read-only.
 
-**The markup pane** shows the XML with the selected element's span highlighted. Editing text content happens here or in a field on the selected element, and the two are the same command. Free-form editing of the XML itself, the language-server mode, is not the first version and may never be; the pane is read-mostly with highlighting until use shows a need, and `egui_code_editor` is the crate to reach for if it does.
+**The structure pane** is the tree of the document's semantic elements in document order, with an excerpt each, and it stays as built: select a row and the document pane and element pane follow, and a selection made elsewhere scrolls the tree to it. Whether a picture's inner text rows collapse by default is still David's call after seeing them.
+
+**The element pane** stays as built: the selected element in full, with its controls and its markup. It is where the properties that have no visual form in the rendering are edited, label, layer, bounds, thread and cross-reference, and where a structural change is made deliberately rather than by typing.
+
+**The reference pane** shows the page scan for the current page with a rectangle over every located element, linked to the selection both ways, zoomable. It opens on request, beside the document pane, only for an archive that carries scans, and a bare document has no such pane. It is the page pane of the first version, moved out of the middle and off by default; its lazy texture cache and its hit-testing carry over unchanged.
 
 **The problems list** sits below and shows validation findings, each linking to its element. It is never hidden while a document has findings.
 
-**Amended: built as described, with three things measured on the way.** The page opens fitted to the pane's width rather than at the image's size, because a page image at a thousand pixels across is wider than the pane on every screen this was tried on; a slider, a Fit button and a 100% button sit in the toolbar. The structure pane shows every semantic element on the page including those inside a picture, which on a figure with recognised labels is forty rows of one-word text and wants collapsing; that is left for the walkthrough to judge. And the Linux theme defect that slipcase-desktop measured reaches this window too, so its `system_theme` module is here unchanged. Text edits commit when the field loses focus, label edits likewise, level and class and layer on change, and removal asks first even though undo restores it, because a keystroke on the wrong row is easy.
+What is not here: no rendering of PDF or of any format other than DocLang, and no model inference. Segler renders and edits what a model said.
 
-**Amended: the first keyboard walkthrough, 2026-09-04, eight steps on Linux.** Theme, fit, selection in all three panes, the text edit committing on blur and undoing, the four head controls, removal with its confirm, the problems list, paging by key and button, save, and the close dialog's three outcomes all passed at David's keyboard. It found three defects no capture had shown: a typed box value never committed, because the field's commit condition wanted a change on the frame it lost focus; a level of 0 clamped to 1 reached the document as an edit; and clicking a finding flashed the last tree row, which a screen recording pinned to one frame and which reproduced only at a fractional display scale, where asking the scroll area to move at all renders the tree at a fractional offset for a frame. Reading the diff of the first archive saved through the window found two more, both correct DocLang and wrong as files: a box edit left the separators of the old block behind, and a text edit dropped CDATA and the whitespace around it. All five are fixed and measured. Two questions came out of it for later: whether the structure pane should collapse a picture's inner text rows by default, and, from David, whether showing the page image beside markup that the image never reflects is the right frame for the tool at all; that one is `§3`'s premise and gets its own conversation rather than an amendment here.
-
-What is not here: no preview of the document as a rendered page beyond the reading view the structure gives, no PDF rendering, no model inference. Segler shows what a model said and lets a person fix it.
-
----
+**What the first version's walkthrough measured, still true of the panes that survive.** The page opens fitted to the pane's width rather than at the image's size, because a page image at a thousand pixels across is wider than the pane on every screen this was tried on; a slider, a Fit button and a 100% button sit in the toolbar. The Linux theme defect that slipcase-desktop measured reaches this window too, so its `system_theme` module is here unchanged. Text edits commit when the field loses focus, label edits likewise, level and class and layer on change, and removal asks first even though undo restores it, because a keystroke on the wrong row is easy. The first keyboard walkthrough, 2026-09-04, eight steps on Linux, passed theme, fit, selection in all three panes, the text edit committing on blur and undoing, the four head controls, removal with its confirm, the problems list, paging by key and button, save, and the close dialog's three outcomes, and found five defects: a typed box value never committed, because the field's commit condition wanted a change on the frame it lost focus; a level of 0 clamped to 1 reached the document as an edit; clicking a finding flashed the last tree row, which a screen recording pinned to one frame and which reproduced only at a fractional display scale, where asking the scroll area to move at all renders the tree at a fractional offset for a frame; and two read from the diff of the first archive saved, a box edit that left the old block's separators behind and a text edit that dropped CDATA and its whitespace. All five are fixed and measured. The walkthrough is also what produced this revision.
 
 ## 8. Packaging
 
@@ -156,12 +154,16 @@ Whether the library should also be published under the name `doclang` on crates.
 
 The core first, proved by the CLI, with a window only when there is a model for it to draw.
 
-First, the model and the round trip: parse every file in the conformance corpus and serialize it back to the reference toolkit's bytes. Nothing above this can be built until it holds, and it is a shippable library and CLI by itself.
+First, the model and the round trip: parse every file in the conformance corpus and serialize it back to the reference toolkit's bytes. Nothing above this can be built until it holds, and it is a shippable library and CLI by itself. Done.
 
-Second, validation: the XSD port and the Schematron patterns, agreeing with the reference toolkit on the corpus.
+Second, validation: the XSD port and the Schematron patterns, agreeing with the reference toolkit on the corpus. Done.
 
-Third, the session boundary: view-models, commands, undo, save, exercised by the CLI before any window exists.
+Third, the session boundary: view-models, commands, undo, save, exercised by the CLI before any window exists. Done.
 
-Fourth, the window, on Linux first. Then the platform arms and packaging, cloned from slipcase-desktop, Windows and Mac in the order their lanes are free.
+Fourth, the window on Linux. Done in its first form and revised by the walkthrough; what remains of it is the rendered document pane, which is the next stage.
 
-Fifth, import through docling.rs behind its flag.
+Fifth, the rendered document: the OTSL grid model in the core, since tables have to render and edit before anything else does; a document view-model that gives a renderer each element's kind, inline runs, list items, table cells and picture source in order; the document pane drawing that and editing text in place; the scan pane moved to the side and off by default. Then a second walkthrough.
+
+Sixth, the platform arms and packaging, cloned from slipcase-desktop, Windows and Mac in the order their lanes are free.
+
+Seventh, import through docling.rs behind its flag.

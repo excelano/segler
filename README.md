@@ -7,10 +7,11 @@ DocLang is the AI-native markup format from the LF AI & Data Foundation: XML
 that a language model can read and write token for token, carrying the
 structure, semantics, layout and reading order of a document in one place.
 Most DocLang is produced by models, from PDFs and scans, and a model is
-sometimes wrong. Segler puts the page image next to the structure the model
-found, with every element's box linked to its markup, so a person can see what
-was misread and fix it: a label, a heading level, a table cell, the reading
-order, a bounding box. What it saves is a valid DocLang document or archive.
+sometimes wrong. Segler shows the document as a reader would see it and lets
+a person edit it there: retype a misread line, change a heading's level, fix
+a table cell, move a paragraph. When an archive carries the page scans the
+model read, they can be opened beside the document to check a doubtful line
+against the page. What it saves is a valid DocLang document or archive.
 
 The name is German for sailor. DocLang's logo is a sail; this is who works it.
 
