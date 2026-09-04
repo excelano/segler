@@ -80,6 +80,8 @@ struct App {
     show_scan: bool,
     show_structure: bool,
     show_element: bool,
+    /// Pictures whose inner rows are open in the structure pane.
+    expanded: std::collections::HashSet<ElementId>,
     dialog: Dialog,
     /// Set when a selection came from somewhere other than the structure
     /// pane, so that the tree scrolls to it once.
@@ -104,6 +106,7 @@ impl App {
             show_scan: false,
             show_structure: true,
             show_element: true,
+            expanded: std::collections::HashSet::new(),
             dialog: Dialog::None,
             scroll_to_selection: false,
             allow_close: false,
@@ -125,6 +128,7 @@ impl App {
                 self.pane.forget();
                 self.document.forget();
                 self.selected_cell = None;
+                self.expanded.clear();
                 self.editor = Editor::default();
                 self.status = format!("Opened {}", path.display());
             }
@@ -490,7 +494,14 @@ impl eframe::App for App {
             .default_size(300.0)
             .resizable(true)
             .show_collapsible(ui, &mut show_structure, |ui| match &page_view {
-                Some(page) => inspector::structure(ui, page, selected, scroll, &mut requests),
+                Some(page) => inspector::structure(
+                    ui,
+                    page,
+                    selected,
+                    scroll,
+                    &mut self.expanded,
+                    &mut requests,
+                ),
                 None => {
                     ui.heading("Structure");
                     ui.weak("Open a DocLang document or archive.");

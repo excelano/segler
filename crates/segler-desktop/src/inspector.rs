@@ -5,6 +5,8 @@
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
 
+use std::collections::HashSet;
+
 use eframe::egui::{self, Align};
 use segler_core::doclang::Kind;
 use segler_core::otsl::{CellKind, Grid};
@@ -25,22 +27,60 @@ pub struct Requests {
 }
 
 /// The structure tree of the current page.
+/// The structure tree of the current page. A picture's inner rows, the
+/// words a model read inside a figure, fold under the picture by default:
+/// the image already shows them, and forty one-word rows would push the
+/// page's paragraphs out of sight. A picture opens itself when the
+/// selection lands inside it.
 pub fn structure(
     ui: &mut egui::Ui,
     page: &PageView,
     selected: Option<ElementId>,
     scroll_to_selection: bool,
+    expanded: &mut HashSet<ElementId>,
     out: &mut Requests,
 ) {
     ui.heading("Structure");
     ui.add_space(4.0);
+
+    // Which picture each row sits under, if any, so a selection inside a
+    // folded picture can open it before the rows draw.
+    let mut owner: Vec<Option<ElementId>> = Vec::with_capacity(page.rows.len());
+    let mut open_picture: Option<(ElementId, usize)> = None;
+    for row in &page.rows {
+        if let Some((_, depth)) = open_picture {
+            if row.depth <= depth {
+                open_picture = None;
+            }
+        }
+        owner.push(open_picture.map(|(id, _)| id));
+        if row.kind == Kind::Picture {
+            open_picture = Some((row.id, row.depth));
+        }
+    }
+    if let Some(sel) = selected {
+        if let Some(i) = page.rows.iter().position(|r| r.id == sel) {
+            if let Some(pic) = owner[i] {
+                expanded.insert(pic);
+            }
+        }
+    }
+    let has_children = |i: usize| {
+        page.rows
+            .get(i + 1)
+            .is_some_and(|next| next.depth > page.rows[i].depth)
+    };
+
     egui::ScrollArea::vertical()
         .id_salt("structure")
         .show(ui, |ui| {
             if page.rows.is_empty() {
                 ui.weak("Nothing on this page.");
             }
-            for row in &page.rows {
+            for (i, row) in page.rows.iter().enumerate() {
+                if owner[i].is_some_and(|pic| !expanded.contains(&pic)) {
+                    continue;
+                }
                 let is_selected = selected == Some(row.id);
                 let mut tag = row.kind.name().to_owned();
                 if let Some(d) = &row.detail {
@@ -51,6 +91,45 @@ pub fn structure(
                     .strong();
                 ui.horizontal(|ui| {
                     ui.add_space(12.0 * row.depth as f32);
+                    if row.kind == Kind::Picture && has_children(i) {
+                        let open = expanded.contains(&row.id);
+                        // Drawn, not typed: the default font has no triangle glyph.
+                        let (rect, response) =
+                            ui.allocate_exact_size(egui::Vec2::splat(14.0), egui::Sense::click());
+                        let c = rect.center();
+                        let points = if open {
+                            vec![
+                                c + egui::vec2(-4.0, -2.0),
+                                c + egui::vec2(4.0, -2.0),
+                                c + egui::vec2(0.0, 3.0),
+                            ]
+                        } else {
+                            vec![
+                                c + egui::vec2(-2.0, -4.0),
+                                c + egui::vec2(3.0, 0.0),
+                                c + egui::vec2(-2.0, 4.0),
+                            ]
+                        };
+                        ui.painter().add(egui::Shape::convex_polygon(
+                            points,
+                            ui.visuals().weak_text_color(),
+                            egui::Stroke::NONE,
+                        ));
+                        if response
+                            .on_hover_text(if open {
+                                "Fold the picture's inner elements"
+                            } else {
+                                "Show the picture's inner elements"
+                            })
+                            .clicked()
+                        {
+                            if open {
+                                expanded.remove(&row.id);
+                            } else {
+                                expanded.insert(row.id);
+                            }
+                        }
+                    }
                     let response = ui.selectable_label(is_selected, text);
                     let excerpt = ui.add(
                         egui::Label::new(egui::RichText::new(&row.excerpt).weak())
