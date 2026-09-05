@@ -457,32 +457,47 @@ impl App {
             {
                 self.go_to_page(self.page_number + 1);
             }
-            ui.separator();
-            ui.label("Zoom");
-            let mut z = self.zoom.unwrap_or(self.zoom_shown);
-            if ui
-                .add(
-                    egui::Slider::new(&mut z, 0.1..=4.0)
-                        .logarithmic(true)
-                        .show_value(false),
-                )
-                .changed()
-            {
-                self.zoom = Some(z);
-            }
-            ui.label(format!("{:.0}%", self.zoom_shown * 100.0));
-            if ui.small_button("Fit").clicked() {
-                self.zoom = None;
-            }
-            if ui.small_button("100%").clicked() {
-                self.zoom = Some(1.0);
-            }
-            ui.separator();
             let has_scan = self
                 .session
                 .as_ref()
                 .and_then(|s| s.page(self.page_number))
                 .is_some_and(|p| p.image.is_some());
+
+            // Zoom belongs to the page image and to nothing else, so it is
+            // here only while there is a page image on screen. It used to be
+            // here always: four controls that looked operable, drove the panel
+            // that was not drawn, and reported a percentage of nothing - which
+            // is every `.dclg` and every archive with the panel closed, so the
+            // usual state of the window was four dead controls. Found at
+            // David's keyboard on 2026-09-04, running CHECKLIST item 7.
+            //
+            // Hidden rather than disabled. A greyed slider still asks to be
+            // read, and the answer would be that it applies to a pane that is
+            // not there; the pane comes and goes and its controls can too.
+            if self.show_scan && has_scan {
+                ui.separator();
+                ui.label("Zoom");
+                let mut z = self.zoom.unwrap_or(self.zoom_shown);
+                if ui
+                    .add(
+                        egui::Slider::new(&mut z, 0.1..=4.0)
+                            .logarithmic(true)
+                            .show_value(false),
+                    )
+                    .changed()
+                {
+                    self.zoom = Some(z);
+                }
+                ui.label(format!("{:.0}%", self.zoom_shown * 100.0));
+                if ui.small_button("Fit").clicked() {
+                    self.zoom = None;
+                }
+                if ui.small_button("100%").clicked() {
+                    self.zoom = Some(1.0);
+                }
+            }
+
+            ui.separator();
             ui.add_enabled_ui(has_scan, |ui| {
                 ui.toggle_value(&mut self.show_scan, "Page image")
                     .on_hover_text("Show the page image from the archive beside the document");

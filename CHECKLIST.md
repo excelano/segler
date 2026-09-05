@@ -27,9 +27,10 @@ walkthroughs used.
    it here**, with the document rendered and the tree filled. The file
    manager draws each with its own icon: a blue page for the archive, a cream
    one for the markup, both carrying the sail.
-3. **Click a paragraph, retype a line, click elsewhere.** The text changes in
-   the document, the element pane shows the new text, Undo restores it. Escape
-   in the middle of an edit discards it.
+3. **Double-click a paragraph, retype a line, click elsewhere.** A single
+   click selects; the second opens the field. The text changes in the
+   document, the element pane shows the new text, Undo restores it. Escape in
+   the middle of an edit discards it.
 3a. **A paragraph with bold or italic in it opens showing its tags**, as
     `The <bold>western approaches</bold> are wide`, in the document pane and
     in the element pane's Text box alike. Fix a word away from the tags and
@@ -46,17 +47,32 @@ walkthroughs used.
    Header cells have a visible fill in both themes and their text is legible
    on it.
 5. **Type a box coordinate in the element pane and press Tab.** The value
-   commits; Undo restores it. Set a heading's level to 0: it stays at 1 and
-   nothing reaches the document.
+   commits; Undo restores it.
+   Then the level clamp, **on a level-1 heading**: set its level to 0. The
+   field clamps to 1, which is what it already was, so nothing reaches the
+   document - no dirty marker and nothing to undo. On a heading at any other
+   level the same keystroke is a real change to 1 and *should* go dirty; the
+   defect this guards was a clamp that wrote an edit when nothing had
+   changed. Said in full because the run of 2026-09-04 spent a step deciding
+   which of the two it was looking at.
 6. **Click a finding in the problems pane.** The element is selected and the
    tree scrolls to it without the last row flashing. Run this at the desktop's
    fractional scale as well as at 1x; the flash only ever showed at 1.25.
 7. **Toggle the page image panel, drag its divider, toggle it off and on.**
-   The width holds. Fit and 100% behave. The button reads *Page image*.
+   The width holds. Fit and 100% behave. The button reads *Page image*. With
+   the panel closed the zoom slider, the percentage, Fit and 100% are not in
+   the toolbar at all: they drive the panel and nothing else, and they were
+   shown always until the run of 2026-09-04 asked what they did when it was
+   shut.
 8. **Ctrl+1 and Ctrl+2 fold the structure and element panes**, and the
    document pane takes the space.
-9. **A picture's inner rows are folded in the tree** until the picture or
-   something inside it is selected.
+9. **A picture's inner rows are folded in the tree** until something
+   *inside* it is selected - a click on one of its inner boxes in the page
+   image panel, or a finding that points there. Selecting the picture itself
+   leaves it folded, deliberately: `DESIGN.md` 7 says the selection has to
+   land inside, and forty axis labels unfolding at a click on the image would
+   be the thing the folding exists to prevent. The triangle is how a person
+   opens it by hand.
 10. **Delete asks first.** Delete on a selected element opens the confirm;
     Cancel leaves the document alone; confirming removes it and Undo brings it
     back.
