@@ -43,7 +43,7 @@ Open a DocLang document, read it as a reader would, correct it where you read it
 
 DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong.
 
-Segler opens a DocLang document or archive and shows it as a reader would see it: headings, paragraphs, lists, tables and pictures in reading order, with the element tree beside it. Retype a misread line where you read it. Change a heading's level, fix a table cell, move a paragraph, correct a bounding box. When the archive carries the page images the model read, open them beside the document to check a doubtful line against the page.
+Segler opens a DocLang document or archive and shows it as a reader would see it: headings, paragraphs, lists, tables and pictures in reading order, with the element tree beside it. Retype a misread line where you read it, in a paragraph, a list item or a table cell. Change a heading's level, change a cell from body to header, correct a bounding box. When the archive carries the page images the model read, open them beside the document to check a doubtful line against the page.
 
 Every edit can be undone. What is saved is the file you opened with your edits and nothing else changed.
 
@@ -52,7 +52,7 @@ Every edit can be undone. What is saved is the file you opened with your edits a
     The document as a reader sees it: headings, paragraphs, lists, tables and pictures in reading order.
     Edit text where you read it: a paragraph, a list item, or a table cell where it sits.
     Bold and italic are shown as tags while you type, so a correction keeps them and formatting can be added.
-    The element tree beside the document, and every property of the selected element in reach: kind, level, label, layer, bounding box.
+    The element tree beside the document, and the selected element's properties in reach: kind, class, level, label, layer, bounding box, and a table cell's kind.
     Page images beside the document when the archive carries them, with the located boxes drawn over them.
     Undo and redo for every edit.
     Validation against the DocLang specification, with each finding a click from its element.
@@ -72,7 +72,7 @@ The document as a reader would see it: headings, paragraphs, lists, tables and p
 
 WHAT YOU CAN DO
 
-Retype a line where you read it - a paragraph, a list item, a table cell. Where a line carries bold or italic, its tags are shown in the field so a correction keeps them, and so formatting can be added. Change a heading's level. Change a cell's kind from body to header. Move a paragraph. Correct a bounding box. Remove an element that should not be there. Every edit can be undone.
+Retype a line where you read it - a paragraph, a list item, a table cell. Where a line carries bold or italic, its tags are shown in the field so a correction keeps them, and so formatting can be added. Change a heading's level, or a list's or picture's class. Change a cell's kind from body to header. Correct or clear a bounding box. Change an element's label or its layer. Remove an element that should not be there. Every edit can be undone.
 
 Segler checks the document against the DocLang specification as you work and lists what it finds, each finding a click from its element.
 
@@ -108,27 +108,40 @@ with the pointer parked off the window and the window photographed by its
 handle. The page image panel is open in at least one shot, because it is the
 one thing in this application no other DocLang tool has.
 
-**Windows, 2026-09-04.** Two taken with `packaging/windows/screenshot.ps1`
-against the installed MSIX, at 1366x768, in the light theme:
+**Windows, 2026-09-05**, retaken after the editing work and the toolbar fix,
+so no shot shows a control that is no longer there. Four, with
+`packaging/windows/shot` scripts against the **installed MSIX** - each one
+reports the `WindowsApps` path it opened, so a developer build cannot creep
+into a listing by accident - at 1366x768, light theme:
 
     01  the document, the tree and the element pane, at rest
     02  the same with the page image panel open, boxes drawn over the scan
+    03  page two: a picture from the archive's assets, with its caption
+    04  a document with six findings, each naming the element that carries it
 
-They are in `dist/screenshots/` and are not committed; `dist` is where every
-built artefact goes and these are built from a document rather than from
-source.
+They are in `dist/screenshots/` with the documents they were taken from, and
+are not committed; `dist` is where every built artefact goes.
 
-**The document is not the one this file first named.** It says the DocLang
-viewer's `2501.17887.dclx`, and that archive is not on the Windows machine —
-`~/clones` is a Linux path. What was used instead is a two-page archive written
-for the purpose, *Sailing directions for the western approaches*: a heading
-hierarchy, running text with bold and italic, a four-column table with a header
-row and a caption, an ordered and an unordered list, and two page images drawn
-to match. It is a better listing shot than a research paper, because every
-feature the listing claims is visible in one frame and none of it is somebody
-else's copyright. **It is not a substitute for the real corpus**, and
-`CHECKLIST.md` still asks for an archive with pictures as well, which this one
-has none of.
+**Two things the capture script now refuses on**, both learned by watching it
+lie. It checks the window is actually in the foreground, because a shell
+launch does not always accept `SetForegroundWindow` and the first attempt
+wrote a correctly sized photograph of a terminal and reported success. And it
+polls the geometry until it stops moving, because a cold start of the packaged
+application is still positioning itself seconds in, and a rect read during
+that produced a window sitting 69 pixels below where it was asked to be with
+the desktop showing along two edges. A correct size is not a good screenshot,
+and neither is a correct size and a foreground window.
+
+**The document is not the one this file first named.** It said the DocLang
+viewer's `2501.17887.dclx`, which is not on the Windows machine - `~/clones`
+is a Linux path. What was used instead is a two-page archive written for the
+purpose, *Sailing directions for the western approaches*: a heading hierarchy,
+running text with bold and italic, a four-column table with a header row and a
+caption, an ordered and an unordered list, a picture with a caption and its
+own inner text, and two page images drawn to match. Every feature the listing
+claims is visible across four frames and none of it is somebody else's
+copyright. **It is not a substitute for the real corpus**, which is what
+`CHECKLIST.md` asks for and what the Linux lane has.
 
 Before either goes to Partner Center, look at it. A correct size is not a good
 screenshot, and the script says so when it writes one.
