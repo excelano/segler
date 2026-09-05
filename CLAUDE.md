@@ -75,7 +75,8 @@ builds C is not. The check is the artefact, not the manifest: after a build,
 declares `cc` as a build dependency and only uses it under its `client_system`
 feature, which nothing here turns on. The `zip` dependency names `deflate`
 alone for this reason. slipcase-desktop has the same rule and the Store
-rejection that taught it.
+rejection that taught it. Across the fleet it is a preference, not a rule;
+`~/notes/pure_rust_preference.md` holds the stance and what taking C costs.
 
 **The UI is a renderer.** Selection, edits, undo, validation and save live in
 the core behind a view-model and command boundary, so that a native front-end
