@@ -113,7 +113,16 @@ jobs:
           sudo apt-get install -y -qq \
               shared-mime-info desktop-file-utils hicolor-icon-theme libglib2.0-bin
 
-          ./packaging/linux/install.sh --no-binary
+          # With the binaries, and with `~/.local/bin` on PATH for the
+          # queries below. The first run installed the entry alone and GLib
+          # named Chrome as the handler: `g_desktop_app_info_load_from_keyfile`
+          # drops any entry whose `Exec` program it cannot find on PATH, so
+          # the entry was invisible and the lookup fell through to the parent
+          # type's default. An entry is only registered on a machine that can
+          # run it, which is right, and is why `install.sh` says so when it
+          # installs no executable.
+          ./packaging/linux/install.sh
+          export PATH="${HOME}/.local/bin:${PATH}"
 
           printf '%s\n' \
               '<?xml version="1.0" encoding="UTF-8"?>' \
@@ -131,7 +140,8 @@ jobs:
 
               handler=$(gio mime "$2" | sed -n 's/^Default application for .*: //p')
               echo "  default: ${handler}"
-              [ "$handler" = "segler-desktop.desktop" ] || { echo "the handler is not ours" >&2; exit 1; }
+              [ "$handler" = "segler-desktop.desktop" ] ||
+                  { echo "the handler is not ours; gio says:" >&2; gio mime "$2" >&2; exit 1; }
           done
 
           # What magic alone says, recorded rather than asserted. If either

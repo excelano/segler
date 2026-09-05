@@ -79,6 +79,8 @@ if [ "$binaries" != "none" ]; then
             echo "installed ${prefix}/bin/${name} from ${found}"
         else
             echo "no ${name} under ${target_dir}; it must be on PATH for the entry to work"
+            echo "  (GLib drops a desktop entry whose Exec it cannot find, so until it is," \
+                 "the entry is not registered and the file manager offers nothing)"
         fi
     done
 fi
