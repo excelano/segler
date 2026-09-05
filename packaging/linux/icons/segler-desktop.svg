@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <!--
-    Segler: one sail on a hull, over water.
+    Segler: a sailboat in a blue roundel. Mainsail, jib, hull.
 
     Author: David M. Anderson
     Built with AI assistance (Claude, Anthropic)
 
     The name is German for sailor, so the mark is a boat. It is not DocLang's
-    logo, which is a stylised document and belongs to that project; this is the
-    application's own mark and the two are meant to read as different things.
+    logo, which is a stylised document and belongs to that project; this is
+    the application's own mark and the two are meant to read as different
+    things.
+
+    Chosen by David on 2026-09-04 from a sheet of five: a fine compass rose,
+    a bold compass, an anchor, a figure-eight knot, and this. The fine rose
+    and the knot turned to mud at 16 pixels; the anchor read best there and
+    was the most generic thing on the sheet at 128; the compass would have
+    meant redrawing the document icons. The first icon in this file was a
+    stroked boat on a wave, which David asked to replace the same evening.
 
     This comment sits inside the element rather than above it, and that is a
     measurement rather than a style: gdk-pixbuf sniffs the first 256 bytes for
@@ -16,21 +24,18 @@
     header comment above the tag does. slipcase-desktop found it the hard way.
     Keep the opening tag on the second line.
 
-    Drawn on a 64-unit grid with 3-unit strokes so that it survives the
-    16-pixel size a file manager uses in a list. Three shapes and a line: the
-    sail, the hull, the water. Anything finer is mud at 16 pixels, where it
-    was checked. The palette is slipcase-desktop's, on purpose: the two
-    Excelano desktop applications should look like siblings on a launcher.
-    Read: a cream sail on a dark mast, a blue hull, a darker blue water line.
+    Filled shapes and no interior strokes, which is what still reads at 16
+    pixels; the roundel's 3-unit outline is the only line. The palette is
+    slipcase-desktop's, on purpose: the two Excelano desktop applications
+    should look like siblings on a launcher. Read: a cream mainsail and a
+    slightly greyer jib on a blue disc with a dark outline, a dark hull.
+    Checked at 16, 24, 32, 48 and 128 pixels on light and dark grounds.
   -->
-  <g stroke="#2f3337" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-    <!-- The sail: a triangle whose leech bows out to the right. -->
-    <path d="M30 6 L30 42 L56 42 Q46 26 30 6 z" fill="#f2eee4"/>
-    <!-- The mast, drawn after so it sits on the sail's luff. -->
-    <line x1="30" y1="6" x2="30" y2="46"/>
-    <!-- The hull: a shallow trapezoid, wider at the deck. -->
-    <path d="M6 46 h52 l-6 10 h-40 z" fill="#4a6fa5"/>
-    <!-- The water. -->
-    <path d="M4 60 q4 -3 8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0" fill="none" stroke="#38557f"/>
-  </g>
+  <circle cx="32" cy="32" r="28" fill="#4a6fa5" stroke="#2f3337" stroke-width="3"/>
+  <!-- The mainsail, its leech bowing out to the right. -->
+  <path d="M31 9 L31 42 L51 42 Q45 24 31 9 z" fill="#f2eee4"/>
+  <!-- The jib, forward of the mast and a shade darker so the two tell apart. -->
+  <path d="M27 19 L27 42 L14 42 Q16 30 27 19 z" fill="#d9d3c3"/>
+  <!-- The hull. -->
+  <path d="M11 46 h42 l-5 7 h-32 z" fill="#2f3337"/>
 </svg>

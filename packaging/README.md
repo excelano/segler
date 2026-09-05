@@ -78,18 +78,22 @@ error. `.github/workflows/linux.yml` runs lintian on every push.
 
 ## The icons
 
-`linux/icons/segler-desktop.svg` is the application: one sail on a hull over
-water, on a 64-unit grid with 3-unit strokes. The name is German for sailor.
-It is deliberately not DocLang's logo, which is a stylised document and that
-project's own. The two document icons beside it are a page with the sail on
-it, blue for an archive and cream for bare markup, so the two kinds tell apart
-in a listing while both saying Segler. The palette is slipcase-desktop's, so
-the two Excelano applications look like siblings on a launcher.
+`linux/icons/segler-desktop.svg` is the application: a sailboat in a blue
+roundel, mainsail, jib and hull as filled shapes with the roundel's outline
+the only line, on a 64-unit grid. The name is German for sailor. It is
+deliberately not DocLang's logo, which is a stylised document and that
+project's own. The two document icons beside it are a page carrying the same
+boat, blue for an archive and cream for bare markup, so the two kinds tell
+apart in a listing while both saying Segler. The palette is
+slipcase-desktop's, so the two Excelano applications look like siblings on a
+launcher.
 
-All three were checked at 16, 24, 32, 48 and 128 pixels before committing,
-and any change should be. The SVG is the source for every platform: macOS
-wants `.icns` and Windows wants `.ico`, both converted from it, and
-slipcase-desktop's `make-ico` is the converter for the second.
+David chose it from a sheet of five on 2026-09-04; the file's own comment
+records what the other four cost. All three were checked at 16, 24, 32, 48 and
+128 pixels on light and dark grounds before committing, and any change should
+be. The SVG is the source for every platform: macOS wants `.icns` and Windows
+wants `.ico`, both converted from it, and slipcase-desktop's `make-ico` is
+the converter for the second.
 
 ## windows, macos
 

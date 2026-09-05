@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <!--
-    A DocLang archive, as a file manager draws one: a page with Segler's sail
-    on it.
+    A DocLang archive, as a file manager draws one: a blue page carrying the
+    sailboat from segler-desktop.svg, without the roundel.
 
     Author: David M. Anderson
     Built with AI assistance (Claude, Anthropic)
@@ -10,15 +10,16 @@
     Keep the opening tag on the second line; gdk-pixbuf sniffs for it within
     the first 256 bytes. See segler-desktop.svg.
 
-    Two shapes: the page with a folded corner, and the sail as a single filled
-    triangle with no mast, which is what still reads at 16 pixels. The archive
-    and the bare document share this drawing; the archive's page is blue, the
-    document's is cream, so the two kinds tell apart in a listing while both
-    saying Segler.
+    The archive and the bare document share this drawing with the colours
+    swapped, blue page for the archive and cream for the markup, so the two
+    kinds tell apart in a listing while both saying Segler. The page keeps
+    the 3-unit outline; the boat is filled shapes only.
   -->
   <g stroke="#2f3337" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
     <path d="M14 4 h26 l12 12 v44 h-38 z" fill="#4a6fa5"/>
     <path d="M40 4 v12 h12" fill="none"/>
-    <path d="M28 22 L28 48 L46 48 Q40 36 28 22 z" fill="#f2eee4"/>
   </g>
+  <path d="M31 22 L31 46 L47 46 Q42 32 31 22 z" fill="#f2eee4"/>
+  <path d="M28 30 L28 46 L18 46 Q20 37 28 30 z" fill="#d9d3c3"/>
+  <path d="M16 49 h32 l-4 5 h-24 z" fill="#2f3337"/>
 </svg>
