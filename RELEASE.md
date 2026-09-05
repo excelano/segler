@@ -154,7 +154,18 @@ Cloned from `slipcase-desktop/packaging/macos` by the Mac lane. What carries
 over: `build-app.sh`, the entitlements and the sandbox, the universal binary,
 `CFBundleVersion` from `version.sh --build`. What changes: two exported type
 declarations rather than one, `CFBundleTypeRole` **Editor** for both because
-this application writes the document back, and the `.icns` from the same SVG.
+this application writes the document back, and **three** `.icns` from the
+three SVGs, not one.
+
+That last is a correction rather than a detail, and it is here because the
+Windows lane got it wrong first. This line said "the `.icns` from the same
+SVG", singular, and `packaging/windows` was built the same way — one icon, the
+application's — before it became clear that a file type draws its own icon by
+its own mechanism, and that pointing both DocLang types at the application's
+drawing puts one picture on a `.dclx` and a `.dclg` alike. Windows now builds
+`segler.ico`, `dclx.ico` and `dclg.ico`; macOS wants the same three, one for
+the bundle and one per exported type declaration, or the two kinds are
+indistinguishable in Finder while a Linux file manager tells them apart.
 
 **One thing is a blocker rather than a clone.** A Mac App Store submission of
 slipcase-desktop was refused under Guideline 2.5.1 for a private CoreGraphics
