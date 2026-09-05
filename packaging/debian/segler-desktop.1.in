@@ -1,0 +1,76 @@
+.\" Manual page for segler-desktop.
+.\"
+.\" It exists because the binary takes an argument and has no --help to
+.\" describe it: src/main.rs reads args_os().nth(1) and nothing else, so this
+.\" is the only place that argument is written down, and lintian tags a
+.\" binary without a page.
+.\"
+.\" @VERSION@ is substituted by packaging/debian/build-deb.sh, the same way
+.\" control.in is, so the version in the header cannot drift from the package.
+.\" The date is the date this page was last revised and not the build date,
+.\" which is the convention and is also what makes the page reproducible.
+.\"
+.\" Author: David M. Anderson
+.\" Built with AI assistance (Claude, Anthropic)
+.TH SEGLER\-DESKTOP 1 "2026\-09\-04" "segler\-desktop @VERSION@" "User Commands"
+.SH NAME
+segler\-desktop \- editor for DocLang documents
+.SH SYNOPSIS
+.B segler\-desktop
+.RI [ file ]
+.SH DESCRIPTION
+.B Segler
+opens a DocLang document or archive and shows it as a reader would see it:
+headings, paragraphs, lists, tables and pictures in reading order, with the
+element tree on the left and the selected element's properties on the right.
+Text is edited in the rendered document; labels, layers, levels, bounding
+boxes and table cell kinds are edited in the element pane. Every edit can be
+undone. What is saved is the file that was opened with the edits applied and
+nothing else changed: markup that was not touched is written back byte for
+byte, and an archive's page images and assets are carried across untouched.
+.PP
+It is a windowed application, normally started by opening a document from a
+file manager rather than from a shell. The package registers the two DocLang
+media types, the desktop entry and the icons that make that work.
+.SH OPTIONS
+There are none.
+.B segler\-desktop
+is a window rather than a command\-line interface, and it takes one optional
+positional argument and nothing else. For a command\-line interface to the
+same library, see
+.BR segler (1).
+.SH ARGUMENTS
+.TP
+.I file
+The document to open: a
+.I .dclg
+file holding DocLang markup, or a
+.I .dclx
+archive. With no argument the window opens empty and offers to choose one.
+.PP
+A file that cannot be read is reported in the window rather than on the
+standard error, because the argument usually arrives from a file manager
+where nobody is watching a terminal.
+.SH EXIT STATUS
+Returns success when the window has been closed. A non\-zero status means the
+window could not be created at all \(em no display, or no usable graphics
+driver \(em rather than anything about a document.
+.SH FILES
+.TP
+.I /usr/share/mime/packages/doclang.xml
+The two media types, which are what make a file manager offer this
+application for a document. Matched by filename: neither the markup nor the
+archive reserves magic bytes of its own.
+.TP
+.I /usr/share/applications/segler\-desktop.desktop
+The desktop entry.
+.SH SEE ALSO
+.BR segler (1),
+.BR xdg\-mime (1),
+.BR update\-desktop\-database (1)
+.PP
+The format is specified in spec.md in the DocLang repository at
+https://github.com/doclang\-project/doclang, and the design of this
+application in DESIGN.md in its own.
+.SH AUTHOR
+David M. Anderson

@@ -1,0 +1,87 @@
+.\" Manual page for segler, the command-line tool.
+.\"
+.\" The tool answers --help for itself and for every subcommand, and that is
+.\" the authority on its arguments; this page is the summary lintian wants in
+.\" every package that installs a binary, and it says where to look rather
+.\" than restating every option.
+.\"
+.\" Author: David M. Anderson
+.\" Built with AI assistance (Claude, Anthropic)
+.TH SEGLER 1 "2026\-09\-04" "segler @VERSION@" "User Commands"
+.SH NAME
+segler \- tools for DocLang documents and archives
+.SH SYNOPSIS
+.B segler
+.I command
+.RI [ options ]
+.I file
+.RI [ arguments ]
+.SH DESCRIPTION
+.B segler
+is the command\-line tool over the library that
+.BR segler\-desktop (1)
+is built on. It reads a
+.I .dclg
+document or a
+.I .dclx
+archive and reports on it, validates it, prints what the window would draw,
+or applies edits to it and writes the result.
+.SH COMMANDS
+.TP
+.BI "inspect " file
+Report what a document or archive contains: the version, the page count, the
+element counts, and for an archive the page images and assets.
+.TP
+.BI "validate " file
+Check a document against the DocLang schema and rules. Each finding names the
+layer, the rule, the element's path and the reason. Exits non\-zero on any
+finding.
+.TP
+.BI "page " file " " [ number ]
+Show one page as the window draws it: its located boxes and its tree.
+.TP
+.BI "render " file " " [ number ]
+Print one page as the blocks the document pane draws.
+.TP
+.BI "table " file " " path
+Print a table's grid: each cell with its kind, span and text.
+.TP
+.BI "edit " "\-e edit ... " file " " [ "\-o out" ] " " [ \-\-undo ]
+Apply edits through the same session the window uses and write the result to
+.I out
+or to the standard output. With
+.B \-\-undo
+every edit is undone afterwards and the document is checked against what was
+opened, byte for byte. The edits and their paths are described by
+.BR "segler edit \-\-help" .
+.TP
+.BI "corpus " directory " " [ \-\-toolkit ]
+Round\-trip and validate every DocLang file under a directory, meant for a
+checkout of the specification repository: files under a
+.I valid
+directory must produce no findings and files under
+.I invalid
+at least one. With
+.B \-\-toolkit
+the reference toolkit's verdict is compared against this one.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print help for the tool or for a command.
+.TP
+.BR \-V ", " \-\-version
+Print the version.
+.SH EXIT STATUS
+Zero when the command succeeded and, for
+.BR validate ,
+.B edit \-\-undo
+and
+.BR corpus ,
+when nothing was found; non\-zero otherwise.
+.SH SEE ALSO
+.BR segler\-desktop (1)
+.PP
+The format is specified in spec.md in the DocLang repository at
+https://github.com/doclang\-project/doclang.
+.SH AUTHOR
+David M. Anderson

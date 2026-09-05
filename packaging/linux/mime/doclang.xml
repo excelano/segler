@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The two DocLang media types, for shared-mime-info.
+
+  The specification recommends `.dclg` for bare markup and `.dclx` for an
+  archive, and names one media type: `application/vnd.doclang.document+xml`,
+  which is what an archive's `[Content_Types].xml` gives `document.xml`. A bare
+  `.dclg` is that same document with nothing round it, so it takes that type.
+
+  The specification names no type for the archive itself. The name below is
+  Segler's, chosen to sit beside the one the specification has, and it is
+  provisional: if the DocLang project adopts a name for the archive, this file
+  changes to it and the old name goes. Nothing else in this repository depends
+  on the string.
+
+  Neither type declares magic. An archive begins with the ZIP signature, which
+  identifies every OPC package alike, and a bare document begins with an XML
+  prolog or with `<doclang`, which a prolog pushes past the sniff window. The
+  globs are the identification, as they are for every other OPC format.
+
+  This file is the one declaration of the types on a Linux machine and ships in
+  the `segler` package. Two packages cannot ship one path, so if a second
+  DocLang product for Linux ever exists, the declaration and the icons move to
+  a package both depend on, the way slipcase-common holds Slipcase's.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.doclang.archive+zip">
+    <comment>DocLang archive</comment>
+    <!--
+    An archive is a ZIP, so an archive tool can open one and a desktop that
+    knows nothing of DocLang still has something to offer. Where a name
+    matches the glob and the content sniffs as `application/zip`,
+    shared-mime-info takes the glob, because the magic-matched type is the
+    parent rather than the child. The subclass carries no icon with it; the
+    two icon elements below do that.
+    -->
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.dclx"/>
+    <icon name="application-vnd.doclang.archive+zip"/>
+    <!--
+    Named again as the generic icon, and the reason is how GTK searches. GIO
+    hands the file manager the whole name list at once and GTK4 tries every
+    name in Adwaita before any name in hicolor. The default generic icon for
+    `application/*` is `application-x-generic`, which Adwaita has, so it wins
+    every lookup and the hicolor drawing is never reached. Naming the specific
+    icon here leaves Adwaita nothing to answer. slipcase-desktop measured it
+    both ways.
+    -->
+    <generic-icon name="application-vnd.doclang.archive+zip"/>
+  </mime-type>
+  <mime-type type="application/vnd.doclang.document+xml">
+    <comment>DocLang document</comment>
+    <sub-class-of type="application/xml"/>
+    <glob pattern="*.dclg"/>
+    <icon name="application-vnd.doclang.document+xml"/>
+    <generic-icon name="application-vnd.doclang.document+xml"/>
+  </mime-type>
+</mime-info>

@@ -1,7 +1,7 @@
 # Segler
 
-Segler is a desktop application for reviewing and correcting
-[DocLang](https://doclang.ai) documents, and the Rust library underneath it.
+Segler is an editor for [DocLang](https://doclang.ai) documents, and the Rust
+library underneath it.
 
 DocLang is the AI-native markup format from the LF AI & Data Foundation: XML
 that a language model can read and write token for token, carrying the
@@ -28,13 +28,27 @@ reports what a document or archive contains.
 `segler-desktop` is the application. Presented as **Segler**; the binary is
 named in full so it never collides with the command-line tool on `PATH`.
 
+## Install
+
+On Debian and Ubuntu, amd64, from the Excelano apt repository:
+
+```
+curl -fsSL https://excelano.com/apt/setup.sh | sudo sh && sudo apt install segler
+```
+
+That installs the application, the `segler` command-line tool, and the desktop
+integration that opens a `.dclx` or `.dclg` on a double-click. Windows and
+macOS builds are on their way to the Microsoft Store and the Mac App Store.
+
 ## Build
 
 ```
-cargo build --release
+cargo build --release --workspace
 ```
 
 A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
+`packaging/linux/install.sh` puts a built copy and the desktop integration
+under `~/.local`.
 
 ## The specification is the authority
 

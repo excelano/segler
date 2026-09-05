@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    A DocLang archive, as a file manager draws one: a page with Segler's sail
+    on it.
+
+    Author: David M. Anderson
+    Built with AI assistance (Claude, Anthropic)
+
+    Keep the opening tag on the second line; gdk-pixbuf sniffs for it within
+    the first 256 bytes. See segler-desktop.svg.
+
+    Two shapes: the page with a folded corner, and the sail as a single filled
+    triangle with no mast, which is what still reads at 16 pixels. The archive
+    and the bare document share this drawing; the archive's page is blue, the
+    document's is cream, so the two kinds tell apart in a listing while both
+    saying Segler.
+  -->
+  <g stroke="#2f3337" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M14 4 h26 l12 12 v44 h-38 z" fill="#4a6fa5"/>
+    <path d="M40 4 v12 h12" fill="none"/>
+    <path d="M28 22 L28 48 L46 48 Q40 36 28 22 z" fill="#f2eee4"/>
+  </g>
+</svg>

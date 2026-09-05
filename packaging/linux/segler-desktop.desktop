@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Segler
+GenericName=DocLang Editor
+Comment=Edit a DocLang document as a reader sees it
+Exec=segler-desktop %f
+Icon=segler-desktop
+Terminal=false
+MimeType=application/vnd.doclang.archive+zip;application/vnd.doclang.document+xml;
+Categories=Office;WordProcessor;
+Keywords=doclang;dclx;dclg;document;editor;docling;
+StartupNotify=true
+StartupWMClass=segler-desktop

@@ -1,0 +1,36 @@
+Package: segler
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: David M. Anderson <david.anderson@excelano.com>
+Installed-Size: @SIZE@
+Section: editors
+Priority: optional
+Homepage: https://github.com/excelano/segler
+Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libxkbcommon-x11-0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, shared-mime-info, desktop-file-utils, hicolor-icon-theme
+Description: Editor for DocLang documents
+ Segler opens a DocLang document or archive and shows it as a reader would
+ see it: headings, paragraphs, lists, tables and pictures in reading order,
+ with the element tree beside it. Edits are made in the rendered document
+ and in the element pane, with undo, and what is saved is the same file with
+ the edits and nothing else changed. When an archive carries page images they
+ open beside the document.
+ .
+ The package carries the application, the segler command-line tool over the
+ same library, the desktop entry, and the two DocLang media types with their
+ icons, so a .dclx or .dclg opens on a double-click.
+ .
+ Only two of the libraries above are found by dpkg-shlibdeps. The executable
+ links libc and libgcc and nothing else; the display stack, the graphics
+ driver loader, and the keyboard map libraries are all opened by name at run
+ time, so a package built from the linker's answer alone would install on a
+ machine where it cannot start. packaging/linux/check-libraries.sh measures
+ the list against a running window on both display backends.
+ .
+ There are two keyboard map libraries and not one, because there are two
+ display backends. A Wayland session never loads libxkbcommon-x11 and an X11
+ session panics at startup without it; nothing pulls it in behind
+ libxkbcommon0. slipcase-desktop shipped two releases without it.
+ .
+ The three tool packages at the end own the dpkg triggers that rebuild the
+ media type, desktop and icon caches, which is why this package carries no
+ maintainer scripts.

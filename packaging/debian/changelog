@@ -1,0 +1,10 @@
+segler (0.1.0) unstable; urgency=medium
+
+  * First packaged build. A window whose main pane is the document rendered
+    from the tree and edited in place, with the element tree on the left, the
+    element's properties on the right, and an archive's page images as an
+    optional side panel. Validation against the DocLang schema and rules, with
+    each finding a click from its element. The segler command-line tool over
+    the same library: inspect, validate, page, render, table, edit and corpus.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Fri, 04 Sep 2026 19:11:01 -0500

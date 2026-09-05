@@ -1,0 +1,140 @@
+# Build the Linux package on every push and put it under the checks a machine
+# can run: the package's ownership and modes, its md5sums, lintian, and the
+# media-type association through GLib. The suite, clippy and formatting are the
+# fleet's `ci.yml` and are not repeated here.
+#
+# What it reaches and what it does not, stated because a green tick invites
+# more faith than it has earned. The build needs no development packages:
+# `ldd` on the binary names libc, libgcc and libm and nothing else, because
+# everything a window needs is opened at run time rather than linked. Nothing
+# headless reaches a window, so `packaging/linux/check-libraries.sh` and
+# `CHECKLIST.md` stay commands run by a person with a display.
+#
+# The shape is slipcase-desktop's `linux.yml`, which is where each step's
+# reasoning was first measured.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+name: linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: What is installed
+        run: rustc -V && cargo -V && python3 -V && dpkg-deb --version | head -1
+
+      # `CLAUDE.md` forbids compiling C. `cargo tree -i cc` is not empty and
+      # never will be, because `wayland-backend` declares `cc` and only uses
+      # it under a feature nothing here turns on, so this checks the outcome
+      # the rule means: no object file under any build directory, and nothing
+      # linked at load time beyond libc.
+      - name: Build, and nothing compiled C
+        run: |
+          cargo build --release --workspace
+          target=$(cargo metadata --format-version 1 --no-deps |
+              sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          objects=$(find "${target}" -path '*/build/*' \( -name '*.o' -o -name '*.a' \) -print)
+          [ -z "$objects" ] || { echo "a build script produced object files:"; echo "$objects"; exit 1; }
+
+          echo "linked at load time:"
+          ldd "${target}/release/segler-desktop" | sed 's/^/  /'
+          strange=$(ldd "${target}/release/segler-desktop" |
+              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib64/ld-linux)' || true)
+          [ -z "$strange" ] || { echo "unexpected shared libraries:"; echo "$strange"; exit 1; }
+
+      - name: Build the package
+        run: ./packaging/debian/build-deb.sh
+
+      # Everything `root/root` and nothing carrying a mode a package should not
+      # ship; `md5sums` present, which is what `dpkg -V` reads; and every
+      # recorded hash agreeing with the file it names.
+      - name: The package holds up
+        run: |
+          deb=$(ls dist/*.deb)
+          echo "checking ${deb}"
+
+          strange=$(dpkg-deb --contents "$deb" | awk '$2 != "root/root"')
+          [ -z "$strange" ] || { echo "not root/root:"; echo "$strange"; exit 1; }
+
+          strange=$(dpkg-deb --contents "$deb" |
+              awk '$1 !~ /^drwxr-xr-x/ && $1 !~ /^-rw-r--r--/ && $1 !~ /^-rwxr-xr-x/')
+          [ -z "$strange" ] || { echo "unexpected modes:"; echo "$strange"; exit 1; }
+
+          dpkg-deb --ctrl-tarfile "$deb" | tar t | grep -qx './md5sums' ||
+              { echo "the package ships no md5sums" >&2; exit 1; }
+
+          tree="${RUNNER_TEMP}/tree"
+          dpkg-deb -x "$deb" "$tree"
+          dpkg-deb -e "$deb" "${tree}/DEBIAN"
+          ( cd "$tree" && md5sum -c DEBIAN/md5sums --quiet )
+
+      # `error,warning`, and no overrides. The first local run produced three
+      # tags about the copyright file, all because Apache-2.0 is a common
+      # licence Debian wants referred to rather than copied; the package now
+      # ships a DEP-5 copyright file and the tags are gone. `info` and
+      # `pedantic` are Debian's suggestions rather than its rules.
+      - name: What lintian says
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lintian
+          lintian --info --tag-display-limit 0 --fail-on error,warning dist/*.deb
+
+      # The only step that asks the platform anything. Through `gio` rather
+      # than `xdg-mime`: with no desktop session `xdg-mime` falls back to
+      # `file`, which reads magic and knows nothing of the shared-mime-info
+      # database, and neither DocLang extension reserves magic. `gio` asks
+      # GLib for the content type, which is the path a GTK file manager takes,
+      # and needs no session.
+      - name: The types and the handler are ours
+        run: |
+          sudo apt-get install -y -qq \
+              shared-mime-info desktop-file-utils hicolor-icon-theme libglib2.0-bin
+
+          ./packaging/linux/install.sh --no-binary
+
+          printf '%s\n' \
+              '<?xml version="1.0" encoding="UTF-8"?>' \
+              '<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.7">' \
+              '  <text>Hello world!</text>' \
+              '</doclang>' > "${RUNNER_TEMP}/sample.dclg"
+          ( cd "${RUNNER_TEMP}" && printf '' > document.xml && zip -q sample.dclx document.xml )
+
+          for pair in "dclg application/vnd.doclang.document+xml" "dclx application/vnd.doclang.archive+zip"; do
+              set -- $pair
+              type=$(gio info -a standard::content-type "${RUNNER_TEMP}/sample.$1" |
+                  sed -n 's/.*standard::content-type: //p')
+              echo ".$1: ${type}"
+              [ "$type" = "$2" ] || { echo "the type is not ours" >&2; exit 1; }
+
+              handler=$(gio mime "$2" | sed -n 's/^Default application for .*: //p')
+              echo "  default: ${handler}"
+              [ "$handler" = "segler-desktop.desktop" ] || { echo "the handler is not ours" >&2; exit 1; }
+          done
+
+          # What magic alone says, recorded rather than asserted. If either
+          # ever stops being the generic answer the format has grown a
+          # signature and the declaration can carry it.
+          echo "magic alone: $(file --mime-type -b "${RUNNER_TEMP}/sample.dclx") / $(file --mime-type -b "${RUNNER_TEMP}/sample.dclg")"

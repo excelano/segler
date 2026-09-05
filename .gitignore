@@ -1,5 +1,17 @@
 /target
+
+# Built packages, every one assembled by a script under `packaging/` from what
+# is committed: the .deb, and on the other platforms the bundle, the signed
+# copy, the Store package and the Developer ID build.
 /dist
+/dist-*
 
 # Test corpora are a checkout of doclang-project/doclang, never vendored here.
 /corpus
+
+# The Windows package identity Partner Center assigned and the two store
+# submission walkthroughs. Not credentials, but an account's identifiers on a
+# public record; each platform's README carries what belongs on one.
+/packaging/windows/identity.psd1
+/packaging/windows/SUBMITTING.local.md
+/packaging/macos/SUBMITTING.local.md
