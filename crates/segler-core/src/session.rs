@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 use crate::archive::{self, Kind as SourceKind, Loaded};
 use crate::blocks::{self, Block};
 use crate::doclang::{self, Kind};
+use crate::inline;
 use crate::otsl::{self, CellKind, Grid};
 use crate::tree::{self, Document, Element, ElementId, Node, Text};
 use crate::validate::{self, Finding};
@@ -82,6 +83,20 @@ pub enum Command {
         col: usize,
         text: String,
     },
+    /// Replace the text of a list item, addressed by its position among the
+    /// list's items counting from zero.
+    ///
+    /// By position rather than by the `ldiv`'s id, because an `ldiv` is an
+    /// empty separator and the item's content is the siblings after it: there
+    /// is no element whose body is the item, which is why `SetText` on an
+    /// `ldiv` refuses and `SetText` on the list would replace every item at
+    /// once. This is the same shape as [`Command::SetCellText`], for the same
+    /// reason — both edit a range inside a flat run of tokens.
+    SetListItemText {
+        id: ElementId,
+        item: usize,
+        text: String,
+    },
     /// Change what a table cell is: its token.
     SetCellKind {
         id: ElementId,
@@ -107,6 +122,33 @@ pub enum CommandError {
     IndexOutOfRange { parent: String, index: usize },
     #[error("<{0}> has no cell at row {1}, column {2}")]
     NoSuchCell(String, usize, usize),
+    #[error("<{0}> has no item {1}")]
+    NoSuchListItem(String, usize),
+    /// The field showed tags and what came back is not markup. Refused rather
+    /// than fallen back on, because falling back would read a missing `>` as
+    /// an instruction to delete every tag in the line.
+    #[error("{0}")]
+    Inline(#[from] inline::Error),
+}
+
+/// Which piece of text an edit is about to replace.
+///
+/// The three shapes a text edit comes in, and they are three rather than one
+/// because DocLang puts a paragraph's text inside an element, a table cell's
+/// between OTSL tokens, and a list item's between `ldiv` separators. Only the
+/// first is an element's body; the other two are ranges of siblings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextTarget {
+    /// The body of a text-carrying element: [`Command::SetText`].
+    Body(ElementId),
+    /// A table cell: [`Command::SetCellText`].
+    Cell {
+        id: ElementId,
+        row: usize,
+        col: usize,
+    },
+    /// A list item: [`Command::SetListItemText`].
+    Item { id: ElementId, item: usize },
 }
 
 /// What a command did, returned from `apply` and `redo`.
@@ -201,8 +243,21 @@ pub struct ElementView {
     /// The character data of the body alone, which is what a text edit
     /// replaces.
     pub body_text: String,
-    /// Whether `SetText` applies to this element.
+    /// Whether `SetText` applies to this element at all: whether its kind
+    /// carries text rather than structure.
+    ///
+    /// This used to mean "and its body is plain", which is what stopped a
+    /// formatted paragraph from being corrected. The two questions are now
+    /// separate, because the answer to the second is a warning rather than a
+    /// refusal; `plain_text` beside this is the second one.
     pub editable_text: bool,
+    /// Whether the body is plain text, so a retype can lose nothing.
+    ///
+    /// False means the body carries formatting or other elements. The edit is
+    /// still offered: [`Session::keeps_formatting`] says whether a particular
+    /// new value would keep them, and only when it would not is there
+    /// anything to warn about.
+    pub plain_text: bool,
     /// The element's markup as it would be written.
     pub markup: String,
     pub parent: Option<ElementId>,
@@ -404,6 +459,98 @@ impl Session {
         self.element(self.selected()?)
     }
 
+    /// Whether committing `text` to `target` would keep every formatting
+    /// element that is there now.
+    ///
+    /// A front-end asks this before committing so that it can warn, and only
+    /// when there is something to warn about. It answers `true` for a body
+    /// that is already plain, for one whose tags all re-anchor, and for a
+    /// target that does not exist — a command that is going to be refused is
+    /// not a command that loses formatting.
+    ///
+    /// It is the same code the commit runs, not a second opinion about it:
+    /// asking and doing must never disagree, so both go through [`rewrite`].
+    pub fn keeps_formatting(&self, target: TextTarget, text: &str) -> bool {
+        let Some((el, range)) = self.text_range(target) else {
+            return true;
+        };
+        match rewrite(el.children(), range, text) {
+            Ok((_, kept)) => kept,
+            // Refused, so nothing is lost and there is nothing to ask about.
+            // The command's own error is what the person sees, and it says
+            // what is wrong with the markup - which a dialog offering to keep
+            // the edit as plain text would not, and would offer to delete
+            // every tag in the line as the remedy for a missing `>`.
+            Err(_) => true,
+        }
+    }
+
+    /// The text an edit field should start from, and whether it is markup.
+    ///
+    /// `Some` when the body carries formatting that can be spelled as tags:
+    /// the field shows `The <bold>western approaches</bold> are wide` and
+    /// what comes back is read as markup. `None` for a plain body, which
+    /// edits as plain text — see [`inline::shows_tags`] for why everyone does
+    /// not pay for the few lines that carry a tag.
+    pub fn inline_text(&self, target: TextTarget) -> Option<String> {
+        let (el, range) = self.text_range(target)?;
+        let nodes = &el.children()[range];
+        inline::shows_tags(nodes).then(|| inline::to_inline(nodes).trim().to_owned())
+    }
+
+    /// What a text edit would have to put back, by name, in document order.
+    ///
+    /// For the warning: a person deciding whether to accept a flattening edit
+    /// wants to know that it is a `bold` and an `italic` rather than being
+    /// told that "formatting" will be lost. Comments and processing
+    /// instructions are named too, because they are in the range and would go
+    /// the same way.
+    pub fn formatting_in(&self, target: TextTarget) -> Vec<String> {
+        let Some((el, range)) = self.text_range(target) else {
+            return Vec::new();
+        };
+        el.children()[range]
+            .iter()
+            .filter_map(|n| match n {
+                Node::Element(e) => Some(e.name().to_owned()),
+                Node::Comment(_) => Some("comment".to_owned()),
+                Node::Pi { .. } => Some("processing instruction".to_owned()),
+                Node::Text(_) | Node::CData(_) => None,
+            })
+            .collect()
+    }
+
+    /// The element and the range of its children that a text edit replaces.
+    fn text_range(&self, target: TextTarget) -> Option<(&Element, std::ops::Range<usize>)> {
+        match target {
+            TextTarget::Body(id) => {
+                let el = self.doc.find(id)?;
+                doclang::kind(el)
+                    .is_some_and(carries_text)
+                    .then(|| (el, doclang::head(el).body))
+            }
+            TextTarget::Cell { id, row, col } => {
+                let el = self.doc.find(id)?;
+                let grid = Grid::parse(el);
+                let cell = grid.at(row, col)?;
+                let start = otsl::body_start(el, cell);
+                Some((el, start..cell.content.end))
+            }
+            TextTarget::Item { id, item } => {
+                let el = self.doc.find(id)?;
+                if doclang::kind(el) != Some(Kind::List) {
+                    return None;
+                }
+                let start = doclang::head(el).body.start;
+                let range = blocks::item_bodies(el, start)
+                    .into_iter()
+                    .nth(item)
+                    .map(|(_, range)| range)?;
+                Some((el, range))
+            }
+        }
+    }
+
     pub fn element(&self, id: ElementId) -> Option<ElementView> {
         let (el, parent, path, index) = locate(&self.doc, id)?;
         let head = doclang::head(el);
@@ -430,8 +577,8 @@ impl Session {
             rect: head.bounds.map(|b| b.fractions(resolution)),
             text: el.text(),
             body_text: body_text(el, head.body.clone()),
-            editable_text: doclang::kind(el).is_some_and(carries_text)
-                && blocks::is_plain(&el.children()[head.body.clone()]),
+            editable_text: doclang::kind(el).is_some_and(carries_text),
+            plain_text: blocks::is_plain(&el.children()[head.body.clone()]),
             markup,
             parent: parent.map(Element::id),
             index,
@@ -569,7 +716,7 @@ impl Session {
                 }
                 let before = el.children().to_vec();
                 let body = doclang::head(el).body;
-                let nodes = retext(&before, body, text);
+                let (nodes, _) = rewrite(&before, body, text)?;
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -691,11 +838,42 @@ impl Session {
                     .ok_or_else(|| CommandError::NoSuchCell(el.name().to_owned(), *row, *col))?;
                 let start = otsl::body_start(el, cell);
                 let range = start..cell.content.end;
-                if !blocks::is_plain(&el.children()[range.clone()]) {
-                    return Err(CommandError::NotText(format!("{} cell", el.name())));
-                }
+                // A cell holding formatting used to be refused here, the way a
+                // formatted paragraph was. Both now go through `rewrite`, which
+                // keeps what it can and says when it could not, so that the
+                // three text edits behave alike: an editor that lets a
+                // paragraph be corrected and not the cell beside it is
+                // arbitrary in a way nobody could predict.
                 let before = el.children().to_vec();
-                let nodes = retext(&before, range, text);
+                let (nodes, _) = rewrite(&before, range, text)?;
+                el.replace_children(nodes);
+                Ok((
+                    *id,
+                    Restore::Children {
+                        id: *id,
+                        nodes: before,
+                    },
+                ))
+            }
+            Command::SetListItemText { id, item, text } => {
+                if let Some(c) = text.chars().find(|c| !tree::is_xml_char(*c)) {
+                    return Err(CommandError::NotXmlText(c as u32));
+                }
+                let el = self
+                    .doc
+                    .find_mut(*id)
+                    .ok_or(CommandError::NoSuchElement(*id))?;
+                if doclang::kind(el) != Some(Kind::List) {
+                    return Err(CommandError::NotText(el.name().to_owned()));
+                }
+                let body_start = doclang::head(el).body.start;
+                let range = blocks::item_bodies(el, body_start)
+                    .into_iter()
+                    .nth(*item)
+                    .map(|(_, range)| range)
+                    .ok_or_else(|| CommandError::NoSuchListItem(el.name().to_owned(), *item))?;
+                let before = el.children().to_vec();
+                let (nodes, _) = rewrite(&before, range, text)?;
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -946,6 +1124,140 @@ fn carries_text(k: Kind) -> bool {
 /// `before` with the nodes in `range` replaced by one run of `text`. A
 /// range that was text keeps its shape: the whitespace that framed it, and
 /// CDATA if that is how the file carried it.
+/// Replace `range` of `before` with `text`, keeping whatever formatting the
+/// edit did not disturb. The `bool` is whether everything survived.
+///
+/// **This is the whole of the "retype a line" story and it is worth reading
+/// once.** A body like `The <bold>western approaches</bold> are the waters`
+/// is five sibling nodes, not one string with a bold range in it, and the
+/// editor hands back one string. There is nothing in that string saying where
+/// the tag went, so the obvious implementation — [`retext`] — writes one text
+/// node and the tag is gone.
+///
+/// For a long time this was answered by refusing the edit, which protected
+/// the tag by making the line uncorrectable. The first Windows walkthrough,
+/// 2026-09-04, is what found that: a misread line in a formatted paragraph
+/// could not be fixed in an editor whose whole purpose is fixing misread
+/// lines.
+///
+/// So the tag is *re-anchored* instead. Each element in the old range is
+/// looked for by its own text in what came back; where it is there exactly
+/// once, the original node is put back around it, whole, so nested formatting
+/// and every attribute survive untouched. A typo fixed three clauses away
+/// costs nothing at all, which is the edit people actually make.
+///
+/// Where an element cannot be placed — its text was changed, or it now
+/// appears twice and there is no way to know which one was meant — the answer
+/// is the plain fallback and `false`, and the caller is expected to say so
+/// before committing. Falling back quietly is the one thing this must not do:
+/// that was the behaviour the refusal existed to prevent.
+fn rewrite(
+    before: &[Node],
+    range: std::ops::Range<usize>,
+    text: &str,
+) -> Result<(Vec<Node>, bool), CommandError> {
+    let old = &before[range.clone()];
+
+    // Where the field showed tags, the string is markup and is read back
+    // exactly. A malformed one is refused rather than fallen back on: falling
+    // back would treat a missing `>` as an instruction to delete every tag in
+    // the line, which is the opposite of what the person typing it meant.
+    if inline::shows_tags(old) {
+        let inner = inline::from_inline(text)?;
+        return Ok((splice(before, range, with_frame(old, inner)), true));
+    }
+
+    if blocks::is_plain(old) {
+        return Ok((retext(before, range, text), true));
+    }
+    match reflow(old, text) {
+        Some(inner) => Ok((splice(before, range, inner), true)),
+        None => Ok((retext(before, range, text), false)),
+    }
+}
+
+/// `before` with `range` replaced by `inner`.
+fn splice(before: &[Node], range: std::ops::Range<usize>, inner: Vec<Node>) -> Vec<Node> {
+    let mut nodes = before[..range.start].to_vec();
+    nodes.extend(inner);
+    nodes.extend_from_slice(&before[range.end..]);
+    nodes
+}
+
+/// `inner` with the framing whitespace of `old` put back on the outside.
+///
+/// The frame is the file's shape and is kept exactly: `CHECKLIST.md` item 11
+/// diffs a save against the original and expects only the edit. It is merged
+/// into a text node where there is one, so that no save gains an empty
+/// sibling it did not have.
+fn with_frame(old: &[Node], mut inner: Vec<Node>) -> Vec<Node> {
+    let joined: String = old.iter().map(node_text).collect();
+    let (lead, trail) = frame(&joined);
+    if !lead.is_empty() {
+        match inner.first_mut() {
+            Some(Node::Text(t)) => t.set(format!("{lead}{}", t.value())),
+            _ => inner.insert(0, Node::Text(Text::new(lead))),
+        }
+    }
+    if !trail.is_empty() {
+        match inner.last_mut() {
+            Some(Node::Text(t)) => t.set(format!("{}{trail}", t.value())),
+            _ => inner.push(Node::Text(Text::new(trail))),
+        }
+    }
+    inner
+}
+
+/// `text` as nodes, with each element of `old` put back around its own text.
+///
+/// `None` when one cannot be placed, which is the signal to fall back.
+fn reflow(old: &[Node], text: &str) -> Option<Vec<Node>> {
+    let mut out: Vec<Node> = Vec::new();
+    let mut rest = text;
+    for node in old {
+        match node {
+            Node::Text(_) | Node::CData(_) => {}
+            // A comment or a processing instruction has no text to anchor it
+            // and no position the new string implies. Refusing is what makes
+            // the warning honest: neither is a thing to drop in silence.
+            Node::Comment(_) | Node::Pi { .. } => return None,
+            Node::Element(e) => {
+                let inner = e.text();
+                if inner.trim().is_empty() {
+                    return None;
+                }
+                let mut hits = rest.match_indices(inner.as_str());
+                let (at, _) = hits.next()?;
+                if hits.next().is_some() {
+                    return None;
+                }
+                if at > 0 {
+                    out.push(Node::Text(Text::new(rest[..at].to_owned())));
+                }
+                out.push(node.clone());
+                rest = &rest[at + inner.len()..];
+            }
+        }
+    }
+    if !rest.is_empty() {
+        out.push(Node::Text(Text::new(rest.to_owned())));
+    }
+    if out.is_empty() {
+        return None;
+    }
+    Some(with_frame(old, out))
+}
+
+/// What a node contributes to its parent's text.
+fn node_text(n: &Node) -> String {
+    match n {
+        Node::Text(t) => t.value().to_owned(),
+        Node::CData(s) => s.clone(),
+        Node::Element(e) => e.text(),
+        Node::Comment(_) | Node::Pi { .. } => String::new(),
+    }
+}
+
 fn retext(before: &[Node], range: std::ops::Range<usize>, text: &str) -> Vec<Node> {
     let old = &before[range.clone()];
     let textual = |n: &Node| matches!(n, Node::Text(_) | Node::CData(_));
@@ -1317,6 +1629,308 @@ mod tests {
         assert_eq!(s.markup(), src);
     }
 
+    /// A list item is a range between `ldiv` separators, not an element, so
+    /// this is the only edit whose target is a position.
+    #[test]
+    fn list_item_text_edits_by_position() {
+        let mut s = session();
+        let list = id_at(&s, "/doclang/list[1]");
+
+        s.apply(Command::SetListItemText {
+            id: list,
+            item: 1,
+            text: "the second, retyped".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(list).unwrap().markup,
+            "<list><ldiv/>one<ldiv/>the second, retyped</list>"
+        );
+
+        // The other item is untouched, which is the whole point of addressing
+        // a range rather than the list's body.
+        s.apply(Command::SetListItemText {
+            id: list,
+            item: 0,
+            text: "the first".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(list).unwrap().markup,
+            "<list><ldiv/>the first<ldiv/>the second, retyped</list>"
+        );
+
+        s.undo();
+        s.undo();
+        assert_eq!(s.markup(), DOC);
+    }
+
+    #[test]
+    fn a_list_item_past_the_end_is_refused() {
+        let mut s = session();
+        let list = id_at(&s, "/doclang/list[1]");
+        assert_eq!(
+            s.apply(Command::SetListItemText {
+                id: list,
+                item: 2,
+                text: "third".into(),
+            }),
+            Err(CommandError::NoSuchListItem("list".into(), 2))
+        );
+        // And a target that is not a list at all.
+        let text = id_at(&s, "/doclang/text[1]");
+        assert_eq!(
+            s.apply(Command::SetListItemText {
+                id: text,
+                item: 0,
+                text: "x".into(),
+            }),
+            Err(CommandError::NotText("text".into()))
+        );
+        assert_eq!(s.markup(), DOC);
+    }
+
+    /// The edit people actually make: a word fixed somewhere else in the
+    /// line. The field shows the tags, so what comes back carries them.
+    #[test]
+    fn formatted_text_edits_as_markup() {
+        let src = "<doclang>\n  <text>The <bold>western approaches</bold> are the watrs west of the <italic>channel</italic>.</text>\n</doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        let target = TextTarget::Body(text);
+
+        // The field starts from the markup, not from the flattened words.
+        assert_eq!(
+            s.inline_text(target).unwrap(),
+            "The <bold>western approaches</bold> are the watrs west of the <italic>channel</italic>."
+        );
+
+        let fixed =
+            "The <bold>western approaches</bold> are the waters west of the <italic>channel</italic>.";
+        assert!(s.keeps_formatting(target, fixed));
+        s.apply(Command::SetText {
+            id: text,
+            text: fixed.into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>The <bold>western approaches</bold> are the waters west of the <italic>channel</italic>.</text>"
+        );
+        s.undo();
+        assert_eq!(s.markup(), src);
+    }
+
+    /// Nested formatting is spelled and read back exactly, so an edit around
+    /// it costs nothing.
+    #[test]
+    fn nested_formatting_survives_an_edit_around_it() {
+        let src =
+            "<doclang><text>Plain <bold>bold <italic>both</italic></bold> and more</text></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        s.apply(Command::SetText {
+            id: text,
+            text: "Plain <bold>bold <italic>both</italic></bold> and MORE".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>Plain <bold>bold <italic>both</italic></bold> and MORE</text>"
+        );
+        s.undo();
+        assert_eq!(s.markup(), src);
+    }
+
+    /// The field showed the tags, so typing without them means removing them.
+    /// That is an instruction rather than an accident, and nothing asks.
+    #[test]
+    fn typing_over_the_tags_removes_them_deliberately() {
+        let src = "<doclang><text>The <bold>western approaches</bold> are wide</text></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        let plain = "The Western Approaches are wide";
+        assert!(s.keeps_formatting(TextTarget::Body(text), plain));
+        s.apply(Command::SetText {
+            id: text,
+            text: plain.into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>The Western Approaches are wide</text>"
+        );
+        s.undo();
+        assert_eq!(s.markup(), src);
+    }
+
+    /// Formatting can be added where the field shows tags, which no amount of
+    /// matching the words up afterwards could ever do.
+    #[test]
+    fn formatting_can_be_added() {
+        let src = "<doclang><text>one <bold>two</bold> three</text></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        s.apply(Command::SetText {
+            id: text,
+            text: "one <bold>two</bold> <italic>three</italic>".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>one <bold>two</bold> <italic>three</italic></text>"
+        );
+    }
+
+    /// A malformed or unknown tag is refused and the document is untouched.
+    /// Falling back to plain here would read a missing `>` as an instruction
+    /// to delete every tag in the line.
+    #[test]
+    fn bad_markup_is_refused_and_changes_nothing() {
+        let src = "<doclang><text>one <bold>two</bold> three</text></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        for bad in [
+            "one <bold>two three",
+            "one <blink>two</blink> three",
+            "one <bold class=\"x\">two</bold> three",
+        ] {
+            let e = s
+                .apply(Command::SetText {
+                    id: text,
+                    text: bad.into(),
+                })
+                .unwrap_err();
+            assert!(matches!(e, CommandError::Inline(_)), "{bad}: {e:?}");
+        }
+        assert_eq!(s.markup(), src);
+        assert!(!s.dirty());
+
+        // And a refusal is not a loss of formatting: a window that asked
+        // "keep this as plain text?" here would be offering to delete every
+        // tag in the line as the remedy for a missing `>`.
+        assert!(s.keeps_formatting(TextTarget::Body(text), "one <bold>two three"));
+    }
+
+    /// The frame is the file's shape; `CHECKLIST.md` item 11 diffs a save
+    /// against the original and expects only the edit.
+    #[test]
+    fn editing_markup_keeps_the_framing_whitespace() {
+        let src = "<doclang><text>\n    Lead <bold>bold</bold> trail\n  </text></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        assert_eq!(
+            s.inline_text(TextTarget::Body(text)).unwrap(),
+            "Lead <bold>bold</bold> trail"
+        );
+        s.apply(Command::SetText {
+            id: text,
+            text: "Lead <bold>bold</bold> TRAIL".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>\n    Lead <bold>bold</bold> TRAIL\n  </text>"
+        );
+    }
+
+    /// A plain body has no tags to show, so its field stays plain and a
+    /// literal angle bracket needs no escaping from the person typing it.
+    #[test]
+    fn a_plain_body_edits_as_plain_text() {
+        let mut s = session();
+        let text = id_at(&s, "/doclang/text[1]");
+        assert!(s.inline_text(TextTarget::Body(text)).is_none());
+        s.apply(Command::SetText {
+            id: text,
+            text: "a < b & c".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(text).unwrap().markup,
+            "<text>a &lt; b &amp; c</text>"
+        );
+        s.undo();
+        assert_eq!(s.markup(), DOC);
+    }
+
+    // ---- what cannot be spelled as tags, and so still re-anchors ----
+
+    /// A body carrying something with no inline spelling keeps the older
+    /// behaviour: put back what can be found, and say so when it cannot.
+    #[test]
+    fn a_body_with_no_inline_spelling_re_anchors() {
+        let src = "<doclang><table><fcel/>one <text>two</text> three<nl/></table></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let table = id_at(&s, "/doclang/table[1]");
+        let target = TextTarget::Cell {
+            id: table,
+            row: 0,
+            col: 0,
+        };
+        // `<text>` is not formatting, so no field would show it as a tag.
+        assert!(s.inline_text(target).is_none());
+
+        // Its text is still there, so it is put back whole.
+        assert!(s.keeps_formatting(target, "one two THREE"));
+        s.apply(Command::SetCellText {
+            id: table,
+            row: 0,
+            col: 0,
+            text: "one two THREE".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.element(table).unwrap().markup,
+            "<table><fcel/>one <text>two</text> THREE<nl/></table>"
+        );
+        s.undo();
+        assert_eq!(s.markup(), src);
+    }
+
+    /// Two occurrences and no way to know which was meant.
+    #[test]
+    fn an_ambiguous_anchor_falls_back_rather_than_guessing() {
+        let src = "<doclang><text>a <xref thread_id=\"1\"/>tide b</text></doclang>";
+        let s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        assert!(s.inline_text(TextTarget::Body(text)).is_none());
+        assert!(!s.keeps_formatting(TextTarget::Body(text), "a tide and a tide"));
+    }
+
+    /// A comment has no text to anchor it and no position the new string
+    /// implies, so it is a fallback rather than something to drop in silence.
+    #[test]
+    fn a_comment_in_the_body_refuses_to_re_anchor() {
+        let src = "<doclang><text>before<!-- why -->after</text></doclang>";
+        let s = Session::from_markup(src).unwrap();
+        let text = id_at(&s, "/doclang/text[1]");
+        assert!(s.inline_text(TextTarget::Body(text)).is_none());
+        assert!(!s.keeps_formatting(TextTarget::Body(text), "beforeafter"));
+    }
+
+    /// Asking and doing must never disagree, so both go through `rewrite`.
+    #[test]
+    fn keeps_formatting_is_true_for_plain_bodies_and_absent_targets() {
+        let mut s = session();
+        let text = id_at(&s, "/doclang/text[1]");
+        let list = id_at(&s, "/doclang/list[1]");
+        assert!(s.keeps_formatting(TextTarget::Body(text), "anything at all"));
+        assert!(s.keeps_formatting(TextTarget::Item { id: list, item: 0 }, "anything"));
+        // Past the end: the command will be refused, and a refusal is not a
+        // loss of formatting.
+        assert!(s.keeps_formatting(TextTarget::Item { id: list, item: 9 }, "x"));
+        // A structural target `SetText` would refuse.
+        assert!(s.keeps_formatting(TextTarget::Body(list), "x"));
+        s.apply(Command::SetText {
+            id: text,
+            text: "plain".into(),
+        })
+        .unwrap();
+        s.undo();
+        assert_eq!(s.markup(), DOC);
+    }
+
     #[test]
     fn cell_edits_address_the_grid() {
         let src = "<doclang><table>\n  <ched/>A<ched/>B<nl/>\n  <fcel/>1<fcel/><text>two</text><nl/>\n</table></doclang>";
@@ -1340,15 +1954,29 @@ mod tests {
             s.element(table).unwrap().markup,
             "<table>\n  <ched/>A<ched/>Bee<nl/>\n  <rhed/>1<fcel/><text>two</text><nl/>\n</table>"
         );
+        // A cell holding an element used to be refused here. It is now edited
+        // like anything else, with `keeps_formatting` answering first so the
+        // window can say what the commit is about to discard - the `<text>`
+        // wrapper, in this case, since "two" is nowhere in "x" to anchor it.
+        let inner = TextTarget::Cell {
+            id: table,
+            row: 1,
+            col: 1,
+        };
+        assert!(!s.keeps_formatting(inner, "x"));
+        assert!(s.keeps_formatting(inner, "two and more"));
+        s.apply(Command::SetCellText {
+            id: table,
+            row: 1,
+            col: 1,
+            text: "x".into(),
+        })
+        .unwrap();
         assert_eq!(
-            s.apply(Command::SetCellText {
-                id: table,
-                row: 1,
-                col: 1,
-                text: "x".into()
-            }),
-            Err(CommandError::NotText("table cell".into()))
+            s.element(table).unwrap().markup,
+            "<table>\n  <ched/>A<ched/>Bee<nl/>\n  <rhed/>1<fcel/>x<nl/>\n</table>"
         );
+        s.undo();
         assert!(matches!(
             s.apply(Command::SetCellText {
                 id: table,

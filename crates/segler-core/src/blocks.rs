@@ -6,6 +6,8 @@
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
 
+use std::ops::Range;
+
 use crate::doclang::{self, Kind};
 use crate::otsl::{self, CellKind, Grid};
 use crate::tree::{Element, ElementId, Node};
@@ -36,11 +38,15 @@ pub struct Run {
 /// item, and the blocks it wraps.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListItem {
-    /// The `ldiv` element.
+    /// The `ldiv` element. It is an empty separator: the item's content is
+    /// the siblings that follow it, which is why editing one goes through
+    /// `SetListItemText` and a range rather than through `SetText`.
     pub id: ElementId,
     pub marker: Option<String>,
     pub runs: Vec<Run>,
     pub blocks: Vec<Block>,
+    /// Whether the item's content is plain text, so a retype loses nothing.
+    pub plain: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,8 +58,8 @@ pub struct CellBlock {
     pub kind: CellKind,
     pub runs: Vec<Run>,
     pub blocks: Vec<Block>,
-    /// Whether the cell's body is plain text that `SetCellText` may replace.
-    pub editable: bool,
+    /// Whether the cell's body is plain text, so a retype loses nothing.
+    pub plain: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,7 +68,7 @@ pub enum Block {
         id: ElementId,
         level: u32,
         runs: Vec<Run>,
-        editable: bool,
+        plain: bool,
     },
     /// `text`, `page_header`, `page_footer`, `footnote`, `caption`,
     /// `key`, `value`, `hint`, `field_heading`, `marker` on its own.
@@ -71,7 +77,7 @@ pub enum Block {
         kind: Kind,
         runs: Vec<Run>,
         blocks: Vec<Block>,
-        editable: bool,
+        plain: bool,
     },
     List {
         id: ElementId,
@@ -98,12 +104,12 @@ pub enum Block {
         id: ElementId,
         language: Option<String>,
         text: String,
-        editable: bool,
+        plain: bool,
     },
     Formula {
         id: ElementId,
         text: String,
-        editable: bool,
+        plain: bool,
     },
     /// `group`, `field_region`, `field_item`: a box around its blocks.
     Container {
@@ -172,7 +178,7 @@ pub fn block_of(el: &Element) -> Block {
                 id,
                 level: el.attr("level").and_then(|v| v.parse().ok()).unwrap_or(1),
                 runs,
-                editable: is_plain(body),
+                plain: is_plain(body),
             }
         }
         Kind::Text
@@ -193,7 +199,7 @@ pub fn block_of(el: &Element) -> Block {
                 kind,
                 runs,
                 blocks,
-                editable: is_plain(body),
+                plain: is_plain(body),
             }
         }
         Kind::List => Block::List {
@@ -218,7 +224,7 @@ pub fn block_of(el: &Element) -> Block {
                         kind: cell.kind,
                         runs,
                         blocks,
-                        editable: is_plain(nodes),
+                        plain: is_plain(nodes),
                     }
                 })
                 .collect();
@@ -258,12 +264,12 @@ pub fn block_of(el: &Element) -> Block {
             id,
             language: head.label.map(str::to_owned),
             text: raw_text(body),
-            editable: is_plain(body),
+            plain: is_plain(body),
         },
         Kind::Formula => Block::Formula {
             id,
             text: raw_text(body),
-            editable: is_plain(body),
+            plain: is_plain(body),
         },
         Kind::Group | Kind::FieldRegion | Kind::FieldItem => Block::Container {
             id,
@@ -406,7 +412,18 @@ fn raw_text(nodes: &[Node]) -> String {
         .to_owned()
 }
 
-fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
+/// Where each list item's content sits among `list`'s children.
+///
+/// An `ldiv` is an empty separator and the item's content is the siblings
+/// that follow it, so an item is a *range* rather than an element. That is
+/// the same shape an OTSL cell has, and it is why editing one goes through
+/// [`crate::session::Command::SetListItemText`] and a range, where every
+/// other body edit goes through an element.
+///
+/// Public because the session computes the same ranges to apply an edit, and
+/// two implementations of this would part company the first time a head
+/// element was added to the skip list below.
+pub fn item_bodies(list: &Element, body_start: usize) -> Vec<(ElementId, Range<usize>)> {
     let children = list.children();
     let dividers: Vec<usize> = children
         .iter()
@@ -422,15 +439,10 @@ fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
         .enumerate()
         .map(|(n, &at)| {
             let end = dividers.get(n + 1).copied().unwrap_or(children.len());
-            let ldiv = match &children[at] {
-                Node::Element(e) => e,
-                _ => unreachable!(),
+            let id = match &children[at] {
+                Node::Element(e) => e.id(),
+                _ => unreachable!("a divider is an element"),
             };
-            let marker = ldiv
-                .child_elements()
-                .find(|c| doclang::kind(c) == Some(Kind::Marker))
-                .map(|m| collapse(&m.text()).trim().to_owned())
-                .filter(|m| !m.is_empty());
             // The item's own head, if it is a virtual text, precedes its body.
             let mut start = at + 1;
             while start < end {
@@ -441,12 +453,33 @@ fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
                     _ => break,
                 }
             }
-            let (runs, blocks) = runs_of(&children[start..end], Style::default());
+            (id, start..end)
+        })
+        .collect()
+}
+
+fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
+    let children = list.children();
+    item_bodies(list, body_start)
+        .into_iter()
+        .map(|(id, body)| {
+            let ldiv = list
+                .child_elements()
+                .find(|e| e.id() == id)
+                .expect("the divider this range was built from");
+            let marker = ldiv
+                .child_elements()
+                .find(|c| doclang::kind(c) == Some(Kind::Marker))
+                .map(|m| collapse(&m.text()).trim().to_owned())
+                .filter(|m| !m.is_empty());
+            let nodes = &children[body.clone()];
+            let (runs, blocks) = runs_of(nodes, Style::default());
             ListItem {
-                id: ldiv.id(),
+                id,
                 marker,
                 runs,
                 blocks,
+                plain: is_plain(nodes),
             }
         })
         .collect()
@@ -467,10 +500,10 @@ mod tests {
     fn runs_merge_collapse_and_style() {
         let b =
             first("<text>\n  Plain <bold>bold <italic>both</italic></bold> and\n  more  \n</text>");
-        let Block::Paragraph { runs, editable, .. } = b else {
+        let Block::Paragraph { runs, plain, .. } = b else {
             panic!("{b:?}")
         };
-        assert!(!editable);
+        assert!(!plain);
         let texts: Vec<(&str, bool, bool)> = runs
             .iter()
             .map(|r| (r.text.as_str(), r.style.bold, r.style.italic))
@@ -487,18 +520,15 @@ mod tests {
     }
 
     #[test]
-    fn plain_bodies_are_editable_and_heads_are_skipped() {
+    fn plain_bodies_are_marked_plain_and_heads_are_skipped() {
         let b = first("<heading level=\"2\"><location value=\"1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/><caption>Cap</caption>Title</heading>");
         let Block::Heading {
-            level,
-            runs,
-            editable,
-            ..
+            level, runs, plain, ..
         } = b
         else {
             panic!("{b:?}")
         };
-        assert_eq!((level, editable), (2, true));
+        assert_eq!((level, plain), (2, true));
         assert_eq!(runs[0].text, "Title");
     }
 
@@ -536,8 +566,8 @@ mod tests {
             (cells[0].colspan, cells[0].kind),
             (2, CellKind::ColumnHeader)
         );
-        assert!(!cells[1].editable && !cells[1].blocks.is_empty());
-        assert!(cells[2].editable);
+        assert!(!cells[1].plain && !cells[1].blocks.is_empty());
+        assert!(cells[2].plain);
         assert_eq!(cells[2].runs[0].text, "y");
     }
 

@@ -22,7 +22,7 @@ use eframe::egui::{
 use segler_core::blocks::{Block, CellBlock, Run, Style};
 use segler_core::doclang::Kind;
 use segler_core::otsl::CellKind;
-use segler_core::session::{Command, Session};
+use segler_core::session::{Command, Session, TextTarget};
 use segler_core::tree::ElementId;
 
 use crate::page::color_for;
@@ -47,6 +47,11 @@ struct Editing {
 enum Target {
     Element(ElementId),
     Cell(ElementId, usize, usize),
+    /// A list item, by the list's id and the item's position from zero. An
+    /// `ldiv` is an empty separator and the item's content is the siblings
+    /// after it, so there is no element to name here - the same reason
+    /// `Cell` carries a row and a column.
+    Item(ElementId, usize),
 }
 
 #[derive(Default)]
@@ -121,10 +126,7 @@ impl Cx<'_> {
     fn block(&mut self, ui: &mut egui::Ui, block: &Block) {
         match block {
             Block::Heading {
-                id,
-                level,
-                runs,
-                editable,
+                id, level, runs, ..
             } => {
                 let size = match level {
                     1 => 26.0,
@@ -140,7 +142,6 @@ impl Cx<'_> {
                     FontId::proportional(size),
                     base,
                     None,
-                    *editable,
                     Kind::Heading,
                 );
             }
@@ -149,7 +150,7 @@ impl Cx<'_> {
                 kind,
                 runs,
                 blocks,
-                editable,
+                ..
             } => {
                 let (font, base, color) = match kind {
                     Kind::PageHeader | Kind::PageFooter | Kind::Footnote => (
@@ -171,7 +172,7 @@ impl Cx<'_> {
                     }
                     _ => (FontId::proportional(15.0), Style::default(), None),
                 };
-                self.text_block(ui, *id, runs, font, base, color, *editable, *kind);
+                self.text_block(ui, *id, runs, font, base, color, *kind);
                 if !blocks.is_empty() {
                     ui.indent(("para", id), |ui| {
                         for b in blocks {
@@ -197,6 +198,27 @@ impl Cx<'_> {
                                 egui::Label::new(egui::RichText::new(marker).size(15.0)),
                             );
                             ui.vertical(|ui| {
+                                // An item edits in place like a paragraph,
+                                // and until 0.1.0's first walkthrough it did
+                                // not: the runs were drawn as a bare label
+                                // with no click sense at all, so a misread
+                                // line in a list was the one line in a
+                                // document that could not be corrected.
+                                let target = Target::Item(*id, n);
+                                if self.editing.as_ref().is_some_and(|e| e.target == target) {
+                                    let list = *id;
+                                    self.editor(
+                                        ui,
+                                        target,
+                                        FontId::proportional(15.0),
+                                        move |text| Command::SetListItemText {
+                                            id: list,
+                                            item: n,
+                                            text,
+                                        },
+                                    );
+                                    return;
+                                }
                                 if !item.runs.is_empty() {
                                     let job = layout(
                                         &item.runs,
@@ -205,7 +227,26 @@ impl Cx<'_> {
                                         ui.visuals().text_color(),
                                         ui.available_width(),
                                     );
-                                    ui.add(egui::Label::new(job).wrap());
+                                    let label =
+                                        ui.add(egui::Label::new(job).wrap().sense(Sense::click()));
+                                    // The `ldiv` is what the tree and the
+                                    // element pane know an item by, so a
+                                    // click selects that rather than the list.
+                                    if label.clicked() {
+                                        self.actions.select = Some(Some(item.id));
+                                        self.actions.select_cell = None;
+                                    }
+                                    if label.double_clicked() {
+                                        let buffer = self.buffer_for(
+                                            TextTarget::Item { id: *id, item: n },
+                                            || runs_text(&item.runs),
+                                        );
+                                        *self.editing = Some(Editing {
+                                            target,
+                                            buffer,
+                                            fresh: true,
+                                        });
+                                    }
                                 }
                                 for b in &item.blocks {
                                     self.block(ui, b);
@@ -301,27 +342,24 @@ impl Cx<'_> {
                 self.select_on_click(ui, &response, *id);
             }
             Block::Code {
-                id,
-                language,
-                text,
-                editable,
+                id, language, text, ..
             } => {
                 let selected = self.selection.element == Some(*id);
                 if let Some(l) = language {
                     ui.small(l);
                 }
                 let (response, label) = framed(ui, *id, selected, color_for(Kind::Code), |ui| {
-                    self.mono_block(ui, *id, text, *editable, false)
+                    self.mono_block(ui, *id, text, false)
                 });
                 self.select_on_click(ui, &response, *id);
                 if label.is_some_and(|l| l.clicked()) {
                     self.actions.select = Some(Some(*id));
                 }
             }
-            Block::Formula { id, text, editable } => {
+            Block::Formula { id, text, .. } => {
                 let selected = self.selection.element == Some(*id);
                 let (response, label) = framed(ui, *id, selected, color_for(Kind::Formula), |ui| {
-                    self.mono_block(ui, *id, text, *editable, true)
+                    self.mono_block(ui, *id, text, true)
                 });
                 self.select_on_click(ui, &response, *id);
                 if label.is_some_and(|l| l.clicked()) {
@@ -369,7 +407,6 @@ impl Cx<'_> {
         font: FontId,
         base: Style,
         color: Option<Color32>,
-        editable: bool,
         kind: Kind,
     ) {
         let selected = self.selection.element == Some(id);
@@ -393,15 +430,15 @@ impl Cx<'_> {
             self.actions.select = Some(Some(id));
             self.actions.select_cell = None;
         }
-        if (response.double_clicked() || label.double_clicked()) && editable {
-            let body = self
-                .session
-                .element(id)
-                .map(|v| v.body_text.trim().to_owned())
-                .unwrap_or_default();
+        if response.double_clicked() || label.double_clicked() {
             *self.editing = Some(Editing {
                 target,
-                buffer: body,
+                buffer: self.buffer_for(TextTarget::Body(id), || {
+                    self.session
+                        .element(id)
+                        .map(|v| v.body_text.trim().to_owned())
+                        .unwrap_or_default()
+                }),
                 fresh: true,
             });
         }
@@ -412,7 +449,6 @@ impl Cx<'_> {
         ui: &mut egui::Ui,
         id: ElementId,
         text: &str,
-        editable: bool,
         italic: bool,
     ) -> Option<egui::Response> {
         let target = Target::Element(id);
@@ -427,7 +463,7 @@ impl Cx<'_> {
             rich = rich.italics();
         }
         let response = ui.add(egui::Label::new(rich).wrap().sense(Sense::click()));
-        if response.double_clicked() && editable {
+        if response.double_clicked() {
             *self.editing = Some(Editing {
                 target,
                 buffer: text.to_owned(),
@@ -435,6 +471,17 @@ impl Cx<'_> {
             });
         }
         Some(response)
+    }
+
+    /// What an edit field starts from.
+    ///
+    /// The markup where the body carries formatting that can be spelled as
+    /// tags, so that `The <bold>western approaches</bold> are wide` is what a
+    /// person sees and edits and nothing can be lost; the plain words
+    /// otherwise, which is every ordinary line and is why an angle bracket
+    /// needs no escaping in one.
+    fn buffer_for(&self, target: TextTarget, plain: impl FnOnce() -> String) -> String {
+        self.session.inline_text(target).unwrap_or_else(plain)
     }
 
     /// The in-place text field. Commits on losing focus, cancels on Escape.
@@ -471,7 +518,10 @@ impl Cx<'_> {
                     .session
                     .element(id)
                     .is_some_and(|v| v.body_text.trim() == buffer),
-                Target::Cell(..) => false,
+                // A cell and an item are ranges rather than elements, so
+                // there is no view to compare against; a commit that changed
+                // nothing costs one undo step and no document change.
+                Target::Cell(..) | Target::Item(..) => false,
             };
             if !unchanged {
                 self.actions.commands.push(make(buffer));
@@ -601,12 +651,20 @@ impl Cx<'_> {
                     self.actions.select = Some(Some(table));
                     self.actions.select_cell = Some((table, cell.row, cell.col));
                 }
-                if response.double_clicked() && cell.editable {
-                    let buffer = cell
-                        .runs
-                        .iter()
-                        .map(|r| r.text.as_str())
-                        .collect::<String>();
+                if response.double_clicked() {
+                    let buffer = self.buffer_for(
+                        TextTarget::Cell {
+                            id: table,
+                            row: cell.row,
+                            col: cell.col,
+                        },
+                        || {
+                            cell.runs
+                                .iter()
+                                .map(|r| r.text.as_str())
+                                .collect::<String>()
+                        },
+                    );
                     *self.editing = Some(Editing {
                         target,
                         buffer,
@@ -771,4 +829,17 @@ pub fn cell_kind_name(k: CellKind) -> &'static str {
         CellKind::Corner => "corner",
         CellKind::SectionRow => "section row",
     }
+}
+
+/// The text of a sequence of runs, which is what a list item's editor starts
+/// from.
+///
+/// The runs rather than an element view, because a list item is not an
+/// element: there is no `body_text` to ask for.
+fn runs_text(runs: &[Run]) -> String {
+    runs.iter()
+        .map(|r| r.text.as_str())
+        .collect::<String>()
+        .trim()
+        .to_owned()
 }

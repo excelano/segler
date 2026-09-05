@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use eframe::egui::{self, Align};
 use segler_core::doclang::Kind;
 use segler_core::otsl::{CellKind, Grid};
-use segler_core::session::{Command, ElementView, PageView, Session};
+use segler_core::session::{Command, ElementView, PageView, Session, TextTarget};
 use segler_core::tree::ElementId;
 use segler_core::validate::Finding;
 
@@ -168,9 +168,14 @@ pub struct Editor {
 }
 
 impl Editor {
-    fn load(&mut self, view: &ElementView) {
+    fn load(&mut self, session: &Session, view: &ElementView) {
         self.for_element = Some(view.id);
-        self.text = view.body_text.trim().to_owned();
+        // The markup where the body carries formatting that can be spelled as
+        // tags, so this box and the document pane's in-place field hold the
+        // same string and mean the same thing by it.
+        self.text = session
+            .inline_text(TextTarget::Body(view.id))
+            .unwrap_or_else(|| view.body_text.trim().to_owned());
         self.label = view.label.clone().unwrap_or_default();
         self.bounds = view.bounds.unwrap_or([0, 0, 0, 0]);
     }
@@ -191,7 +196,7 @@ impl Editor {
             return;
         };
         if self.for_element != Some(view.id) {
-            self.load(view);
+            self.load(session, view);
         }
         let id = view.id;
         let (width, height) = session.view().resolution;
@@ -354,13 +359,46 @@ impl Editor {
                             .desired_rows(4)
                             .desired_width(f32::INFINITY),
                     );
-                    if r.lost_focus() && self.text != view.body_text.trim() {
+                    // Text made of parts used to be shown here read-only,
+                    // under the heading "Text (from its parts)", and that was
+                    // the only place the window said why a formatted
+                    // paragraph would not open for typing. It is editable
+                    // now; what is left to say is what the tags are, so that
+                    // the confirm on committing is not the first anybody
+                    // hears of them.
+                    // What the box is holding, said once. Tags are shown where
+                    // they can be read back exactly; where they cannot, the box
+                    // holds the words and the commit is what says what it could
+                    // not put back.
+                    if !view.plain_text {
+                        if session.inline_text(TextTarget::Body(id)).is_some() {
+                            ui.weak(
+                                "Formatting is shown as tags. Edit them like any \
+                                 other text; malformed markup is refused rather \
+                                 than written.",
+                            );
+                        } else {
+                            ui.weak(
+                                "Made of parts with no inline spelling. What can be \
+                                 put back is; what cannot, the commit asks about \
+                                 first.",
+                            );
+                        }
+                    }
+                    let started_from = session
+                        .inline_text(TextTarget::Body(id))
+                        .unwrap_or_else(|| view.body_text.trim().to_owned());
+                    if r.lost_focus() && self.text != started_from {
                         out.commands.push(Command::SetText {
                             id,
                             text: self.text.clone(),
                         });
                     }
                 } else if !view.body_text.trim().is_empty() {
+                    // Structure rather than text: a list, a table, a group.
+                    // Its parts are edited where they are, and since the
+                    // first Windows walkthrough that includes a list's items,
+                    // which are edited in the document pane.
                     ui.label("Text (from its parts)");
                     let collapsed = view
                         .body_text

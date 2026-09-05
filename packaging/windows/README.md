@@ -37,14 +37,36 @@ in this copy is short enough to list:
   spend it again.
 
 **If you install with the scripts and later install Segler from the Microsoft
-Store, run `uninstall.ps1` first.** With both registered Windows chooses neither
-and puts up its *how do you want to open this file* picker, so a package
-installed over a live script installation turns a working association into a
-prompt. Worse if the files are deleted by hand instead: a `UserChoice` left
-pointing at a `ProgID` whose executable is gone kills the extension outright -
-*Application not found*, the package ignored, and no picker offering a way out.
-`uninstall.ps1` removes that key, which is the whole reason it is the thing to
-run. Both states were measured on slipcase-desktop and neither is repairable
+Store, run `uninstall.ps1` first.** The reason is not the one slipcase-desktop
+records, and this paragraph said that reason for as long as it took to run the
+checklist once.
+
+**Measured here on 2026-09-04, in both orders, CHECKLIST item 22.** With the
+package and the scripts both registered, Windows puts up no picker and asks
+nothing: it opens the **script's** copy from `%LOCALAPPDATA%`, every time. The
+extension's default value in `HKCU\Software\Classes\.dclx` is the script's
+ProgID, and a packaged association only ever adds itself to `OpenWithProgids` -
+it never claims the default. So the script install silently shadows the Store
+one, and it does so whether the package went on before the scripts or after.
+There was no `UserChoice` involved in either run.
+
+That is worse than the picker slipcase-desktop describes, not better. A picker
+at least asks. This way, somebody who installs from the Store to get a newer
+Segler goes on running whatever the script left behind, with nothing anywhere
+saying so - and the Store copy they are looking at in Settings is installed,
+present, and never reached. `uninstall.ps1` is the fix and is why it is the
+thing to run first.
+
+Why slipcase-desktop saw a picker and this did not is not established. That
+machine may have carried a `UserChoice` from a person having chosen "always
+open with" at some point, which outranks everything; this one had none. Nothing
+here says that repository's note was wrong when it was written - it says this
+one had to be measured rather than inherited, which is the same lesson its own
+`README` keeps recording about itself.
+
+**The stale-`UserChoice` states below are still slipcase-desktop's measurement
+and have not been reproduced here.** They are kept because `uninstall.ps1`
+removes that key on their authority, and because none of them is repairable
 from inside a package: an MSIX runs no code at install time, and one running
 later cannot write the key back, because a package's registry writes are
 virtualised.

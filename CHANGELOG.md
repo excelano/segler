@@ -17,6 +17,10 @@ The first packaged build.
   Both panes fold away.
 - An archive's page images as an optional side panel with the located boxes
   drawn over them, so a doubtful line can be checked against the page.
+- Text with bold or italic in it is edited with its tags shown, so a line can
+  be corrected without losing its formatting, and formatting can be added.
+  Malformed markup is refused, naming the tag, rather than written.
+- List items are edited in place, one item at a time.
 - Undo and redo for every edit, and a save that writes the opened file with
   the edits applied and nothing else changed. Markup that was not touched is
   written back byte for byte; an archive's page images and assets are

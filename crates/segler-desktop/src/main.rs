@@ -31,7 +31,7 @@ mod system_theme;
 use std::path::{Path, PathBuf};
 
 use eframe::egui::{self, Key, Modifiers, ViewportCommand};
-use segler_core::session::{Command, Session};
+use segler_core::session::{Command, Session, TextTarget};
 use segler_core::tree::ElementId;
 
 use document::{DocumentPane, Selection};
@@ -114,6 +114,34 @@ enum Dialog {
     Remove(ElementId),
     /// The window was asked to close with unsaved changes.
     Close,
+    /// A text edit that would discard formatting the core could not put back.
+    /// Holds the command, so confirming applies exactly what was asked for.
+    Flatten(Command),
+}
+
+/// The text a command is about to write, and where, for the three commands
+/// that replace a run of nodes with one string. `None` for everything else,
+/// which has no formatting to lose.
+fn flattening_target(command: &Command) -> Option<(TextTarget, &str)> {
+    match command {
+        Command::SetText { id, text } => Some((TextTarget::Body(*id), text)),
+        Command::SetCellText { id, row, col, text } => Some((
+            TextTarget::Cell {
+                id: *id,
+                row: *row,
+                col: *col,
+            },
+            text,
+        )),
+        Command::SetListItemText { id, item, text } => Some((
+            TextTarget::Item {
+                id: *id,
+                item: *item,
+            },
+            text,
+        )),
+        _ => None,
+    }
 }
 
 struct App {
@@ -231,7 +259,34 @@ impl App {
         }
     }
 
+    /// Apply a command, or stop first if it would discard formatting.
+    ///
+    /// One gate for both panes rather than a flag threaded through each. A
+    /// text edit replaces a run of nodes with one string, so a tag inside it
+    /// survives only where the core can find its text again in what was
+    /// typed; where it cannot, this asks before doing it. Undo would put it
+    /// back either way — the confirm is here because a person who has just
+    /// corrected one word will not think to look.
+    ///
+    /// It asks nothing at all for the ordinary edit. `keeps_formatting` is
+    /// true for plain text and for every tag that re-anchors, which is most
+    /// of them, and a warning that fires on every commit is one nobody reads.
     fn apply(&mut self, command: Command) {
+        let Some(session) = &self.session else {
+            return;
+        };
+        if let Some(target) = flattening_target(&command) {
+            let (target, text) = target;
+            if !session.keeps_formatting(target, text) {
+                self.dialog = Dialog::Flatten(command);
+                return;
+            }
+        }
+        self.apply_now(command);
+    }
+
+    /// Apply without asking. The confirm path and every non-text command.
+    fn apply_now(&mut self, command: Command) {
         let Some(session) = &mut self.session else {
             return;
         };
@@ -441,8 +496,76 @@ impl App {
     }
 
     fn dialogs(&mut self, ctx: &egui::Context) {
+        // Taken first and by reference, because this variant carries the
+        // command rather than an id and the arms below match by value.
+        if let Dialog::Flatten(command) = &self.dialog {
+            let command = command.clone();
+            let lost = flattening_target(&command)
+                .map(|(target, _)| {
+                    self.session
+                        .as_ref()
+                        .map(|s| s.formatting_in(target))
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default();
+            let names: Vec<String> = lost.iter().map(|n| format!("<{n}>")).collect();
+            // "it" for one and "them" for two is worth the line: the message
+            // names the real tags, and naming them and then getting the number
+            // wrong reads like a message nobody looked at.
+            let (what, them) = match names.len() {
+                0 => ("Formatting in this text".to_owned(), "it"),
+                1 => (names[0].clone(), "it"),
+                _ => (names.join(", "), "them"),
+            };
+            let mut next = None;
+            egui::Modal::new(egui::Id::new("flatten")).show(ctx, |ui| {
+                ui.heading("Keep this edit as plain text?");
+                // "Keeping" rather than "saving": the flattening happens when
+                // the edit is applied, and the document in the window is what
+                // changes. A save writes whatever is there by then.
+                ui.label(format!(
+                    "{what} could not be matched to what you typed, so keeping this \
+                     edit will write the line as plain text without {them}."
+                ));
+                ui.add_space(4.0);
+                ui.weak(
+                    "This happens when the formatted words themselves changed, or when \
+                     they now appear more than once and there is no way to tell which \
+                     was meant. Undo restores everything.",
+                );
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Keep as plain text").clicked()
+                        || ui.input(|i| i.key_pressed(Key::Enter))
+                    {
+                        next = Some(true);
+                    }
+                    if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(Key::Escape)) {
+                        next = Some(false);
+                    }
+                });
+            });
+            if let Some(confirmed) = next {
+                self.dialog = Dialog::None;
+                if confirmed {
+                    self.apply_now(command);
+                } else {
+                    // The element pane's buffers reload only when the
+                    // selection changes, so a cancelled edit would otherwise
+                    // sit in the Text box saying something the document does
+                    // not - and fire the same refused command again the next
+                    // time that box lost focus. `apply_now` clears them for
+                    // the same reason; declining has to as well.
+                    self.editor = Editor::default();
+                    self.document.cancel_edit();
+                    self.status = "Edit discarded; the formatting is unchanged".to_owned();
+                }
+            }
+            return;
+        }
         match self.dialog {
-            Dialog::None => {}
+            // Handled above, by reference, because it carries a command.
+            Dialog::Flatten(_) | Dialog::None => {}
             Dialog::Remove(id) => {
                 let what = self
                     .session
@@ -676,6 +799,7 @@ fn describe(command: &Command) -> String {
         Command::Move { .. } => "Moved".into(),
         Command::Insert { kind, .. } => format!("Inserted {}", kind.name()),
         Command::Remove { .. } => "Element removed".into(),
+        Command::SetListItemText { item, .. } => format!("List item {} changed", item + 1),
         Command::SetCellText { row, col, .. } => {
             format!("Cell row {}, column {} changed", row + 1, col + 1)
         }

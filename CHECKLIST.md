@@ -30,6 +30,17 @@ walkthroughs used.
 3. **Click a paragraph, retype a line, click elsewhere.** The text changes in
    the document, the element pane shows the new text, Undo restores it. Escape
    in the middle of an edit discards it.
+3a. **A paragraph with bold or italic in it opens showing its tags**, as
+    `The <bold>western approaches</bold> are wide`, in the document pane and
+    in the element pane's Text box alike. Fix a word away from the tags and
+    they survive. Add an `<underline>` and it takes. Leave a tag unclosed and
+    the commit is refused with that tag named, the document untouched. Type
+    the line with no tags at all and they go, deliberately and without a
+    question, because the field was showing them.
+3b. **A list item edits like a paragraph.** Double-click one, retype it,
+    click away: only that item changes, and the status line names it. Until
+    2026-09-04 a list was the one thing in a document that could not be
+    corrected at all.
 4. **Click a table cell.** The cell is selected, not the table: the status
    line names the cell one-based, and the element pane offers the cell's kind.
    Header cells have a visible fill in both themes and their text is legible
@@ -93,19 +104,27 @@ script route and want the package uninstalled first.
     double-click opens the copy under `%LOCALAPPDATA%\Programs\Segler`. Then
     `uninstall.ps1`, and both extensions go back to having no handler rather
     than to a broken one.
-22. **The overlap, deliberately.** With both the package and the scripts
-    registered, a double-click puts up the *how do you want to open this file*
-    picker rather than choosing either. That is why `README.md` says to run
-    `uninstall.ps1` before installing the package, and it is worth seeing once.
+22. **The overlap, deliberately.** Register both, then double-click a
+    `.dclx` and check *which* Segler answers. The script's copy under
+    `%LOCALAPPDATA%` wins, silently, in either install order - no picker, no
+    prompt - because a packaged association never claims the extension's
+    default and the script's does. That is why `README.md` says to run
+    `uninstall.ps1` before installing the package: without it somebody
+    installs from the Store and goes on running the older copy. Read the
+    running process's path rather than the window, which looks the same
+    either way.
 23. **The window at 125% and 150% display scaling**, and moved between two
     monitors at different scalings if there are two. The DPI declaration is in
     the embedded application manifest and takes effect before any of this
     program's code runs; winit sets the same awareness at run time, so a defect
     here shows as a wrong first frame rather than a wrong window.
-24. **Add/Remove Programs.** The script install's entry is there with the
-    version and the icon, and removing it from there removes the association,
-    the Start menu shortcut and the files. The package's entry is Windows'
-    own and removing it takes the package.
+24. **Add/Remove Programs.** With both installed there are two rows:
+    **Segler** at `X.Y.Z.0`, which is the package and Windows' own entry, and
+    **Segler (user install)** at `X.Y.Z`, which is the scripts'. They read
+    alike but for that suffix - same icon, same publisher - and the suffix is
+    there because on 2026-09-04 they did not, and the wrong one was removed.
+    Remove the user install: the association, the Start menu shortcut and the
+    files go, and a double-click falls back to the package.
 
 ## What earlier runs cost
 

@@ -50,7 +50,8 @@ Every edit can be undone. What is saved is the file you opened with your edits a
 ## App features (Microsoft Store, up to 20 bullets of 200 characters)
 
     The document as a reader sees it: headings, paragraphs, lists, tables and pictures in reading order.
-    Edit text where you read it, and a table cell where it sits.
+    Edit text where you read it: a paragraph, a list item, or a table cell where it sits.
+    Bold and italic are shown as tags while you type, so a correction keeps them and formatting can be added.
     The element tree beside the document, and every property of the selected element in reach: kind, level, label, layer, bounding box.
     Page images beside the document when the archive carries them, with the located boxes drawn over them.
     Undo and redo for every edit.
@@ -71,7 +72,7 @@ The document as a reader would see it: headings, paragraphs, lists, tables and p
 
 WHAT YOU CAN DO
 
-Retype a line where you read it. Change a heading's level. Fix a table cell, or change its kind from body to header. Move a paragraph. Correct a bounding box. Remove an element that should not be there. Every edit can be undone.
+Retype a line where you read it - a paragraph, a list item, a table cell. Where a line carries bold or italic, its tags are shown in the field so a correction keeps them, and so formatting can be added. Change a heading's level. Change a cell's kind from body to header. Move a paragraph. Correct a bounding box. Remove an element that should not be there. Every edit can be undone.
 
 Segler checks the document against the DocLang specification as you work and lists what it finds, each finding a click from its element.
 

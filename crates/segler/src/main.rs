@@ -91,9 +91,11 @@ enum Command {
     ///   label PATH VALUE|-         layer PATH VALUE|-
     ///   bounds PATH X0 Y0 X1 Y1|-  rename PATH KIND
     ///   cell PATH ROW COL VALUE    cellkind PATH ROW COL KIND
-    ///   move PATH PARENT INDEX     insert PARENT INDEX KIND
-    ///   remove PATH
+    ///   item PATH N VALUE          move PATH PARENT INDEX
+    ///   insert PARENT INDEX KIND   remove PATH
     /// where PATH is as `validate` prints it, e.g. /doclang/text[2].
+    /// `item` takes a list's path and an item's position from zero, because
+    /// an <ldiv> is a separator and no path addresses an item's text.
     #[command(verbatim_doc_comment)]
     Edit {
         /// A `.dclg` document or `.dclx` archive
@@ -549,6 +551,15 @@ fn parse_edit(session: &Session, line: &str) -> Result<Edit, String> {
             kind: kind(word(3)?)?,
         },
         "remove" => Edit::Remove { id: at(word(1)?)? },
+        // By position among the list's items, because an `ldiv` is an empty
+        // separator and the item's content is the siblings after it: there is
+        // no path that addresses one. The same reason `cell` takes a row and a
+        // column rather than a path.
+        "item" => Edit::SetListItemText {
+            id: at(word(1)?)?,
+            item: index(word(2)?)?,
+            text: word(3)?.to_owned(),
+        },
         "cell" => Edit::SetCellText {
             id: at(word(1)?)?,
             row: index(word(2)?)?,
