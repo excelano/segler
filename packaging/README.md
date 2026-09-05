@@ -91,12 +91,40 @@ launcher.
 David chose it from a sheet of five on 2026-09-04; the file's own comment
 records what the other four cost. All three were checked at 16, 24, 32, 48 and
 128 pixels on light and dark grounds before committing, and any change should
-be. The SVG is the source for every platform: macOS wants `.icns` and Windows
-wants `.ico`, both converted from it, and slipcase-desktop's `make-ico` is
-the converter for the second.
+be. The SVGs are the source for every platform: macOS wants `.icns` and Windows
+wants `.ico`, both converted from them, and `windows/make-ico` is the converter
+for the second.
 
-## windows, macos
+**All three drawings are converted, not just the application's.** Windows draws
+a file type's icon from the package's assets when the package is installed and
+from an icon directory when the scripts are, so `make-ico` writes `segler.ico`,
+`dclx.ico` and `dclg.ico` and six PNG sets beside them. Without that a `.dclx`
+and a `.dclg` would carry the same picture in Explorer while carrying different
+ones in a Linux file manager, which is the sort of difference nobody notices
+until they have both machines open.
 
-Not here yet. Each is cloned from slipcase-desktop's directory of the same
-name by the lane that can build and test it, and `RELEASE.md` says what each
-lane needs to know before starting.
+## windows
+
+The MSIX the Microsoft Store distributes, and a pair of PowerShell scripts that
+register the two extensions per-user for somebody who would rather not have a
+Store account. `windows/README.md` is the detail; the short version is that it
+is slipcase-desktop's directory cloned, with two file types where that
+application has one, three icon directories where it has one, and its own
+certification baseline.
+
+    cargo build --release --workspace
+    powershell -ExecutionPolicy Bypass -File packaging\windows\build-msix.ps1 -SelfSign
+    powershell -ExecutionPolicy Bypass -File packaging\windows\install.ps1     # the script route
+
+`check-imports.ps1` is the Windows counterpart of `check-libraries.sh`: it walks
+the shipped binary's PE import table and refuses any DLL not known to ship with
+Windows. Unlike the Linux one it needs no display, so `windows.yml` runs it on
+every push. That check exists because Slipcase 0.1.1 passed everything else and
+still failed Store certification, on a clean machine that had no Visual C++
+Redistributable.
+
+## macos
+
+Not here yet. Cloned from slipcase-desktop's directory of the same name by the
+lane that can build and test it, and `RELEASE.md` says what that lane needs to
+know before starting.

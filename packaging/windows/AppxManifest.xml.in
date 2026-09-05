@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The MSIX package manifest, templated the way `control.in` and the manual pages
+  are. `build-msix.ps1` substitutes the placeholders below; nothing here is
+  meant to be edited per build.
+
+  WHAT MUST COME FROM PARTNER CENTER, AND WHY IT CANNOT BE GUESSED
+
+  @IDENTITY_NAME@, @PUBLISHER@ and @PUBLISHER_DISPLAY_NAME@ are assigned when
+  the name is reserved. A package whose identity disagrees with the reservation
+  is rejected at upload rather than at review, so there is no way to find out
+  you guessed wrong except by trying. @PUBLISHER@ in particular is a full X.500
+  string - `CN=` with a GUID - and not the display name. Reserving the name is
+  cheap and unblocks this file, which is why `RELEASE.md` puts it first in the
+  Windows section.
+
+  @VERSION_APPX@ is what `packaging/version.sh` prints when asked for the appx
+  spelling: four parts with the fourth always 0, which the Store requires. It is
+  a different shape from the crate version and from what macOS wants, which is
+  why one script answers all three.
+
+  WHAT IS DECIDED HERE
+
+  Two file-type associations where slipcase-desktop has one, because DocLang has
+  two file kinds and Segler edits both: `.dclx`, the OPC archive, and `.dclg`,
+  the bare markup. They mirror what `install.ps1` writes to `HKCU` for a
+  side-loaded install, so a packaged Segler and an installed-from-source one
+  claim the same extensions under the same content types and the same friendly
+  names. If those two ever disagree, a person who has both sees the wrong one
+  win with nothing to explain it.
+
+  The two content types are not chosen here. The specification names
+  `application/vnd.doclang.document+xml` for the markup and nothing for the
+  archive; `packaging/linux/mime/doclang.xml` says what was chosen for the
+  archive and why it is provisional, and that file is the one place either
+  string is argued. This manifest and `install.ps1` follow it.
+
+  Each association carries its own logo, and that is the point of having two of
+  them: `dclx.png` is a blue page and `dclg.png` a cream one, both carrying the
+  boat, so the two kinds tell apart in Explorer the way they do in a Linux file
+  manager. `make-ico` builds both from the same drawings the Linux icons ship.
+
+  No capabilities beyond `runFullTrust`. This application makes no network call,
+  needs no broad filesystem access - it opens the file it was launched with and
+  writes where a person points a save dialog - and asks for no device. A
+  capability requested and unused is a question at certification with no good
+  answer, and it is what a person reads on the store page before installing.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="@IDENTITY_NAME@"
+    Publisher="@PUBLISHER@"
+    Version="@VERSION_APPX@"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Segler</DisplayName>
+    <PublisherDisplayName>@PUBLISHER_DISPLAY_NAME@</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Open a DocLang document or archive, read it as a reader would, correct it where you read it, and save the same file with your edits and nothing else changed.</Description>
+  </Properties>
+
+  <Dependencies>
+    <!-- 10.0.17763 is the oldest Windows 10 that supports the packaging
+         features used here. Raising it excludes machines for nothing; lowering
+         it is not possible. -->
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.17763.0"
+      MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-gb" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Segler"
+      Executable="segler-desktop.exe"
+      EntryPoint="Windows.FullTrustApplication">
+
+      <uap:VisualElements
+        DisplayName="Segler"
+        Description="Edit a DocLang document as a reader sees it."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- One `uap:Extension` per association rather than two
+             `uap:FileTypeAssociation` elements in one: the schema allows only a
+             single `FileTypeAssociation` child per extension, and a manifest
+             with two is rejected by makeappx rather than by anything that would
+             say why. The `Name` of each is the shell's key for the
+             registration, lowercase with no dot, and it is what an upgrade
+             matches on - so these two strings are as fixed as the extensions
+             they stand for. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="dclx">
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/vnd.doclang.archive+zip">.dclx</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>DocLang archive</uap:DisplayName>
+            <uap:Logo>Assets\dclx.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="dclg">
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/vnd.doclang.document+xml">.dclg</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>DocLang document</uap:DisplayName>
+            <uap:Logo>Assets\dclg.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- A packaged desktop application needs this and nothing else. See the
+         comment at the top of this file. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

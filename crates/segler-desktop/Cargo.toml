@@ -37,3 +37,12 @@ base64 = "0.23"
 # already in the tree under `accesskit_unix`; `default-features` is off so
 # `async-io` is named rather than taken.
 zbus = { version = "5", default-features = false, features = ["async-io", "blocking-api"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# Reading the window's icon out of the `.ico` the installer also registers.
+# Windows takes a window icon from a resource compiled into the executable, and
+# a resource compiler is exactly what DESIGN.md §5 keeps out of the build, so
+# the icon is embedded as bytes and decoded at startup instead. Pure Rust; its
+# `png` is for the large entries, which are stored that way. slipcase-desktop
+# carries the same line for the same reason.
+ico = "0.5"

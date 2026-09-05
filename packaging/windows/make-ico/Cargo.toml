@@ -1,0 +1,29 @@
+# The tool that turns the icon SVGs into the rasters Windows needs.
+#
+# Its own package rather than a member of the workspace, so that nothing here
+# reaches the shipped binaries: `cargo build --workspace` at the root never sees
+# it, and `cargo tree` for the application is unchanged by it. The empty
+# `[workspace]` table below is what keeps it standalone.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+[workspace]
+
+[package]
+name = "make-ico"
+description = "Rasterize the Segler icon SVGs into a Windows .ico and the Store's PNGs"
+version = "0.1.0"
+edition = "2021"
+authors = ["David M. Anderson"]
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+# Pure-Rust SVG rendering. Default features off: they bring text shaping and a
+# system font database, and none of these drawings has text in it.
+# `cargo tree -i cc` finds nothing here either, which is the rule CLAUDE.md
+# states for the application and which this holds itself to as well.
+resvg = { version = "0.48", default-features = false }
+# Assembling the rasterized sizes into one icon directory.
+ico = "0.5"

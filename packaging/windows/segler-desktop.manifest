@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!--
+  The Win32 application manifest embedded in segler-desktop.exe, and the only
+  thing in it is the DPI declaration.
+
+  WHY IT EXISTS
+
+  winit sets per-monitor DPI awareness at run time, inside `EventLoop::new`, so
+  the running process is already PER_MONITOR_AWARE without this. Two things are
+  still worth declaring it for, both measured by slipcase-desktop. The
+  certification kit reads this manifest rather than the process, and reported
+  that application as not DPI aware because there was nothing here to read;
+  embedding one is what took its overall verdict from WARNING to PASS. And a
+  declaration takes effect before any of this program's code runs, where the
+  run-time call leaves a window - brief, possibly empty, but not nothing - in
+  which the process exists at the wrong awareness.
+
+  WHY IT IS NOT A BUILD STEP
+
+  `DESIGN.md` §2 says nothing compiles C and a build needs a Rust toolchain and
+  nothing else, and this holds to both. The usual way to embed a manifest is
+  `rc.exe` or `windres`, which is what `packaging/windows/README.md` rejects for
+  the window icon - so the icon travels through `include_bytes!` instead. This
+  file takes a different route: `build.rs` hands the MSVC linker
+  `/MANIFEST:EMBED` and `/MANIFESTINPUT`, and the linker that was already
+  linking the binary embeds it. No resource compiler, no object file, nothing
+  compiled that was not compiled before.
+
+  WHAT IS DELIBERATELY ABSENT
+
+  No `assemblyIdentity`. It would carry a fourth version number in a project
+  whose `RELEASE.md` opens by keeping one number in three spellings, and nothing
+  here reads it.
+
+  No `<compatibility>` or `supportedOS` block. Those change what Windows reports
+  to the process about itself, which is a behaviour change wearing the clothes
+  of a declaration, and nothing has asked for one.
+
+  Both values, because they are read by different vintages of Windows and must
+  agree: `dpiAware` is what a pre-1703 reader understands and `dpiAwareness` is
+  what everything since prefers. `PerMonitorV2` is what winit sets, and
+  declaring anything else here would be a regression rather than a tidy-up.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
+</assembly>

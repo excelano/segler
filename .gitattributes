@@ -1,0 +1,36 @@
+# Line endings, decided here rather than by whichever machine cloned.
+#
+# Git for Windows installs with `core.autocrlf=true`, which converts every text
+# file to CRLF on checkout. For Rust sources that is invisible. For the shell
+# scripts under `packaging/` it is not: a `#!/bin/sh` script with CRLF endings
+# fails on Linux with a message naming an interpreter that does not exist,
+# because the carriage return is part of the path it tried to run.
+#
+# **This was measured on the first Windows checkout of this repository**, on
+# 2026-09-04, and every one of `build-deb.sh`, `install.sh`, `check-libraries.sh`
+# and `version.sh` had been checked out with CRLF. Nothing in the repository was
+# wrong - `core.autocrlf` converts back on the way in, so what is stored is LF
+# either way - and nothing had failed yet, because those four are Linux scripts
+# that no Windows lane runs. The Linux lane would have found it the first time
+# somebody cloned there from a Windows push.
+#
+# `text=auto eol=lf` normalizes to LF in the repository and checks out LF
+# everywhere, so a file written on Windows is a file that still runs on Debian.
+# This is slipcase-desktop's file and its reasoning; this repository went four
+# stages without one because it had only ever been cloned on Linux.
+* text=auto eol=lf
+
+# The templated files. `control.in` becomes a member of a Debian archive and the
+# two manual pages become roff, and both formats are line-oriented with no CRLF
+# in them.
+*.in text eol=lf
+
+# Not text, whatever a heuristic makes of the contents. The `.ico` files and the
+# Store's PNGs are committed artifacts - `packaging/windows/README.md` says why -
+# and a newline conversion applied to one is a corrupted icon that nothing would
+# report.
+*.png binary
+*.ico binary
+*.icns binary
+*.deb binary
+*.dclx binary

@@ -66,6 +66,47 @@ walkthroughs used.
 16. `packaging/linux/check-libraries.sh` passes on both backends. It is a
     command and not part of CI because it needs a display.
 
+## Windows: the package
+
+Against the MSIX, installed. `dist/Segler-X.Y.Z.0-x64-signed-certified.msix` is
+the copy to install; the one beside it with no suffix is unsigned and is what
+the Store is given, and the shell will not accept it. Items 21 and 22 are the
+script route and want the package uninstalled first.
+
+17. `Add-AppxPackage dist\Segler-X.Y.Z.0-x64-signed-certified.msix` succeeds,
+    and **Segler** appears in the Start menu with the sailboat on it. Pin it:
+    the pinned tile and the taskbar button carry the same drawing.
+18. **The taskbar button is not on a coloured square.** `BackgroundColor` is
+    `transparent`, so a missing `altform-unplated` asset puts the icon on a
+    plate of the user's accent colour; the assets exist and `resources.pri` is
+    what makes them resolve, and both fail silently. This is the one item that
+    needs looking at rather than reading, and slipcase-desktop found it by
+    photographing a taskbar.
+19. **Explorer draws a `.dclx` and a `.dclg` with their own icons**, blue and
+    cream, at list size and at extra-large size, and does not draw the same
+    picture for both. Both offer Segler under *Open with*.
+20. **Double-click each.** The packaged binary opens it - check the path is
+    under `WindowsApps` and not a copy somewhere else - and no console window
+    appears behind the window.
+21. **`install.ps1` with the package uninstalled.** Both extensions register,
+    `reg query "HKCU\Software\Classes\.dclx" /s` shows the ProgID, and a
+    double-click opens the copy under `%LOCALAPPDATA%\Programs\Segler`. Then
+    `uninstall.ps1`, and both extensions go back to having no handler rather
+    than to a broken one.
+22. **The overlap, deliberately.** With both the package and the scripts
+    registered, a double-click puts up the *how do you want to open this file*
+    picker rather than choosing either. That is why `README.md` says to run
+    `uninstall.ps1` before installing the package, and it is worth seeing once.
+23. **The window at 125% and 150% display scaling**, and moved between two
+    monitors at different scalings if there are two. The DPI declaration is in
+    the embedded application manifest and takes effect before any of this
+    program's code runs; winit sets the same awareness at run time, so a defect
+    here shows as a wrong first frame rather than a wrong window.
+24. **Add/Remove Programs.** The script install's entry is there with the
+    version and the icon, and removing it from there removes the association,
+    the Start menu shortcut and the files. The package's entry is Windows'
+    own and removing it takes the package.
+
 ## What earlier runs cost
 
 **Walk through the first usable slice, not the fourth.** Four stages were

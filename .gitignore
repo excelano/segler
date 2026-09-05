@@ -15,3 +15,8 @@
 /packaging/windows/identity.psd1
 /packaging/windows/SUBMITTING.local.md
 /packaging/macos/SUBMITTING.local.md
+
+# `make-ico`'s own build directory. It is a standalone package under
+# `packaging/`, so the `/target` line above - which is anchored at the root -
+# does not reach it.
+/packaging/windows/make-ico/target/

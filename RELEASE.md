@@ -66,22 +66,87 @@ cross-compiles and there is no arm64 machine to run a build on.
 
 ## Windows
 
-Cloned from `slipcase-desktop/packaging/windows` by the Windows lane. What
-carries over unchanged: `check-imports.ps1`, which walks the PE import table
-and refuses any DLL not known to ship with Windows; `.cargo/config.toml`,
-already here, which links the CRT in for that target alone because 0.1.1 of
-slipcase-desktop linked `VCRUNTIME140.dll` and failed certification; and
-`build-msix.ps1`'s four refusals. What changes: the manifest's names and
-identity, the icon drawn from `packaging/linux/icons/segler-desktop.svg`
-through `make-ico`, and the file type associations, which are two here
-(`.dclx` and `.dclg`) where Slipcase had one. `build.rs` for the embedded
-application manifest is the one build script the tree may carry, and it
-compiles nothing.
+**Built, signed, installed and certified on 2026-09-04.** What follows is the
+process; `packaging/windows/README.md` is the reasoning and `git log` is what
+each run found.
 
-Do not rebuild before uploading: a rebuild of identical source is a different
-file, and the artefact uploaded has to be the one the certification kit passed.
+    cargo build --release --workspace
+    powershell -ExecutionPolicy Bypass -File packaging\windows\build-msix.ps1 -SelfSign
+    # from an elevated prompt, once the package is worth certifying:
+    powershell -ExecutionPolicy Bypass -File packaging\windows\build-msix.ps1 -SelfSign -Certify
 
-The Partner Center reservation is **Segler**.
+`build-msix.ps1` refuses rather than repairs, and its refusals are the point of
+it: a missing `identity.psd1`, a `Publisher` that is not an X.500 string, a
+version `version.sh` will not spell four ways, a binary of the wrong
+architecture, a debug binary (which is a console-subsystem one, and packaging
+that puts a console window behind the application), a binary importing a DLL
+Windows does not ship, a manifest placeholder it does not substitute, a
+`makepri` run that split resources into a bundle's shape, and a certification
+report that is missing, stale, or says something new.
+
+Then take the certified package aside and repack the one that is uploaded:
+
+    mv dist\Segler-X.Y.Z.0-x64.msix dist\Segler-X.Y.Z.0-x64-signed-certified.msix
+    powershell -ExecutionPolicy Bypass -File packaging\windows\build-msix.ps1
+
+**The Store is given the unsigned package** - it signs what it distributes - and
+the signed copy is only for installing here. Both come from one
+`target/release/segler-desktop.exe` with no rebuild between, which is what "do
+not rebuild before uploading" means: only the signature differs between the file
+the kit passed and the file that goes up. Rebuilding the *binary* is what must
+not happen.
+
+**One administrator action, once per machine.** The throwaway signing
+certificate has to reach `LocalMachine\TrustedPeople`; the per-user store is not
+read for this and importing there leaves deployment failing `0x800B0109` just
+the same. `build-msix.ps1` prints the two commands rather than attempting them.
+On a machine that has test-signed slipcase-desktop this is already spent:
+Partner Center assigns `Publisher` per account, so both applications carry the
+same X.500 subject and one certificate signs both.
+
+### The certification finding, and the decision
+
+The Windows App Certification Kit reports **PASS overall** with one test reading
+**FAIL: Blocked executables**, four messages: a reference to
+`kernel32.dll!CreateProcessW`, and blocked-executable references to `cmd.exe`,
+`\cmd.exe` and `Csi`.
+
+Traced rather than tolerated. The first three are the Rust standard library's
+batch-file spawn path in `std::process`, linked in because `webbrowser` is - it
+arrives under `egui-winit` and is what egui opens a hyperlink with. Nothing in
+this repository calls `Command::new`. The fourth is a substring scan hitting
+bytes that are not a name: the binary holds `Csinhf`, the statically linked
+UCRT's complex-sinh symbol, and a three-byte run inside `.text`. Neither is
+csi.exe and there is nothing to remove.
+
+The test is `OPTIONAL="TRUE"` in the report and the package is
+`APP_TYPE="Centennial"`, which is why an overall of PASS sits over a test
+reading FAIL. **The decision is to submit with it failing**, which is the
+decision slipcase-desktop took on 2026-08-28 for the same finding and which its
+certification then accepted. `build-msix.ps1`'s `$KNOWN_FINDINGS` records it so
+the gate is quiet about this and loud about anything else; that gate was checked
+in both directions, by running with the list empty and watching it refuse.
+
+`DPIAwarenessValidation` passed on the first run, which is the one non-optional
+test in the report's last requirement. slipcase-desktop failed it until
+`build.rs` existed; this repository had the embedded manifest from its first
+build.
+
+### What the Partner Center submission needs
+
+- The unsigned `dist/Segler-X.Y.Z.0-x64.msix`.
+- `packaging/store-listing.md` for every text field.
+- `packaging/windows/listing/store-logo-1080.png` for the *Store logo* field,
+  which refuses anything but 1080x1080 or 2160x2160 - not the 300x300 the older
+  documentation describes.
+- Screenshots at 1366x768 or larger, taken with `packaging/windows/screenshot.ps1`
+  against the installed package. Record which document was used in
+  `store-listing.md`.
+- `SUBMITTING.local.md` beside the packaging, which is not committed and is
+  where what the form did with all of it is written down.
+
+The Partner Center reservation is **Segler**, and `identity.psd1` holds what it
+assigned.
 
 ## macOS
 

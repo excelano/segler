@@ -1,0 +1,56 @@
+# The package identity Partner Center assigns, in one place.
+#
+# **This file is a template. Copy it to `identity.psd1` beside this one and put
+# the real values in.** That copy is not committed: `.gitignore` keeps it out
+# the way it keeps `packaging/macos/SUBMITTING.local.md` out, and for the same
+# reason - a public repository is not where an account's identifiers go, even
+# the ones that are not secret. `build-msix.ps1` refuses with this file's name
+# in the message when the copy is missing, so a fresh checkout finds out what it
+# needs rather than failing at `makeappx`.
+#
+# WHERE THE VALUES COME FROM, AND WHY THEY CANNOT BE GUESSED
+#
+# All of them are assigned when the name is reserved, and Partner Center shows
+# them under Product management -> Product identity. A package whose identity
+# disagrees with the reservation is rejected at upload rather than at review, so
+# there is no way to discover a wrong value except by trying one.
+#
+# `Publisher` is the X.500 string and not the display name. It is the value most
+# often copied wrong, and it is also the subject a test-signing certificate must
+# carry exactly: `signtool` refuses to sign a package whose manifest `Publisher`
+# and whose certificate subject differ. `build-msix.ps1 -SelfSign` builds the
+# subject from this value rather than from anything typed a second time.
+#
+# Two of the three are per-account rather than per-product, which is worth
+# knowing before hunting for them: Segler's `Publisher` and
+# `PublisherDisplayName` are the same strings slipcase-desktop carries, and only
+# `Name` and the calculated forms below differ. That is a reason to check them
+# against the page rather than to assume them - but it does mean a wrong
+# `Publisher` here is a typo rather than a lookup.
+#
+# The MSA application id on the same Partner Center page is needed by nothing
+# here. Do not put it in the copy.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+@{
+    # Package/Identity/Name
+    Name = 'PUBLISHER.AppName'
+
+    # Package/Identity/Publisher
+    Publisher = 'CN=00000000-0000-0000-0000-000000000000'
+
+    # Package/Properties/PublisherDisplayName
+    PublisherDisplayName = 'Your publisher display name'
+
+    # Not manifest values, and Partner Center calls them calculated forms: the
+    # package family name is the hash of the two identity values above, and the
+    # store id is what the listing URL is built from. They are here because they
+    # are what verifies an install and what links the listing, and both are
+    # otherwise only findable by logging in.
+    #
+    #   Get-AppxPackage PUBLISHER.AppName
+    #   https://apps.microsoft.com/detail/<StoreId>
+    PackageFamilyName = 'PUBLISHER.AppName_0000000000000'
+    StoreId = '000000000000'
+}

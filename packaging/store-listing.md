@@ -101,8 +101,33 @@ Segler is open source under the same licence as DocLang itself, and the library 
 
 ## Screenshots
 
-Not taken yet. Each lane takes its own with its platform's script cloned from
-slipcase-desktop, against the packaged application, light theme first because
-both platforms ship light by default, with the pointer parked off the window
-and the window photographed by its id. The document is the DocLang viewer's
-`2501.17887.dclx`, with the page image panel open in at least one shot.
+Each lane takes its own with its platform's script, against the packaged
+application, light theme first because both platforms ship light by default,
+with the pointer parked off the window and the window photographed by its
+handle. The page image panel is open in at least one shot, because it is the
+one thing in this application no other DocLang tool has.
+
+**Windows, 2026-09-04.** Two taken with `packaging/windows/screenshot.ps1`
+against the installed MSIX, at 1366x768, in the light theme:
+
+    01  the document, the tree and the element pane, at rest
+    02  the same with the page image panel open, boxes drawn over the scan
+
+They are in `dist/screenshots/` and are not committed; `dist` is where every
+built artefact goes and these are built from a document rather than from
+source.
+
+**The document is not the one this file first named.** It says the DocLang
+viewer's `2501.17887.dclx`, and that archive is not on the Windows machine —
+`~/clones` is a Linux path. What was used instead is a two-page archive written
+for the purpose, *Sailing directions for the western approaches*: a heading
+hierarchy, running text with bold and italic, a four-column table with a header
+row and a caption, an ordered and an unordered list, and two page images drawn
+to match. It is a better listing shot than a research paper, because every
+feature the listing claims is visible in one frame and none of it is somebody
+else's copyright. **It is not a substitute for the real corpus**, and
+`CHECKLIST.md` still asks for an archive with pictures as well, which this one
+has none of.
+
+Before either goes to Partner Center, look at it. A correct size is not a good
+screenshot, and the script says so when it writes one.

@@ -26,3 +26,6 @@ The first packaged build.
 - The `segler` command-line tool over the same library: inspect, validate,
   page, render, table, edit and corpus.
 - No network connection of any kind. No account, no telemetry.
+- On Windows, `.dclx` and `.dclg` each get their own icon and open here from a
+  double-click, whether Segler came from the Microsoft Store or from the
+  per-user install script.
