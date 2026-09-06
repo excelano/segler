@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.7">
+  <head>
+    <default_resolution width="1000" height="1400"/>
+  </head>
+  <heading level="1"><location value="80"/><location value="90"/><location value="920"/><location value="140"/>Sailing directions for the western approaches</heading>
+  <text><location value="80"/><location value="170"/><location value="920"/><location value="260"/>The <bold>western approaches</bold> are the waters lying to the west of the
+    channel, and this chapter describes them as a vessel meets them: the tides
+    first, then the <italic>hazards</italic>, then the harbours of refuge.</text>
+  <heading level="2"><location value="80"/><location value="300"/><location value="600"/><location value="340"/>Tides</heading>
+  <text><location value="80"/><location value="360"/><location value="920"/><location value="420"/>Springs run hard along the whole of this coast. The table below gives the
+    range at four ports, in metres, and the hour of high water after the
+    standard port.</text>
+  <table>
+    <location value="80"/><location value="450"/><location value="920"/><location value="640"/>
+    <caption>Tidal range and high water at four ports</caption>
+    <ched/>Port<ched/>Springs<ched/>Neaps<ched/>HW<nl/>
+    <fcel/>Falmouth<fcel/>5.3<fcel/>2.4<fcel/>-0:10<nl/>
+    <fcel/>Newlyn<fcel/>5.6<fcel/>2.6<fcel/>-0:35<nl/>
+    <fcel/>Padstow<fcel/>7.3<fcel/>3.4<fcel/>-0:48<nl/>
+    <fcel/>Milford<fcel/>7.0<fcel/>3.2<fcel/>+0:05<nl/>
+  </table>
+  <heading level="2"><location value="80"/><location value="680"/><location value="600"/><location value="720"/>Hazards</heading>
+  <list class="ordered">
+    <location value="80"/><location value="740"/><location value="920"/><location value="880"/>
+    <ldiv/>The Runnel Stone, which breaks in any swell from the west.
+    <ldiv/>The overfalls off the Lizard, worst on the ebb against a westerly.
+    <ldiv/>The bar at Padstow, which is not to be attempted on the ebb.
+  </list>
+  <page_break/>
+  <heading level="2"><location value="80"/><location value="90"/><location value="600"/><location value="130"/>Harbours of refuge</heading>
+  <text><location value="80"/><location value="160"/><location value="920"/><location value="240"/>Three harbours can be entered at any state of the tide in any weather a
+    small vessel should be out in at all. They are given here from east to
+    west, with the depth carried in over the sill.</text>
+  <list class="unordered">
+    <location value="80"/><location value="270"/><location value="920"/><location value="380"/>
+    <ldiv/>Falmouth, the deepest natural harbour on this coast.
+    <ldiv/>Newlyn, which dries in the inner basin but not at the wall.
+    <ldiv/>Milford Haven, entered in any wind and at any tide.
+  </list>
+  <picture class="chart">
+    <location value="120"/><location value="420"/><location value="880"/><location value="760"/>
+    <caption>Tidal height at Falmouth over one day of springs</caption>
+    <src uri="assets/figure.png"/>
+    <text><location value="180"/><location value="440"/><location value="700"/><location value="470"/>Tidal height at Falmouth, metres</text>
+    <text><location value="140"/><location value="470"/><location value="170"/><location value="740"/>4</text>
+    <text><location value="140"/><location value="540"/><location value="170"/><location value="560"/>3</text>
+    <text><location value="140"/><location value="610"/><location value="170"/><location value="630"/>2</text>
+    <text><location value="140"/><location value="680"/><location value="170"/><location value="700"/>1</text>
+    <text><location value="180"/><location value="740"/><location value="220"/><location value="760"/>0h</text>
+    <text><location value="480"/><location value="740"/><location value="530"/><location value="760"/>12h</text>
+    <text><location value="820"/><location value="740"/><location value="870"/><location value="760"/>24h</text>
+  </picture>
+  <text><location value="80"/><location value="800"/><location value="920"/><location value="860"/>A vessel that cannot make one of these three should stand well off and
+    wait for the tide rather than close the land in poor visibility.</text>
+</doclang>
