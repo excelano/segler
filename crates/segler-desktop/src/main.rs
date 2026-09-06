@@ -103,6 +103,18 @@ fn main() -> eframe::Result {
         None => viewport,
     };
 
+    // On macOS the bundle's `.icns` is the icon, and eframe has to be told
+    // not to override it. `epi_integration.rs` substitutes its own egui logo
+    // for any viewport that names no icon, and `app_icon.rs` hands that to
+    // `-[NSApplication setApplicationIconImage:]`, which outranks the bundle.
+    // David saw the egui logo on the Dock during the walkthrough of
+    // 2026-09-06, as he had on slipcase-desktop's; Launch Services and Finder
+    // resolved the right drawing throughout, which is why only looking at the
+    // Dock finds it. An empty `IconData` declines the icon rather than
+    // replacing it: eframe turns one into `None` and sets nothing.
+    #[cfg(target_os = "macos")]
+    let viewport = viewport.with_icon(egui::IconData::default());
+
     let options = eframe::NativeOptions {
         viewport,
         ..Default::default()
