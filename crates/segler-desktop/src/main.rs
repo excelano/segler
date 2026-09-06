@@ -12,6 +12,12 @@
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
 
+// `deny` rather than `forbid`, and the difference is the whole of the
+// exception. `forbid` cannot be lifted anywhere beneath it, and receiving a
+// document from macOS needs one Objective-C method, which cannot be written
+// without `unsafe`. Every module below is still denied; `opened_document` is
+// the single `allow`, and `segler-core`, where documents are actually read and
+// written, keeps `forbid` untouched. `CLAUDE.md` says what the exception costs.
 #![deny(unsafe_code)]
 // Windows creates a console for a console-subsystem process, and a file manager
 // launching this one is not attached to a terminal, so a double-clicked
@@ -25,6 +31,12 @@
 
 mod document;
 mod inspector;
+// The one exception to `deny(unsafe_code)` above, and the only module in this
+// application that writes `unsafe`. macOS is the only platform of the three
+// that does not deliver a double-clicked document as `argv[1]`.
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+mod opened_document;
 mod page;
 mod system_theme;
 
@@ -96,10 +108,25 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     let path = std::env::args_os().nth(1).map(PathBuf::from);
+
+    // Before `eframe`, because macOS dispatches the document that launched this
+    // application before `eframe`'s creation closure is reached, and AppKit's
+    // own handler refuses it there. slipcase-desktop measured both ways:
+    // registering later opened a document double-clicked into a running window
+    // and lost the one that started it.
+    #[cfg(target_os = "macos")]
+    opened_document::watch();
+
     eframe::run_native(
         "Segler",
         options,
         Box::new(move |cc| {
+            // After AppKit has installed its own handler for this event, and so
+            // late that the window exists to be woken. The other two platforms
+            // read the path out of `argv` above and never reach this.
+            #[cfg(target_os = "macos")]
+            opened_document::wake_with(&cc.egui_ctx);
+
             system_theme::follow(&cc.egui_ctx);
             Ok(Box::new(App::start(path)))
         }),
@@ -658,6 +685,18 @@ impl eframe::App for App {
 
         if matches!(self.dialog, Dialog::None) {
             self.shortcuts(&ctx);
+        }
+
+        // A document double-clicked in Finder, which arrives as an Apple Event
+        // rather than as an argument. The same as choosing it in the dialog:
+        // Cmd+O replaces what is open without asking either, and a document
+        // that arrives while a modal is up waits for it, since `taken`
+        // consumes and asking early would lose it rather than defer it.
+        #[cfg(target_os = "macos")]
+        if matches!(self.dialog, Dialog::None) {
+            if let Some(path) = opened_document::taken() {
+                self.open(&path);
+            }
         }
 
         let title = self.title();
