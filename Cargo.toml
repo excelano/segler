@@ -25,3 +25,33 @@ thiserror = "2"
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 # A save writes beside the target and renames into place.
 tempfile = "3"
+
+# A Mac App Store submission of slipcase-desktop was refused on 2026-08-31 under
+# Guideline 2.5.1 for referencing `_CGSSetWindowBackgroundBlurRadius`, a
+# private CoreGraphics symbol nothing there or here calls. `winit` declares it
+# in `platform_impl/macos/ffi.rs` and calls it from `WindowDelegate::set_blur`,
+# neither behind a feature nor a `cfg`, and review reads the symbol table rather
+# than the call graph. Measured on this tree on 2026-09-06: the release binary
+# imported it and `_CGSMainConnectionID` beside it before this block existed,
+# and neither afterwards. `packaging/macos/build-app.sh` refuses a binary that
+# carries any symbol like them.
+#
+# A build flag does not remove it: slipcase-desktop measured fat LTO with
+# `-Wl,-dead_strip` still carrying it, the call sitting behind a runtime
+# `if attrs.blur` the optimizer will not fold.
+#
+# Upstream removed it in winit#4541 on 2026-07-23, behind a `private-apple-apis`
+# feature that is off by default, and no published release carries that yet:
+# 0.30.13 is the newest stable, which is the version this tree resolves. This is
+# that change on the `v0.30.13` tag, pinned by revision so the branch cannot
+# move under it, and the same revision slipcase-desktop ships with. **Delete it
+# when a winit release carries the gate.** Harmless on Linux and Windows, where
+# the patched file is not compiled.
+#
+# The branch is two commits and the second is why `Cargo.lock` may move by one
+# line beyond winit's own entry: patching from a git repository makes that
+# repository's other workspace members candidates, and winit's tree carries
+# `dpi` behind a `path =` that `cargo publish` strips. Check what the lockfile
+# did on any re-pin.
+[patch.crates-io]
+winit = { git = "https://github.com/excelano/winit", rev = "3cfd905679da3ca241b97dea723211b580620a27" }
