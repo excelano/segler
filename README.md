@@ -9,7 +9,7 @@ structure, semantics, layout and reading order of a document in one place.
 Most DocLang is produced by models, from PDFs and scans, and a model is
 sometimes wrong. Segler shows the document as a reader would see it and lets
 a person edit it there: retype a misread line, change a heading's level, fix
-a table cell, move a paragraph. When an archive carries the page scans the
+a table cell, remove what should not be there. When an archive carries the page scans the
 model read, they can be opened beside the document to check a doubtful line
 against the page. What it saves is a valid DocLang document or archive.
 

@@ -90,6 +90,23 @@ OPEN SOURCE
 
 Segler is open source under the same licence as DocLang itself, and the library underneath it is a separate crate anyone can build on: github.com/excelano/segler.
 
+## URLs
+
+Both forms ask for the same three, and both lanes take them from here:
+
+| Field | URL |
+| --- | --- |
+| Privacy policy | https://excelano.com/legal/#segler |
+| Support | https://excelano.com/segler/#support |
+| Marketing / website | https://excelano.com/segler/ |
+
+The page at `excelano.com/segler/` is the support and marketing URL both, the
+way slipcase-desktop's is. It went live on 2026-09-06 saying the release is on
+its way; the store badges and the apt install block appear on it as each lands,
+by three switches at the top of its source, and the reviewer's sample archive
+is offered from it once `packaging/review/sailing-directions.dclx` is copied
+beside it, as `packaging/review/README.md` says.
+
 ## Keywords
 
 **Mac App Store** (100 characters, comma-separated, no spaces after commas):
