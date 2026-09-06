@@ -68,7 +68,7 @@ $ErrorActionPreference = 'Stop'
 # a list of things somebody else measured. Traced rather than tolerated, and all
 # four messages come from two places:
 #
-#   Blocked executables     Four messages. `kernel32.dll!CreateProcessW`, the
+#   Blocked executables     Five messages. `kernel32.dll!CreateProcessW`, the
 #                           `cmd.exe /e:ON /v:OFF /d /c` argument string and
 #                           `\cmd.exe` are the Rust standard library's
 #                           batch-file spawn path in `std::process`, linked in
@@ -78,12 +78,29 @@ $ErrorActionPreference = 'Stop'
 #                           `Command::new`; `grep` finds no occurrence in any of
 #                           the three crates.
 #
-#                           The fourth, a reference to "Csi", is a substring
-#                           scan hitting bytes that are not a name. The binary
-#                           holds `Csinhf`, the statically linked UCRT's
-#                           complex-sinh symbol, and a three-byte run inside
-#                           `.text` between two instruction fragments. Neither
-#                           is csi.exe and there is nothing to remove.
+#                           The fourth and fifth, references to "Csi" and
+#                           "CMd", are a substring scan hitting bytes that are
+#                           not a name. The binary holds `Csinhf`, the
+#                           statically linked UCRT's complex-sinh symbol, and a
+#                           three-byte run inside `.text` between two
+#                           instruction fragments. Neither is csi.exe and there
+#                           is nothing to remove.
+#
+#                           "CMd" arrived on 2026-09-06, against the v0.1.0
+#                           package; the 2026-09-04 run reported four messages.
+#                           Its three occurrences were located: the
+#                           displacement bytes of a `lea rax, [rip+...]` in
+#                           `.text`, and twice inside the embedded font data.
+#                           A displacement moves when any code above it moves,
+#                           so a new coincidental match is expected rather than
+#                           alarming. RELEASE.md carries the trace.
+#
+#                           Note what this list does and does not gate. The
+#                           comparison below is on a test's name and verdict;
+#                           the messages are printed for a person to read. A
+#                           new message inside a known finding passes quietly,
+#                           which is why the printed messages are read at each
+#                           release rather than trusted.
 #
 #                           The test is `OPTIONAL="TRUE"` in the report and the
 #                           package is `APP_TYPE="Centennial"`, which is why an

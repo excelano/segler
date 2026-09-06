@@ -159,6 +159,26 @@ claims is visible across four frames and none of it is somebody else's
 copyright. **It is not a substitute for the real corpus**, which is what
 `CHECKLIST.md` asks for and what the Linux lane has.
 
+**The document used is `packaging/review/sailing-directions.dclx`**, which is
+the same archive under the name it has now that it is committed rather than
+sitting in one machine's `dist/screenshots/`. It is the document the review
+notes send a tester to, at
+`https://github.com/excelano/segler/releases/download/v0.1.0/sailing-directions.dclx`,
+so the file the listing shows and the file a reviewer downloads are one file.
+`packaging/review/README.md` is why it is served from the release.
+
+**Checked against the v0.1.0 package rather than assumed, on 2026-09-06.** The
+four shots were taken on 2026-09-05 from a binary built before two commits
+landed, so they were not taken on trust: `screenshot.ps1` was run again
+against the package built from the tagged commit and installed, same document,
+same size, same light theme, and the result was compared with `01-document.png`
+pixel by pixel. Inside the window, zero pixels differ. The 1,468 that do are
+the outermost eight columns and the bottom ten rows, which are the frame edge
+and what shows behind it. Neither commit could have moved anything here - one
+is `#[cfg(target_os = "macos")]` and the other changes the status line after a
+save, which no shot shows - and now that is measured rather than reasoned. The
+2026-09-05 set stands and was not retaken.
+
 **macOS.** `packaging/macos/screenshot.sh` against a development-signed
 universal bundle built from the release commit with `--outdir dist-dev`,
 because the Store package cannot be launched off the Store and so no shot can

@@ -111,17 +111,34 @@ same X.500 subject and one certificate signs both.
 ### The certification finding, and the decision
 
 The Windows App Certification Kit reports **PASS overall** with one test reading
-**FAIL: Blocked executables**, four messages: a reference to
+**FAIL: Blocked executables**, five messages: a reference to
 `kernel32.dll!CreateProcessW`, and blocked-executable references to `cmd.exe`,
-`\cmd.exe` and `Csi`.
+`\cmd.exe`, `Csi` and `CMd`.
 
 Traced rather than tolerated. The first three are the Rust standard library's
 batch-file spawn path in `std::process`, linked in because `webbrowser` is - it
 arrives under `egui-winit` and is what egui opens a hyperlink with. Nothing in
-this repository calls `Command::new`. The fourth is a substring scan hitting
+this repository calls `Command::new`. The last two are a substring scan hitting
 bytes that are not a name: the binary holds `Csinhf`, the statically linked
 UCRT's complex-sinh symbol, and a three-byte run inside `.text`. Neither is
 csi.exe and there is nothing to remove.
+
+**`CMd` was four on 2026-09-04 and five on 2026-09-06**, against the v0.1.0
+package, and the difference is the binary and not the kit. All three of its
+occurrences were located and none is a name: one is the displacement bytes
+`43 4d 64 00` of a `lea rax, [rip+0x644d43]` in `.text`, and the other two are
+inside the embedded font data, the same run twice because two faces are
+embedded. A displacement moves whenever any code above it moves, and two
+commits landed between the two runs, so a new coincidental match is what to
+expect rather than a surprise. It is the `Csi` finding again with different
+bytes.
+
+**The gate did not catch this, and it is not meant to.** `$KNOWN_FINDINGS`
+matches on a test's name and verdict; the individual messages are printed for
+a person to read. A new message inside a known finding therefore passes
+quietly, which is the right trade for a test that will read FAIL on every run
+this project ever does - but it means the messages are read at each release
+rather than trusted. Reading them is what found this one.
 
 The test is `OPTIONAL="TRUE"` in the report and the package is
 `APP_TYPE="Centennial"`, which is why an overall of PASS sits over a test
