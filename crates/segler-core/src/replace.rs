@@ -57,6 +57,14 @@ fn replace(path: &Path, bytes: &[u8]) -> io::Result<()> {
         .unwrap_or(Path::new("."));
     let tmp = tempfile::NamedTempFile::new_in(dir)?;
     fs::write(tmp.path(), bytes)?;
+    // A temporary file is created readable by its owner alone, and a rename
+    // carries the temporary file's mode, not the original's. Without this
+    // every document saved on Linux came back 0600 whatever it had been,
+    // which the fleet's CI found the first time the test below ran there:
+    // macOS never reached this arm, and no Linux run had asked. The original
+    // exists here, since `write` handles the new-file case before this.
+    #[cfg(unix)]
+    fs::set_permissions(tmp.path(), fs::metadata(path)?.permissions())?;
     tmp.persist(path).map_err(|e| e.error)?;
     Ok(())
 }
