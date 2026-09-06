@@ -22,7 +22,7 @@
 
 <h4>What stays on your device</h4>
 <p><strong>Nothing between runs.</strong> Segler keeps no settings file, no recent-documents list, no remembered folder and no cache. Your undo history lives in memory for the life of the window and is gone when it closes.</p>
-<p><strong>Save writes the document you opened, or the path you choose, and nothing else.</strong> The write goes to a temporary file in the same folder that is then renamed into place, so an interrupted save leaves the old file whole rather than half-written. Markup you did not touch is written back byte for byte, including comments and whitespace; an archive's page images and assets are carried across untouched; a document you did not change is not rewritten at all. No backup copy is kept, and no file is created beside your document except the one that becomes it.</p>
+<p><strong>Save writes the document you opened, or the path you choose, and nothing else.</strong> The write goes to a temporary file that is then swapped into place whole, so an interrupted save leaves the old file as it was rather than half-written. On Linux and Windows that file waits beside the document; on macOS it waits in the place the system provides for a replacement on the document's own volume, because the App Sandbox does not let a program write beside a file you chose. Markup you did not touch is written back byte for byte, including comments and whitespace; an archive's page images and assets are carried across untouched; a document you did not change is not rewritten at all. No backup copy is kept, and nothing is created beside your document except, on Linux and Windows, the file that becomes it.</p>
 
 <h4>What leaves your device</h4>
 <p><strong>Nothing.</strong> Segler makes no network request. It has no update check, no license check, no analytics service, no crash reporter, and no remote logging. It hands nothing to another application either: there is no Open button and the window draws no web links. The project imports none of that on purpose, and the dependency list is short enough to read.</p>
@@ -38,7 +38,7 @@
 <ol class="legal-steps">
     <li>Search the project for anything that opens a network connection. There is nothing: no HTTP client, no TCP or UDP socket, no URL is contacted, and on Linux <code>lsof -i</code> against the running application lists nothing at all. What it does open are local sockets, to the display server and to the session message bus, which is how the file dialog is shown and how Segler asks whether the desktop is set to light or dark. Both stay on this machine. The dependency manifest lists a window toolkit, a file dialog, an image decoder for an archive's page images, a D-Bus client for that setting, and the DocLang library, none of which reaches the network.</li>
     <li>Search for analytics and crash-reporter names: Firebase, Sentry, Crashlytics, Mixpanel, Amplitude, Segment, GoogleAnalytics. None appears.</li>
-    <li>Search for what is written to disk. One thing: the document you saved, by way of the temporary file in its folder that becomes it. There is no configuration file, no cache and no recent-files list.</li>
+    <li>Search for what is written to disk. One thing: the document you saved, by way of the temporary file that becomes it. There is no configuration file, no cache and no recent-files list.</li>
     <li>Confirm there is no server component in the repository. There is nothing to self-host, because Segler has no backend by design.</li>
 </ol>
 

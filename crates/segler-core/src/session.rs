@@ -1063,10 +1063,19 @@ impl Session {
 
     // -- saving ---------------------------------------------------------
 
-    /// Write back to where the document came from.
-    pub fn save(&mut self) -> Result<(), Error> {
+    /// Write back to where the document came from, if anything has changed
+    /// since it was opened or last saved. A document with nothing to write
+    /// is left alone: the bytes on disk are already what a write would
+    /// produce, and a rewrite is not free on every platform, since under the
+    /// macOS sandbox it marks the file with quarantine and gives it the
+    /// process's group. Says whether it wrote.
+    pub fn save(&mut self) -> Result<bool, Error> {
         let path = self.path.clone().ok_or(Error::NoPath)?;
-        self.save_to(&path)
+        if !self.dirty() {
+            return Ok(false);
+        }
+        self.save_to(&path)?;
+        Ok(true)
     }
 
     /// Write to `path`, which becomes the session's path. An archive is
@@ -2081,6 +2090,37 @@ mod tests {
         assert!(std::fs::read_to_string(&path)
             .unwrap()
             .contains("<text>one</text>"));
+    }
+
+    #[test]
+    fn save_with_nothing_changed_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("d.dclg");
+        std::fs::write(&path, DOC).unwrap();
+        let mut s = Session::open(&path).unwrap();
+        // Something a write would replace, put there behind the session's
+        // back so the test can tell a skipped write from an identical one.
+        std::fs::write(&path, "untouched").unwrap();
+        assert!(!s.save().unwrap());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "untouched");
+
+        let text = id_at(&s, "/doclang/text[1]");
+        s.apply(Command::SetText {
+            id: text,
+            text: "one".into(),
+        })
+        .unwrap();
+        assert!(s.save().unwrap());
+        assert!(std::fs::read_to_string(&path)
+            .unwrap()
+            .contains("<text>one</text>"));
+
+        s.undo();
+        s.redo();
+        assert!(!s.dirty());
+        std::fs::write(&path, "untouched").unwrap();
+        assert!(!s.save().unwrap());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "untouched");
     }
 
     #[test]

@@ -24,7 +24,8 @@ The first packaged build.
 - Undo and redo for every edit, and a save that writes the opened file with
   the edits applied and nothing else changed. Markup that was not touched is
   written back byte for byte; an archive's page images and assets are
-  carried across untouched.
+  carried across untouched; a document with nothing changed is not rewritten
+  at all.
 - Validation against the DocLang schema and rules, with each finding a click
   from its element.
 - The `segler` command-line tool over the same library: inspect, validate,

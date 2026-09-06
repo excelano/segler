@@ -276,19 +276,21 @@ impl App {
                 .add_filter("DocLang", &["dclg", "dclx"])
                 .save_file()
             {
-                Some(path) => session.save_to(&path),
+                Some(path) => session.save_to(&path).map(|()| true),
                 None => return false,
             }
         };
         match result {
-            Ok(()) => {
-                self.status = format!(
-                    "Saved {}",
-                    session
-                        .path()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_default()
-                );
+            Ok(written) => {
+                let path = session
+                    .path()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_default();
+                self.status = if written {
+                    format!("Saved {path}")
+                } else {
+                    format!("Nothing to save: {path} is as it was opened")
+                };
                 true
             }
             Err(e) => {
