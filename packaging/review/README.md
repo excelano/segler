@@ -17,9 +17,16 @@ it and none of it is anybody else's copyright. It is in the Windows VM's
 a file three store submissions point at should not live in an ignored
 directory on one machine.
 
-Once it is here, copy it to `excelano.com/segler/sailing-directions.dclx`
-and put that URL in both stores' review notes and in
-`packaging/store-listing.md`'s screenshot section as the document used.
+Once it is here it is served from GitHub and nowhere else. The release
+step attaches it to the GitHub release beside the `.deb`, so its address is
+pinned to the version the screenshots were taken from:
+
+    https://github.com/excelano/segler/releases/download/vX.Y.Z/sailing-directions.dclx
+
+That URL goes in both stores' review notes and in `store-listing.md`'s
+screenshot section as the document used. Nothing is copied to a website:
+a file for two reviewers and the odd visitor has no need of one, and a copy
+somewhere else is a second thing to keep in step.
 
 **Until it is here, the review notes point at the DocLang project's own
 sample**, `https://www.doclang.ai/viewer/assets/2501.17887.dclx`, the

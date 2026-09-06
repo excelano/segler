@@ -103,9 +103,8 @@ Both forms ask for the same three, and both lanes take them from here:
 The page at `excelano.com/segler/` is the support and marketing URL both, the
 way slipcase-desktop's is. It went live on 2026-09-06 saying the release is on
 its way; the store badges and the apt install block appear on it as each lands,
-by three switches at the top of its source, and the reviewer's sample archive
-is offered from it once `packaging/review/sailing-directions.dclx` is copied
-beside it, as `packaging/review/README.md` says.
+by switches at the top of its source. The reviewer's document is a release
+asset on GitHub, not a page; `packaging/review/README.md` has the URL shape.
 
 ## Keywords
 

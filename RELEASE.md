@@ -58,8 +58,12 @@ repairs.
 Then tag, release, and ship:
 
     git tag -a vX.Y.Z            # the commit the store packages were built from
-    gh release create vX.Y.Z dist/segler_X.Y.Z_amd64.deb --notes-file …
+    gh release create vX.Y.Z dist/segler_X.Y.Z_amd64.deb \
+        packaging/review/sailing-directions.dclx --notes-file …
     apt-ship segler vX.Y.Z -y
+
+The archive is the reviewer's document; `packaging/review/README.md` says why
+it rides the release rather than a website.
 
 amd64 only, and say so wherever the install is written. Nothing here
 cross-compiles and there is no arm64 machine to run a build on.
