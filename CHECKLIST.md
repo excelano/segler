@@ -142,6 +142,58 @@ script route and want the package uninstalled first.
     Remove the user install: the association, the Start menu shortcut and the
     files go, and a double-click falls back to the package.
 
+## macOS: the package
+
+Against a **signed** bundle, because almost nothing below is true of an
+unsigned one: the App Sandbox is inert until the entitlement is inside a
+signature, so an unsigned bundle carrying `Segler.entitlements` is not
+sandboxed and every measurement against it is meaningless. A Store-signed
+bundle cannot be launched here at all, so the walkthrough is against a
+development-signed universal bundle from the same commit, and the real
+article through TestFlight.
+
+    ./packaging/macos/build-app.sh --universal --sign "Apple Development: …" --outdir dist-dev
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f dist-dev/Segler.app
+    ./packaging/macos/check-install.sh dist-dev/Segler.app
+
+25. **`check-install.sh` reports nothing mechanical wrong**, and says which
+    kind of build it is looking at. Its Launch Services rows read NO after a
+    `--store` build in the same `dist/`, correctly: that build withdraws its
+    own claim because the kernel would kill it if a double-click chose it.
+26. **Finder draws a `.dclx` and a `.dclg` with their own icons**, blue and
+    cream, at icon size and in list view, and Get Info names the Kind as
+    *DocLang archive* and *DocLang document* rather than *Document*.
+27. **Double-click each, cold.** With Segler not running, the window comes
+    up showing that document, its name in the title, and **no dialog**. The
+    failure this guards against is specific: *Segler cannot open files in the
+    "DocLang archive" format*, which is what AppKit says when nothing is
+    listening for the Apple Event.
+28. **Double-click one, warm.** With Segler already running and a different
+    document open, double-click another. It replaces what is on screen. This
+    is a different code path from the cold launch and one of the three
+    registration moments passes it while failing the cold one. Like Cmd+O it
+    does not ask about unsaved edits, which is the same on every platform.
+29. **Save under the sandbox.** Edit a line and press Cmd+S. The file is
+    rewritten and only the edit differs. Then look at what the platform did:
+    the file carries `com.apple.quarantine` naming `segler-desktop` as its
+    agent, because a sandboxed process's writes are marked, and it took the
+    process's primary group, as a renamed replacement would anywhere. Both
+    are the platform's and neither reaches a person; measured 2026-09-06.
+30. **Save a document on a second volume.** A mounted disk image is enough.
+    The rewrite has to wait on the document's own volume or the replacement
+    fails with `EXDEV`; slipcase-desktop found that with the rewrite under
+    `TMPDIR`, and `replace.rs` asks for the replacement directory beside the
+    document for that reason.
+31. **The window at 2x**, on a Retina panel, since the Intel Mac this was
+    built on has none. Every `.icns` size is a true rendering, and the layout
+    numbers were taken at 1x and 1.25x on Linux. Ask the machine rather than
+    trusting a note: `system_profiler SPDisplaysDataType | grep 'UI Looks
+    like'`.
+32. **On Apple silicon**, the same list against the TestFlight build, and
+    `check-install.sh` reporting the running process native rather than
+    under Rosetta. CI opens a document and sees a window on arm64 on every
+    push; it does not see a sandbox, an icon, or a person.
+
 ## What earlier runs cost
 
 **Walk through the first usable slice, not the fourth.** Four stages were

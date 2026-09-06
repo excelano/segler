@@ -8,8 +8,9 @@ asks everything that must be true before a release at once; and
 
 The shape is `excelano/slipcase-desktop`'s, and where a file here says
 something was measured, it was measured there first unless the file says
-otherwise. That repository's per-platform READMEs are the detail for Windows
-and macOS until this one has its own.
+otherwise. Each platform directory here has its own README; that
+repository's are the long form where a paragraph here says it was measured
+there.
 
 ## linux
 
@@ -125,6 +126,21 @@ Redistributable.
 
 ## macos
 
-Not here yet. Cloned from slipcase-desktop's directory of the same name by the
-lane that can build and test it, and `RELEASE.md` says what that lane needs to
-know before starting.
+The bundle the Mac App Store distributes, and the scripts around it.
+`macos/README.md` is the detail; the short version is that it is
+slipcase-desktop's directory cloned, with two type declarations where that
+application has one, imported rather than exported because DocLang is not
+this application's format, three `.icns` where it has one, and a sandbox
+that cost the save path a macOS arm.
+
+    cargo build --release
+    ./packaging/macos/build-app.sh --sign "Apple Development: …"
+    ./packaging/macos/build-app.sh --store PROFILE.provisionprofile
+
+`build-app.sh` is the counterpart of `check-imports.ps1` and
+`check-libraries.sh` as well as the packager: it refuses a binary importing
+a symbol no public framework header declares, which is what App Store review
+refuses as Guideline 2.5.1. `check-install.sh` asks an installed bundle what
+it is on the machine it is on, and `window-probe.swift` is what
+`.github/workflows/apple-silicon.yml` uses to ask whether the arm64 build
+drew a window for a document opened through Launch Services.

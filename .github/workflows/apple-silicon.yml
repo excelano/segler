@@ -1,0 +1,187 @@
+# Run the suite, the corpus and the window on Apple silicon, because nothing
+# else here can.
+#
+# The Mac this application is built and walked through on is x86_64, and a
+# Store build has to be universal. `cargo build --target aarch64-apple-darwin`
+# cross-compiles on an Intel Mac but cannot run what it produces, so without
+# this file the arm64 half of a released bundle is code nobody has executed.
+#
+# It reaches the window. `src/opened_document.rs` receives a double-clicked
+# document through an Apple Event, and `open` on a document goes through
+# Launch Services and produces the same event Finder does, so the last step
+# opens one and asks the window server whether a window appeared. That module
+# is the only `unsafe` in the desktop crate, and the one piece of the arm64
+# walkthrough no test could reach.
+#
+# It asks the window server rather than looking at a screenshot, and the
+# difference is the whole point: slipcase-desktop records `screencapture`
+# returning the desktop with every window omitted while reporting no error, so
+# a job asserting on pixels would go green against a build that drew nothing.
+# A screenshot is still uploaded, for a person to look at.
+#
+# What it does not reach is a sandbox, which needs a signing identity no
+# runner has; a high-density display; and the Finder icons. `CHECKLIST.md`
+# holds those and a green run here does not stand in for them. It also runs
+# the macOS arms of clippy, which the fleet's Linux `ci.yml` never compiles.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+name: Apple silicon
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-silicon-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  arm64:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The architecture is the whole reason this workflow exists, and a label
+      # is a promise rather than a fact: `macos-13` is Intel and `macos-14`
+      # onwards is Apple silicon, which is a mapping GitHub can change.
+      - name: The runner is Apple silicon
+        run: |
+          arch=$(uname -m)
+          echo "runner reports ${arch}"
+          [ "$arch" = arm64 ] || {
+            echo "this workflow exists to test arm64 and the runner is ${arch}" >&2
+            exit 1
+          }
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal --component clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: What is installed
+        run: rustc -V && cargo -V && xcodebuild -version | head -1
+
+      # `CLAUDE.md` forbids compiling C, and `cargo tree -i cc` cannot answer
+      # that because `wayland-backend` declares `cc` for a feature nothing
+      # turns on. This checks the outcome the rule means.
+      - name: Build, and nothing compiled C
+        run: |
+          cargo build --workspace --all-targets
+          target=$(cargo metadata --format-version 1 --no-deps |
+              sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          objects=$(find "${target}" -path '*/build/*' \( -name '*.o' -o -name '*.a' \) -print)
+          [ -z "$objects" ] || { echo "a build script produced object files:"; echo "$objects"; exit 1; }
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # The corpus is a command and never a test, because it needs a checkout
+      # of the specification, and a test that skips quietly on a machine that
+      # was never going to have one is worse than a command run on purpose. CI
+      # is a machine that can always have it. Pinned rather than tracking
+      # `main`, so a change to the corpus is a deliberate bump here and the
+      # run is reproducible.
+      #
+      # SPEC-PIN: 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
+      - name: The conformance corpus, every file
+        run: |
+          git clone --quiet https://github.com/doclang-project/doclang.git "${RUNNER_TEMP}/doclang"
+          git -C "${RUNNER_TEMP}/doclang" checkout --quiet --detach 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
+          cargo run -p segler -- corpus "${RUNNER_TEMP}/doclang"
+
+      # The bundle is the unit: a bare executable has no bundle identifier and
+      # Launch Services files it as a nameless foreground process, so nothing
+      # can be associated with it and no Apple Event reaches it. Built from
+      # the debug binary the steps above already produced, because a release
+      # build here would cost minutes to answer a question that does not
+      # depend on optimisation. `build-app.sh` also runs the private-symbol
+      # check on this slice, which the Intel lane's `--universal` build reads
+      # from the same binary but is worth asking of arm64 directly.
+      - name: Assemble the bundle
+        run: |
+          target=$(cargo metadata --format-version 1 --no-deps |
+              sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          ./packaging/macos/build-app.sh --binary "${target}/debug/segler-desktop"
+          lipo -info dist/Segler.app/Contents/MacOS/segler-desktop
+          ls dist/Segler.app/Contents/Resources
+
+      # `open` reaches Launch Services and delivers the Apple Event a
+      # double-click delivers, so this is `src/opened_document.rs` running on
+      # arm64. The document is the specification's own archive example, packed
+      # the way `segler-core::archive` reads it. The window's title is the
+      # document's name, so when the window server hands the title over it is
+      # checked too; a runner that withholds titles still gets a verdict on
+      # the window, and says so rather than passing quietly.
+      - name: A document opens, and a window appears
+        run: |
+          lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          "$lsregister" -f "$PWD/dist/Segler.app"
+
+          swiftc -O packaging/macos/window-probe.swift -o "${RUNNER_TEMP}/window-probe"
+
+          doc="${RUNNER_TEMP}/archive-demo.dclx"
+          ( cd "${RUNNER_TEMP}/doclang/examples/archive-demo" && zip -q -r -X "$doc" . -x '.*' )
+          cargo run -q -p segler -- inspect "$doc" | head -3
+
+          open -a "$PWD/dist/Segler.app" "$doc"
+
+          # Cold launch, a window server, and a first frame. Polled rather
+          # than slept at; 30 seconds is far past anything measured by hand.
+          for _ in $(seq 1 15); do
+            sleep 2
+            "${RUNNER_TEMP}/window-probe" Segler >/dev/null 2>&1 && break
+          done
+
+          set +e
+          report=$("${RUNNER_TEMP}/window-probe" Segler)
+          verdict=$?
+          set -e
+          echo "$report"
+          case "$verdict" in
+            0) echo "the arm64 build drew a window for a document opened through Launch Services" ;;
+            2)
+              # Not a failure of the application, and deliberately not a pass
+              # either: a check that can quietly not check is the thing this
+              # repository keeps getting caught by.
+              echo "::error::The window server listed nothing, so this run answered nothing about the window."
+              exit 1 ;;
+            *)
+              echo "::error::No window appeared for a document opened through Launch Services on arm64. This is src/opened_document.rs, the only unsafe in the desktop crate."
+              exit 1 ;;
+          esac
+
+          case "$report" in
+            *'titled "archive-demo.dclx'*)
+              echo "and the window is titled for the document, so the Apple Event delivered it" ;;
+            *'titled "'*)
+              echo "::error::A window appeared and its title does not name the document: the Apple Event launched the application without delivering it, which is the refusal this step exists to catch."
+              exit 1 ;;
+            *)
+              echo "::warning::The window server withheld the title, so whether the document was delivered rather than merely the application launched is not answered here." ;;
+          esac
+
+      # For eyes, not for the verdict. The step above is what passes or fails.
+      - name: Photograph it, for a person
+        if: always()
+        run: |
+          screencapture -x "${RUNNER_TEMP}/screen.png" || true
+          ls -l "${RUNNER_TEMP}/screen.png" || true
+
+      - name: Keep the photograph
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm64-window
+          path: ${{ runner.temp }}/screen.png
+          if-no-files-found: ignore

@@ -33,3 +33,6 @@ The first packaged build.
 - On Windows, `.dclx` and `.dclg` each get their own icon and open here from a
   double-click, whether Segler came from the Microsoft Store or from the
   per-user install script.
+- On macOS, the same two icons in Finder, a double-click that opens here
+  whether Segler is running or not, and a save that works inside the App
+  Sandbox every Mac App Store application runs in.

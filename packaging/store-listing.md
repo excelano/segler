@@ -143,5 +143,20 @@ claims is visible across four frames and none of it is somebody else's
 copyright. **It is not a substitute for the real corpus**, which is what
 `CHECKLIST.md` asks for and what the Linux lane has.
 
+**macOS.** `packaging/macos/screenshot.sh` against a development-signed
+universal bundle built from the release commit with `--outdir dist-dev`,
+because the Store package cannot be launched off the Store and so no shot can
+ever be of the exact artefact uploaded; the commit is what makes them the
+same application. Its default is 1440x900, one of the four sizes App Store
+Connect accepts and the largest an Intel Mac without a Retina panel can make;
+2560x1600 and 2880x1800 want a backing scale of 2. It captures the window by
+its id rather than its rectangle, parks the pointer in a corner first, and
+refuses a capture of the wrong size. It needs Accessibility permission for
+the terminal that runs it. The script was run on 2026-09-06 against the
+specification's own `archive-demo`, packed into a `.dclx`, and produced a
+correct frame; the four shots for the listing are taken from the release
+commit with the same document set as Windows, and recorded here when they
+are.
+
 Before either goes to Partner Center, look at it. A correct size is not a good
 screenshot, and the script says so when it writes one.

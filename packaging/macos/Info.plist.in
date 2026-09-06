@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The bundle's property list. `build-app.sh` substitutes @VERSION@ and @BUILD@
+  from Cargo.toml, the way `packaging/debian/control.in` is substituted.
+
+  Two kinds of declaration do the association, and they are not the same
+  thing. `UTImportedTypeDeclarations` says what a DocLang archive and a DocLang
+  document *are*. `CFBundleDocumentTypes` says that this application handles
+  them. A bundle carrying only the second claims documents it never described;
+  one carrying only the first describes types nothing opens.
+
+  The declarations are **imported** rather than exported, and this is where
+  the bundle differs from slipcase-desktop's, whose type is its own. DocLang
+  is the LF AI & Data Foundation's format and `spec.md` is its authority; this
+  application edits it and does not define it, so exporting the type would
+  claim an ownership the platform would then believe. An imported declaration
+  is what macOS uses for an extension nothing else on the machine declares,
+  which today is every machine, and it yields to an exported one the day the
+  DocLang project ships its own. The identifiers are in this application's
+  namespace because the specification names no UTI; if the project adopts
+  one, these change to it, the way `packaging/linux/mime/doclang.xml` says the
+  provisional archive media type would.
+
+  `LSHandlerRank` is Default rather than Owner for the same reason. Editor
+  rather than Viewer for `CFBundleTypeRole`, because Save writes the document
+  back and Viewer would be a claim to the platform that is not true.
+
+  Two types with two icons, because a file type draws its own icon by its own
+  mechanism and `.dclx` and `.dclg` should tell apart in Finder the way they
+  do in a Linux file manager. `RELEASE.md` records the morning the Windows
+  lane spent learning that.
+
+  `LSApplicationCategoryType` is required by App Store Connect and refused at
+  upload without one. Productivity is what `segler-desktop.desktop` says with
+  `Office;WordProcessor;`, and the honest fit for an editor.
+
+  `LSMinimumSystemVersion` is 11.0. Nothing here calls anything newer than
+  the Apple Event manager and `NSFileManager`, and 11.0 is where Apple silicon
+  begins, so an arm64 slice cannot claim lower whatever the floor says. The
+  executable has to agree: `build-app.sh --universal` refuses a slice built
+  for a different floor, and `MACOSX_DEPLOYMENT_TARGET=11.0` is what sets it.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>segler-desktop</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.excelano.segler-desktop</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
+	<!--
+	  "Segler" rather than the crate name, which is DESIGN.md 9's naming
+	  rule and the same choice `eframe::run_native` makes for the window
+	  title. Both stores took the bare name on 2026-09-04.
+	-->
+	<key>CFBundleName</key>
+	<string>Segler</string>
+	<key>CFBundleDisplayName</key>
+	<string>Segler</string>
+
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<!--
+	  Not @VERSION@. App Store Connect deduplicates uploads by this key: it
+	  must increase on every upload of a bundle, including a rejected one
+	  resubmitted with nothing changed. The release version cannot do that,
+	  so this is the commit count, which only rises.
+	  `packaging/version.sh --build` is where it comes from and says why.
+	-->
+	<key>CFBundleVersion</key>
+	<string>@BUILD@</string>
+	<key>CFBundleIconFile</key>
+	<string>segler-desktop</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!--
+	  Answers the export compliance question in the bundle rather than in a
+	  web form, so it is asked once here instead of on every upload. Without
+	  it App Store Connect marks each build "Missing Compliance" and holds it
+	  out of TestFlight until somebody clicks through a dialog.
+
+	  `false` is the honest answer. This application implements no
+	  cryptography and makes no network call, so the exemption for HTTPS does
+	  not even arise. An archive is a ZIP, and `zip` is built with `deflate`
+	  alone; an encrypted member is refused, not decrypted.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>DocLang archive</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.excelano.doclang-archive</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>dclx</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>DocLang document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.excelano.doclang-document</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>dclg</string>
+		</dict>
+	</array>
+
+	<!--
+	  Conformance is the macOS half of what `sub-class-of` does in
+	  `packaging/linux/mime/doclang.xml`, and true for the same reasons: an
+	  archive is a ZIP, so an archive tool has something to offer, and a bare
+	  document is XML, so a text editor does. `public.data` is stated for the
+	  archive although `public.zip-archive` already conforms to it, so a
+	  reader does not have to walk Apple's conformance tree to learn that an
+	  archive is a file of bytes; `public.xml` conforms to `public.text` and
+	  through it to `public.data` already.
+
+	  The extensions and the markup's media type are the specification's;
+	  the archive's media type is the provisional one `doclang.xml` declares
+	  and explains. There is no magic-bytes tag, for the reason that file
+	  carries no `<magic>`: a ZIP signature identifies every OPC package
+	  alike, and an XML prolog identifies every XML file alike.
+	-->
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.excelano.doclang-archive</string>
+			<key>UTTypeDescription</key>
+			<string>DocLang archive</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeIconFile</key>
+			<string>dclx</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>dclx</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.doclang.archive+zip</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.excelano.doclang-document</string>
+			<key>UTTypeDescription</key>
+			<string>DocLang document</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.xml</string>
+			</array>
+			<key>UTTypeIconFile</key>
+			<string>dclg</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>dclg</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.doclang.document+xml</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

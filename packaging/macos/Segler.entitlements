@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What a development build is signed with. The App Sandbox is mandatory on the
+  Mac App Store, and these two are the whole of what this application needs.
+
+  `files.user-selected.read-write` is the grant a person gives by choosing a
+  document in the open panel or a destination in the save panel. Nothing else
+  is asked for: no network, no camera, no address book, and in particular no
+  temporary exception. One path had to change to live inside this much, and
+  it is recorded: `crates/segler-core/src/replace.rs` for the save, which
+  cannot create a temporary file beside a document under this grant.
+
+  The entitlement does nothing until it is inside a signature. An unsigned
+  bundle carrying this file is not sandboxed, which is why the measurements in
+  CHECKLIST.md are all made against a signed one, and why an Apple Development
+  certificate is enough to make them. A Store build is signed with these two
+  and the two identifiers the profile grants; the Store path of `build-app.sh` writes
+  that file rather than this repository carrying the team identifier.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

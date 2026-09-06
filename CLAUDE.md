@@ -84,10 +84,14 @@ could replace the egui one without touching the core. Logic that appears in
 `segler-desktop` and would be needed by any other front-end is in the wrong
 crate.
 
-**Unsafe has one home per platform arm, if it ever needs one.** `segler-core`
-is `forbid`; `segler-desktop` is `deny`, which can be lifted for exactly one
-module when a platform demands it, the way slipcase-desktop's document-open
-handler on macOS does. Adding one is a decision to take with David.
+**Unsafe has one home, and it is named.** `segler-core` is `forbid` and that
+does not move; the macOS save path in `replace.rs` compiles under it because
+the `objc2-foundation` bindings are safe functions. `segler-desktop` is
+`deny`, lifted for exactly one module, `opened_document.rs`, because macOS
+delivers a double-clicked document as an Apple Event and receiving one needs
+an Objective-C method that cannot be written without `unsafe`. It is
+slipcase-desktop's module renamed. A second `allow` is a decision to take
+with David.
 
 ---
 

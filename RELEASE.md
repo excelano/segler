@@ -150,36 +150,95 @@ assigned.
 
 ## macOS
 
-Cloned from `slipcase-desktop/packaging/macos` by the Mac lane. What carries
-over: `build-app.sh`, the entitlements and the sandbox, the universal binary,
-`CFBundleVersion` from `version.sh --build`. What changes: two exported type
-declarations rather than one, `CFBundleTypeRole` **Editor** for both because
-this application writes the document back, and **three** `.icns` from the
-three SVGs, not one.
+**Built, signed, sandboxed and packaged on 2026-09-06**, on an Intel Mac
+running macOS 15.7 with Xcode 26.3. What follows is the process;
+`packaging/macos/README.md` is the reasoning and `git log` is what each run
+found.
 
-That last is a correction rather than a detail, and it is here because the
-Windows lane got it wrong first. This line said "the `.icns` from the same
-SVG", singular, and `packaging/windows` was built the same way — one icon, the
-application's — before it became clear that a file type draws its own icon by
-its own mechanism, and that pointing both DocLang types at the application's
-drawing puts one picture on a `.dclx` and a `.dclg` alike. Windows now builds
-`segler.ico`, `dclx.ico` and `dclg.ico`; macOS wants the same three, one for
-the bundle and one per exported type declaration, or the two kinds are
-indistinguishable in Finder while a Linux file manager tells them apart.
+    MACOSX_DEPLOYMENT_TARGET=11.0 cargo build --release -p segler-desktop --target x86_64-apple-darwin
+    MACOSX_DEPLOYMENT_TARGET=11.0 cargo build --release -p segler-desktop --target aarch64-apple-darwin
+    ./packaging/macos/build-app.sh --store ~/Downloads/Segler_Mac_App_Store.provisionprofile
+    ./packaging/macos/check-install.sh dist/Segler.app
 
-**One thing is a blocker rather than a clone.** A Mac App Store submission of
-slipcase-desktop was refused under Guideline 2.5.1 for a private CoreGraphics
-symbol that `winit` 0.30 declares whether or not it is called, and review reads
-the symbol table. Until a winit release ships the upstream gate, a Store build
-needs slipcase-desktop's `[patch.crates-io]` on `excelano/winit`, pinned by
-revision, in the workspace `Cargo.toml`. Its `Cargo.toml` says which revision
-and why the lockfile moves by one line when it is added. Add it on the Mac lane
-and commit it; it is harmless on the other two platforms.
+`--store` produces what a submission is: a universal bundle carrying the
+profile as `embedded.provisionprofile`, signed for distribution, wrapped by
+`productbuild --component` into a signed `.pkg`. Nothing account-specific is
+written down; the team and application identifier are read out of the
+profile, so the profile is the only copy and cannot drift from a second one.
+It refuses before it builds on a missing, invalid or expired profile, on an
+application identifier that does not match `CFBundleIdentifier`, on a slice
+built for a floor other than the one `Info.plist` declares, and on anything
+but exactly one matching signing identity of each kind. It refuses after on a
+signature missing the sandbox or the identifier, on any file still carrying
+`com.apple.quarantine`, and on a bundle that does not verify.
+
+`build-app.sh` also refuses a binary importing a symbol from a system
+framework that the framework's public headers do not declare, the macOS
+counterpart of `check-imports.ps1` and `check-libraries.sh`. slipcase-desktop
+was refused under Guideline 2.5.1 for a private CoreGraphics symbol `winit`
+links unconditionally, and this tree's release binary carried the same two
+symbols until the workspace `Cargo.toml` took that repository's
+`[patch.crates-io]` on `excelano/winit`. Delete the patch when a winit
+release carries the gate, and the check is what says whether it is safe to.
+
+**The deployment floor is not optional.** Without it the x86_64 slice is
+built for 10.12 while the bundle declares 11.0, and `build-app.sh --universal`
+refuses the disagreement rather than shipping a bundle promising a floor its
+executable does not keep.
+
+**A Store-signed build cannot be launched off the Store**: AMFI refuses its
+restricted entitlements without a profile covering the machine, and a Mac App
+Store profile covers none. `--store` therefore withdraws the bundle's Launch
+Services claim as its last step, and `check-install.sh` on the fresh package
+reports Launch Services not knowing it, which is correct there and wrong for
+an installed copy. Two things follow. Screenshots can never be of the exact
+artefact uploaded, so build a development or Developer ID bundle from the
+same commit with `--outdir dist-dev`, photograph that with
+`packaging/macos/screenshot.sh`, and say so in `packaging/store-listing.md`.
+And the walkthrough against the real article goes through TestFlight, which
+exists for macOS and is the cheapest way onto an Apple silicon machine.
+
+Then validate before uploading, because an upload refused for something local
+is a slow way to learn it, and upload:
+
+    xcrun altool --validate-app -f dist/Segler.pkg -t macos --apiKey KEY_ID --apiIssuer ISSUER_ID
+    xcrun altool --upload-app   -f dist/Segler.pkg -t macos --apiKey KEY_ID --apiIssuer ISSUER_ID
+
+The key is the one installed at `~/.appstoreconnect/private_keys`; the issuer
+is in App Store Connect under Users and Access, Integrations, and is written
+in `SUBMITTING.local.md` and nowhere else. **A rejection can arrive only by
+email**: an upload can answer *UPLOAD SUCCEEDED with no errors* and be refused
+afterwards with nothing in the web interface saying so, which is how
+slipcase-desktop learned about ITMS-91109. Check mail after every upload.
+
+**The two things the sandbox changed, both measured here.** A double-clicked
+document does not arrive as an argument on macOS; it arrives as an Apple
+Event, and `crates/segler-desktop/src/opened_document.rs` is the one module in
+this repository that writes `unsafe` to receive it. And Save could not create
+its temporary file beside the document, because the open panel's grant
+covers the file and not its directory; `crates/segler-core/src/replace.rs`
+carries the macOS arm. Both were run on 2026-09-06 against a
+development-signed universal bundle: a cold `open` on an archive drew a window
+titled for it, a second `open` replaced the document in that window, and
+Cmd+S under the sandbox rewrote the file byte for byte with nothing left
+beside it.
+
+### What the App Store Connect submission needs
+
+- `dist/Segler.pkg`, built from the tagged commit.
+- `packaging/store-listing.md` for every text field.
+- Screenshots at one of App Store Connect's sizes, `screenshot.sh`'s default
+  being 1440x900, taken against a development or Developer ID bundle from
+  the same commit.
+- `SUBMITTING.local.md` beside the packaging, which is not committed and is
+  where what the form did with all of it is written down, with the account's
+  identifiers.
 
 The App Store Connect record is **Segler**, App ID `com.excelano.segler-desktop`,
 SKU `segler-desktop`. Apple drops a reserved name after an unstated period
 with no build uploaded, so the first Store build is a deadline as well as a
-step.
+step. The profile in `~/Downloads` is *Segler Mac App Store*, expiring
+2027-08-29.
 
 ## Step 4: the readiness review
 
