@@ -7,4 +7,4 @@ segler (0.1.0) unstable; urgency=medium
     each finding a click from its element. The segler command-line tool over
     the same library: inspect, validate, page, render, table, edit and corpus.
 
- -- David M. Anderson <david.anderson@excelano.com>  Fri, 04 Sep 2026 19:11:01 -0500
+ -- David M. Anderson <david.anderson@excelano.com>  Sun, 06 Sep 2026 14:40:19 -0500
