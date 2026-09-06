@@ -1,0 +1,46 @@
+<!--
+  The privacy section for excelano.com/legal/#segler.
+
+  Written to be pasted into `~/excelano.com/legal/index.html` under
+  Applications, whose structure and voice it follows: what it is, the short
+  version, what stays, what leaves, what it does not collect, how to check,
+  and the one thing outside the application's control. Not committed to the
+  website from here, because that repository is not this one's to push.
+
+  Every claim is checkable against this repository at the commit that shipped
+  the release the section describes. The stores' Privacy Policy URL is
+  https://excelano.com/legal/#segler.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<h3 id="segler">Segler (macOS, Windows, Linux) — Privacy</h3>
+<p>Segler is an open-source desktop application for reviewing and correcting DocLang documents, the structured markup a converter such as Duckling writes from a PDF or an Office file. It opens a <code>.dclg</code> or <code>.dclx</code>, renders it, validates it, lets you correct what the converter misread, and saves. It makes no network connection of any kind. This section is the canonical statement of what Segler does and does not do with your data. The application is open source so that every claim here is independently verifiable, and the claims are enforced by how the code is built rather than by a policy that depends on the developer behaving well. The repository is at <a href="https://github.com/excelano/segler" rel="noopener noreferrer">github.com/excelano/segler</a>, and the <code>segler</code> command-line tool in the same repository is covered by the same statement.</p>
+
+<h4>The short version</h4>
+<p>Segler talks to nothing. There is no server behind it, no account to create, no analytics, no telemetry, no crash reporting, and no third-party service. It reads the document you open and writes it back where you tell it to. On the stores its App Privacy declaration is &ldquo;Data Not Collected,&rdquo; because the developer collects nothing and has nowhere to put it.</p>
+
+<h4>What stays on your device</h4>
+<p><strong>Nothing between runs.</strong> Segler keeps no settings file, no recent-documents list, no remembered folder and no cache. Your undo history lives in memory for the life of the window and is gone when it closes.</p>
+<p><strong>Save writes the document you opened, or the path you choose, and nothing else.</strong> The write goes to a temporary file in the same folder that is then renamed into place, so an interrupted save leaves the old file whole rather than half-written. Markup you did not touch is written back byte for byte, including comments and whitespace; an archive's page images and assets are carried across untouched; a document you did not change is not rewritten at all. No backup copy is kept, and no file is created beside your document except the one that becomes it.</p>
+
+<h4>What leaves your device</h4>
+<p><strong>Nothing.</strong> Segler makes no network request. It has no update check, no license check, no analytics service, no crash reporter, and no remote logging. It hands nothing to another application either: there is no Open button and the window draws no web links. The project imports none of that on purpose, and the dependency list is short enough to read.</p>
+
+<h4>What Segler does not collect</h4>
+<p>Segler does not collect the contents of your documents, the corrections you make, the names of your files, what you opened, when you opened it, how often, which buttons you pressed, screen views, crash reports, performance metrics, diagnostic logs, device identifiers, advertising identifiers, installation identifiers, or anything else. It has no way to, because it makes no network connection. This section and the open-source repository are the substance behind the &ldquo;Data Not Collected&rdquo; label.</p>
+
+<h4>One thing outside the application's control</h4>
+<p>Both stores collect their own figures about installs and, on Apple's platforms, aggregate anonymous crash logs from devices where <strong>Share With App Developers</strong> is turned on. Segler neither collects that data nor contains any code that touches it, but the store may still show the developer account aggregate, anonymised numbers regardless of what the application does. On macOS the control is at <strong>System Settings &gt; Privacy &amp; Security &gt; Analytics &amp; Improvements &gt; Share With Mac Developers</strong>; on Windows, under <strong>Settings &gt; Privacy &amp; security &gt; Diagnostics &amp; feedback</strong>. Either applies to every application, not only this one. A copy installed from the Excelano apt repository or built from source involves no store at all.</p>
+
+<h4>How to verify the claims yourself</h4>
+<p>The full source is at <a href="https://github.com/excelano/segler" rel="noopener noreferrer">github.com/excelano/segler</a>. To check the claims here independently:</p>
+<ol class="legal-steps">
+    <li>Search the project for anything that opens a network connection. There is nothing: no HTTP client, no TCP or UDP socket, no URL is contacted, and on Linux <code>lsof -i</code> against the running application lists nothing at all. What it does open are local sockets, to the display server and to the session message bus, which is how the file dialog is shown and how Segler asks whether the desktop is set to light or dark. Both stay on this machine. The dependency manifest lists a window toolkit, a file dialog, an image decoder for an archive's page images, a D-Bus client for that setting, and the DocLang library, none of which reaches the network.</li>
+    <li>Search for analytics and crash-reporter names: Firebase, Sentry, Crashlytics, Mixpanel, Amplitude, Segment, GoogleAnalytics. None appears.</li>
+    <li>Search for what is written to disk. One thing: the document you saved, by way of the temporary file in its folder that becomes it. There is no configuration file, no cache and no recent-files list.</li>
+    <li>Confirm there is no server component in the repository. There is nothing to self-host, because Segler has no backend by design.</li>
+</ol>
+
+<h4>Updates to this section</h4>
+<p>This section changes as the application changes. The change history is the git log of <code>packaging/privacy-entry.html</code> in the Segler source repository, which is where this text is maintained.</p>
