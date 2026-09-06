@@ -124,11 +124,10 @@ with the pointer parked off the window and the window photographed by its
 handle. The page image panel is open in at least one shot, because it is the
 one thing in this application no other DocLang tool has.
 
-**Windows, 2026-09-05**, retaken after the editing work and the toolbar fix,
-so no shot shows a control that is no longer there. Four, with
-`packaging/windows/shot` scripts against the **installed MSIX** - each one
-reports the `WindowsApps` path it opened, so a developer build cannot creep
-into a listing by accident - at 1366x768, light theme:
+**Windows, 2026-09-06**, from `v0.1.0` (`b1b71f0`), taken with
+`packaging/windows/screenshot.ps1` against the **installed MSIX** - the
+association is what opens the document, so the window photographed is the
+packaged build and not a developer one - at 1366x768, light theme:
 
     01  the document, the tree and the element pane, at rest
     02  the same with the page image panel open, boxes drawn over the scan
@@ -167,17 +166,49 @@ notes send a tester to, at
 so the file the listing shows and the file a reviewer downloads are one file.
 `packaging/review/README.md` is why it is served from the release.
 
-**Checked against the v0.1.0 package rather than assumed, on 2026-09-06.** The
-four shots were taken on 2026-09-05 from a binary built before two commits
-landed, so they were not taken on trust: `screenshot.ps1` was run again
-against the package built from the tagged commit and installed, same document,
-same size, same light theme, and the result was compared with `01-document.png`
-pixel by pixel. Inside the window, zero pixels differ. The 1,468 that do are
-the outermost eight columns and the bottom ten rows, which are the frame edge
-and what shows behind it. Neither commit could have moved anything here - one
-is `#[cfg(target_os = "macos")]` and the other changes the status line after a
-save, which no shot shows - and now that is measured rather than reasoned. The
-2026-09-05 set stands and was not retaken.
+**Three of the four were retaken on 2026-09-06, and why the check that passed
+them was the wrong check.** The 2026-09-05 set was compared with a fresh
+capture from the tagged package pixel by pixel, and `01-document.png` came back
+identical inside the window. That proved the binary draws the same thing. It
+did not prove the pictures were any good, and one of them was not:
+`03-picture.png` was a photograph of the desktop - a terminal, an Explorer
+ribbon, and a sliver of Segler - which had been in the store folder since it
+was taken. Diffing one frame and concluding four is the mistake; each frame is
+now looked at.
+
+The cause was in `screenshot.ps1`, which called `SetForegroundWindow` and did
+not check it. That call is advisory - Windows refuses it from a process that
+does not own the foreground and returns false - and the capture is
+`CopyFromScreen` over the window's rectangle, so a window that stayed behind is
+photographed as whatever is on top of it. The script now taps ALT to release
+the foreground lock, retries, verifies with `GetForegroundWindow`, and refuses
+rather than writing; it polls the frame until two reads agree; and it checks
+the foreground again between settling and the shutter. Those first two are what
+the paragraph above already claimed it did, which is its own lesson.
+
+It also grew `-Click`, for the same reason `packaging/macos/screenshot.sh`
+grew `--click`: two of the four frames want a toolbar control pressed and the
+toolbar has no shortcut for the page image or the page arrows. One parameter
+taking a flat list of coordinates, consumed in pairs, because `powershell
+-File` collapses an array argument into one string.
+
+**The four, all from the installed v0.1.0 package at 1366x768, light theme:**
+
+    01  no clicks - the document, the tree and the element pane, at rest
+    02  -Click 423,40 - the page image panel open, boxes drawn over the scan
+    03  -Click 353,40,620,440 - page two, then the picture itself: it is
+        selected in the tree and on the page at once, and the element pane
+        carries its kind, path, class, layer, box and markup
+    04  the six findings, from `problems.dclg`
+
+01, 02 and 03 are `packaging/review/sailing-directions.dclx`, so the name in
+the title bar is the name of the file a reviewer downloads. 04 is the faulty
+copy, which is a different document on purpose and is not committed.
+
+Shot 03 is better than the one it replaces was ever going to be. The 09-05
+attempt reached page two but selected nothing, so the element pane sat empty
+under a listing that claims an element's properties are in reach; the clicks
+now land because the window is verified in front before they are sent.
 
 **macOS.** `packaging/macos/screenshot.sh` against a development-signed
 universal bundle built from the release commit with `--outdir dist-dev`,
