@@ -16,3 +16,12 @@ xmlparser.workspace = true
 thiserror.workspace = true
 zip.workspace = true
 tempfile.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Two calls in `src/replace.rs`, both safe functions, so this crate stays
+# `forbid(unsafe_code)`: the directory macOS provides for replacing a file
+# from, and the replacement itself, which is how a sandboxed application
+# saves over a document a person chose. Features are named rather than taken;
+# both crates are already in the desktop crate's tree under `winit` and `rfd`.
+objc2 = { version = "0.6", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSFileManager", "NSPathUtilities", "NSError", "NSArray", "NSEnumerator"] }

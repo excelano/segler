@@ -23,6 +23,7 @@ use crate::blocks::{self, Block};
 use crate::doclang::{self, Kind};
 use crate::inline;
 use crate::otsl::{self, CellKind, Grid};
+use crate::replace;
 use crate::tree::{self, Document, Element, ElementId, Node, Text};
 use crate::validate::{self, Finding};
 
@@ -1070,21 +1071,16 @@ impl Session {
 
     /// Write to `path`, which becomes the session's path. An archive is
     /// repacked with every other part carried over; bare markup is written
-    /// as is. The write goes to a temporary file beside the target and is
-    /// renamed into place, so a failure leaves the old file whole.
+    /// as is. The bytes replace the file whole or not at all, so a failure
+    /// leaves the old file as it was; `replace` says how, and why macOS
+    /// does it differently.
     pub fn save_to(&mut self, path: &Path) -> Result<(), Error> {
         let markup = self.markup();
         let bytes = match &self.archive {
             Some(original) => archive::repack(original, &markup)?,
             None => markup.into_bytes(),
         };
-        let dir = path
-            .parent()
-            .filter(|d| !d.as_os_str().is_empty())
-            .unwrap_or(Path::new("."));
-        let tmp = tempfile::NamedTempFile::new_in(dir)?;
-        fs::write(tmp.path(), &bytes)?;
-        tmp.persist(path).map_err(|e| e.error)?;
+        replace::write(path, &bytes)?;
         if self.archive.is_some() {
             self.archive = Some(bytes);
         }

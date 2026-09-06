@@ -19,6 +19,7 @@ pub mod blocks;
 pub mod doclang;
 pub mod inline;
 pub mod otsl;
+mod replace;
 pub mod session;
 pub mod summary;
 pub mod tree;
