@@ -170,9 +170,40 @@ its id rather than its rectangle, parks the pointer in a corner first, and
 refuses a capture of the wrong size. It needs Accessibility permission for
 the terminal that runs it. The script was run on 2026-09-06 against the
 specification's own `archive-demo`, packed into a `.dclx`, and produced a
-correct frame; the four shots for the listing are taken from the release
-commit with the same document set as Windows, and recorded here when they
-are.
+correct frame.
+
+**macOS, 2026-09-06**, from `v0.1.0` (`b1b71f0`, build 41), against a
+development-signed universal bundle in `dist-dev`, at 1440x900, light
+appearance. Four, the same frames as Windows:
+
+    01  the document, the tree and the element pane, at rest
+    02  the same with the page image panel open, boxes drawn over the scan
+    03  page two: the picture from the archive's assets, with its caption
+    04  a document with six findings, each naming the element that carries it
+
+The first three are `packaging/review/sailing-directions.dclx`, the document
+the review notes point at. The fourth is a copy of it with six faults put in
+by hand, the kind a model makes: an element that is not DocLang, a heading
+at level 0, a list class the spec does not have, a table row one cell short,
+a location block with its x coordinates reversed, and a location past the
+page's edge. It is in `dist-dev/screenshots/` beside the shots and is not
+committed; `segler validate` on it reports the six.
+
+Two things about how they were made. The script grew `--click X,Y`, because
+two of the frames want a toolbar control pressed and the toolbar has no
+shortcut for the page image: shot 02 is `--click 422,39` and shot 03 is that
+followed by `--click 352,39` for the next-page arrow, coordinates read off
+shot 01. And the application follows the system appearance, which on the
+machine that took these is dark; the bundle was made to draw light with
+`NSRequiresAquaSystemAppearance` written into its sandbox container's
+preferences rather than by switching the desktop. The documents were opened
+from `/Users/Shared/DocLang/` so that the status line, which prints the
+path, does not carry a user name into a listing.
+
+The screenshots on App Store Connect are these four, uploaded through the
+API on 2026-09-06; shot 02 there is the frame the committed script produced,
+which differs from a first attempt by a few thousand pixels of text
+antialiasing and nothing a person can see.
 
 Before either goes to Partner Center, look at it. A correct size is not a good
 screenshot, and the script says so when it writes one.

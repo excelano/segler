@@ -11,6 +11,12 @@
 #   ./packaging/macos/screenshot.sh --app dist-devid/Segler.app \
 #       --document dist/archive-demo.dclx --out shots/01-window.png
 #
+# `--click X,Y`, repeatable, presses a control before the capture, X and Y
+# measured from the frame's top-left corner on a shot of the same size; it is
+# how a shot shows anything other than a document at rest. The press goes
+# through the window server as a move, a press and a release, because a
+# System Events `click at` toggled nothing here.
+#
 # THREE THINGS MEASURED RATHER THAN ASSUMED
 #
 # **It captures the window by its id, not by its rectangle.** `screencapture -R`
@@ -45,6 +51,12 @@ set -eu
 app=""
 document=""
 out=""
+# Points to click, in order, after the window is sized and before the pointer
+# is parked: what puts the window in the state the shot is of, since a listing
+# wants more than one document at rest. Each is X,Y from the top-left corner
+# of the frame, title bar included, so a coordinate read off an earlier shot
+# of the same size is the coordinate to give.
+clicks=""
 # 1440x900 is one of the four sizes App Store Connect accepts for macOS, and the
 # largest reachable without a Retina display. The other two — 2560x1600 and
 # 2880x1800 — need a backing scale of 2, which is why they are not the default.
@@ -65,6 +77,7 @@ while [ $# -gt 0 ]; do
         --app) app="${2:?--app needs a bundle}"; shift 2 ;;
         --document) document="${2:?--document needs a file}"; shift 2 ;;
         --out) out="${2:?--out needs a path}"; shift 2 ;;
+        --click) clicks="$clicks ${2:?--click needs X,Y}"; shift 2 ;;
         --width) width="${2:?}"; shift 2 ;;
         --height) height="${2:?}"; shift 2 ;;
         --x) x="${2:?}"; shift 2 ;;
@@ -108,6 +121,18 @@ import Foundation
 // Park the pointer in the far corner. The corner rather than a constant: a
 // fixed coordinate is off-screen on a smaller display, and the window server
 // clamps to an edge, which could be the edge the window is on.
+// Press a control: move there, then a press and a release a moment apart, which is
+// what egui reads as a click. A System Events `click at` at the same point
+// toggled nothing here, measured twice; this did, and why was not chased.
+if CommandLine.arguments.contains("--click") {
+    let p = CGPoint(x: Double(CommandLine.arguments[2])!, y: Double(CommandLine.arguments[3])!)
+    for (kind, pause) in [(CGEventType.mouseMoved, 150_000), (.leftMouseDown, 80_000), (.leftMouseUp, 100_000)] {
+        CGEvent(mouseEventSource: nil, mouseType: kind, mouseCursorPosition: p, mouseButton: .left)!.post(tap: .cghidEventTap)
+        usleep(UInt32(pause))
+    }
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--park") {
     let screen = CGDisplayBounds(CGMainDisplayID())
     CGWarpMouseCursorPosition(CGPoint(x: screen.maxX - 1, y: screen.maxY - 1))
@@ -153,6 +178,11 @@ tell application "System Events"
 end tell
 OSA
 sleep 1
+
+for click in $clicks; do
+    swift "$helper" --click "$(( x + ${click%,*} ))" "$(( y + ${click#*,} ))"
+    sleep 2
+done
 
 swift "$helper" --park
 sleep 1
