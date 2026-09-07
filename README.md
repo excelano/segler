@@ -40,6 +40,12 @@ That installs the application, the `segler` command-line tool, and the desktop
 integration that opens a `.dclx` or `.dclg` on a double-click. Windows and
 macOS builds are on their way to the Microsoft Store and the Mac App Store.
 
+From crates.io, on any platform with a Rust toolchain, `cargo install segler`
+installs the command-line tool alone and `cargo install segler-desktop` the
+application. Neither carries the desktop integration, so a double-click reaches
+the application only through the apt package or `packaging/linux/install.sh`.
+The library both are built on is `segler-core`.
+
 ## Build
 
 ```
