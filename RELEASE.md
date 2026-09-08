@@ -14,17 +14,27 @@ same and has an `identity.psd1.example` beside it.
 
 ## The order
 
-1. **Linux**, which needs no other machine and where most shared work lands.
-2. **Windows**, on the Windows lane.
-3. **macOS**, on the Mac lane.
-4. **Back on Linux**, for the readiness review across all three.
+1. **Debian first.** Linux needs no other machine, most shared work lands
+   there, and apt is our own repository: publishing is one command,
+   unpublishing is a prune, and nothing sits in anybody's review queue. The
+   release is cut here, from `preflight.sh` green: the tag, the GitHub
+   release, the crates, and apt.
+2. **Then each store when its platform is ready**, in whichever order the
+   lanes are available: Windows on the Windows lane, macOS on the Mac lane. A
+   submission goes in when that platform's readiness review passes, and it
+   does not wait for the other platform.
 
-Nothing is submitted to a store until step 4. apt is the exception, taken
-deliberately: it is our own repository, publishing is one command and
-unpublishing is a prune, and nothing sits in anybody's review queue meanwhile.
-What that costs is that the readiness review has one more thing to check: that
-what apt is serving is a version the stores also have, or a later one whose
-difference is understood.
+**Amended 2026-09-08**, with slipcase-desktop's, whose loop this is. The order
+was Linux, Windows, macOS, and back on Linux for one readiness review across
+all three, with nothing submitted until then. It held every store behind the
+slowest lane and had stopped describing what happened across the fleet;
+slipcase-desktop's `RELEASE.md` names the three releases that were exceptions
+to it. What the rule bought is kept: a person reads the listing against the
+built artefact before it enters a queue, now per platform, at that platform's
+submission. apt may be ahead of a store for a while, and that is a stated
+fact rather than an exception: a store gets the same tag when its lane is
+ready, or a later one if a fix landed in between, which the version scheme
+allows.
 
 ## One number, three spellings
 
@@ -268,16 +278,18 @@ with no build uploaded, so the first Store build is a deadline as well as a
 step. The profile in `~/Downloads` is *Segler Mac App Store*, expiring
 2027-08-29.
 
-## Step 4: the readiness review
+## The readiness review, per platform
 
-Before either store submission, on Linux, with all three artefacts built from
-one tagged commit:
+Before a platform's submission, against that platform's artefact built from
+the tagged commit, on whichever machine has it. It was one review across all
+three platforms, on Linux, until 2026-09-08; *The order* says why it is not.
 
 - `packaging/store-listing.md` agrees with `CHANGELOG.md`, claim by claim,
   against the built application and not against memory. This is the drift
   slipcase-desktop caught most often.
-- The version is the same in every spelling, and `CFBundleVersion` is higher
-  than the last upload's.
-- `CHECKLIST.md` has been run on each platform against the packaged
+- The version is the same in the spellings that platform reads, and on macOS
+  `CFBundleVersion` is higher than the last upload's.
+- `CHECKLIST.md` has been run on that platform against the packaged
   application, not a developer build.
-- apt is serving the version the stores are about to be given.
+- apt is serving the tag being submitted, or a later one whose difference is
+  understood.
