@@ -17,6 +17,13 @@ path = "src/main.rs"
 
 [dependencies]
 segler-core.workspace = true
+# The language the window draws in, and the reader for the `.po` catalogues in
+# `po/`. Written inside slipcase-desktop and made a crate on 2026-09-09 so that
+# more than one application could have it. Pure Rust, no build script, and its
+# two dependencies are platform-gated: the operating system's own answer to
+# which language a person reads, which on macOS is the only answer available
+# because a bundle opened from Finder has no environment at all.
+potext = "0.1"
 # Defaults carry accesskit, which stays on. Same framework as slipcase-desktop
 # on purpose: one set of platform lessons for both applications.
 eframe = "0.36"

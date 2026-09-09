@@ -1,0 +1,374 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the segler package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: segler\n"
+"Report-Msgid-Bugs-To: https://github.com/excelano/segler/issues\n"
+"POT-Creation-Date: 2026-09-09 09:33-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: none\n"
+"Language: en-x-pseudo\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: crates/segler-desktop/src/document.rs:306
+msgid "picture: {src}"
+msgstr "[píctüré: {src} ······]"
+
+#: crates/segler-desktop/src/document.rs:307
+msgid "picture"
+msgstr "[píctüré ···]"
+
+#: crates/segler-desktop/src/document.rs:425
+msgid "(empty)"
+msgstr "[(émpty) ···]"
+
+#: crates/segler-desktop/src/document.rs:544
+msgid "(empty table)"
+msgstr "[(émpty täblé) ······]"
+
+#: crates/segler-desktop/src/document.rs:828
+msgid "cell"
+msgstr "[céll ··]"
+
+#: crates/segler-desktop/src/document.rs:829
+msgid "empty"
+msgstr "[émpty ···]"
+
+#: crates/segler-desktop/src/document.rs:830
+msgid "column header"
+msgstr "[cölümñ héädér ······]"
+
+#: crates/segler-desktop/src/document.rs:831
+msgid "row header"
+msgstr "[röw héädér ·····]"
+
+#: crates/segler-desktop/src/document.rs:832
+msgid "corner"
+msgstr "[cörñér ···]"
+
+#: crates/segler-desktop/src/document.rs:833
+msgid "section row"
+msgstr "[šéctíöñ röw ·····]"
+
+#: crates/segler-desktop/src/inspector.rs:46
+#: crates/segler-desktop/src/main.rs:587 crates/segler-desktop/src/main.rs:794
+msgid "Structure"
+msgstr "[Strüctüré ····]"
+
+#: crates/segler-desktop/src/inspector.rs:81
+msgid "Nothing on this page."
+msgstr "[Nöthíñg öñ thíš pägé. ·········]"
+
+#: crates/segler-desktop/src/inspector.rs:123
+msgid "Fold the picture's inner elements"
+msgstr "[Föld thé píctüré'š íññér éléméñtš ··············]"
+
+#: crates/segler-desktop/src/inspector.rs:125
+msgid "Show the picture's inner elements"
+msgstr "[Shöw thé píctüré'š íññér éléméñtš ··············]"
+
+#: crates/segler-desktop/src/inspector.rs:194
+#: crates/segler-desktop/src/main.rs:589
+msgid "Element"
+msgstr "[Éléméñt ···]"
+
+#: crates/segler-desktop/src/inspector.rs:198
+msgid "Select an element on the page or in the structure."
+msgstr ""
+"[Séléct äñ éléméñt öñ thé pägé ör íñ thé štrüctüré. ·····················]"
+
+#: crates/segler-desktop/src/inspector.rs:214
+msgid "Kind"
+msgstr "[Kíñd ··]"
+
+#: crates/segler-desktop/src/inspector.rs:227
+msgid "Path"
+msgstr "[Päth ··]"
+
+#: crates/segler-desktop/src/inspector.rs:232
+msgid "Level"
+msgstr "[Lévél ···]"
+
+#: crates/segler-desktop/src/inspector.rs:261
+msgid "Class"
+msgstr "[Cläšš ···]"
+
+#: crates/segler-desktop/src/inspector.rs:287
+msgid "Label"
+msgstr "[Läbél ···]"
+
+#: crates/segler-desktop/src/inspector.rs:289
+msgid "none"
+msgstr "[ñöñé ··]"
+
+#: crates/segler-desktop/src/inspector.rs:301
+msgid "Layer"
+msgstr "[Läyér ···]"
+
+#: crates/segler-desktop/src/inspector.rs:318
+msgid "Box"
+msgstr "[Böx ··]"
+
+#: crates/segler-desktop/src/inspector.rs:338
+msgid "Clear"
+msgstr "[Cléär ···]"
+
+#: crates/segler-desktop/src/inspector.rs:341
+msgid "Add"
+msgstr "[Ådd ··]"
+
+#: crates/segler-desktop/src/inspector.rs:359
+msgid "Text"
+msgstr "[Téxt ··]"
+
+#: crates/segler-desktop/src/inspector.rs:405
+msgid "Text (from its parts)"
+msgstr "[Téxt (fröm ítš pärtš) ·········]"
+
+#: crates/segler-desktop/src/inspector.rs:422
+msgid "Cell row {row}, column {column}"
+msgstr "[Céll röw {row}, cölümñ {column} ·············]"
+
+#: crates/segler-desktop/src/inspector.rs:447
+msgid "Remove element…"
+msgstr "[Rémövé éléméñt… ·······]"
+
+#: crates/segler-desktop/src/inspector.rs:452
+msgid "Markup"
+msgstr "[Märküp ···]"
+
+#: crates/segler-desktop/src/inspector.rs:467
+msgid "Problems"
+msgstr "[Pröblémš ····]"
+
+#: crates/segler-desktop/src/inspector.rs:469
+msgid "none; the document is valid"
+msgstr "[ñöñé; thé döcüméñt íš välíd ···········]"
+
+#: crates/segler-desktop/src/main.rs:283
+msgid "Opened {file}"
+msgstr "[Öpéñéd {file} ······]"
+
+#: crates/segler-desktop/src/main.rs:289
+msgid "{file}: {reason}"
+msgstr "[{file}: {reason} ·······]"
+
+#: crates/segler-desktop/src/main.rs:327
+msgid "Saved {file}"
+msgstr "[Sävéd {file} ·····]"
+
+#: crates/segler-desktop/src/main.rs:330
+msgid "Nothing to save: {file} is as it was opened"
+msgstr "[Nöthíñg tö šävé: {file} íš äš ít wäš öpéñéd ··················]"
+
+#: crates/segler-desktop/src/main.rs:337
+msgid "Save failed: {reason}"
+msgstr "[Sävé fäíléd: {reason} ·········]"
+
+#: crates/segler-desktop/src/main.rs:386
+msgid "Undid: {what}"
+msgstr "[Üñdíd: {what} ······]"
+
+#: crates/segler-desktop/src/main.rs:387
+msgid "Nothing to undo"
+msgstr "[Nöthíñg tö üñdö ·······]"
+
+#: crates/segler-desktop/src/main.rs:396
+msgid "Redid: {what}"
+msgstr "[Rédíd: {what} ······]"
+
+#: crates/segler-desktop/src/main.rs:398
+msgid "Nothing to redo"
+msgstr "[Nöthíñg tö rédö ·······]"
+
+#: crates/segler-desktop/src/main.rs:481
+msgid "Untitled"
+msgstr "[Üñtítléd ····]"
+
+#: crates/segler-desktop/src/main.rs:490
+msgid "Open…"
+msgstr "[Öpéñ… ···]"
+
+#: crates/segler-desktop/src/main.rs:496
+msgid "Save"
+msgstr "[Sävé ··]"
+
+#: crates/segler-desktop/src/main.rs:505
+msgid "Undo"
+msgstr "[Üñdö ··]"
+
+#: crates/segler-desktop/src/main.rs:511
+msgid "Redo"
+msgstr "[Rédö ··]"
+
+#: crates/segler-desktop/src/main.rs:534
+msgid "of {count}"
+msgstr "[öf {count} ·····]"
+
+#: crates/segler-desktop/src/main.rs:560
+msgid "Zoom"
+msgstr "[Zööm ··]"
+
+#: crates/segler-desktop/src/main.rs:573
+msgid "Fit"
+msgstr "[Fít ··]"
+
+#: crates/segler-desktop/src/main.rs:583
+msgid "Page image"
+msgstr "[Pägé ímägé ·····]"
+
+#: crates/segler-desktop/src/main.rs:612
+msgid "Formatting in this text"
+msgstr "[Förmättíñg íñ thíš téxt ··········]"
+
+#: crates/segler-desktop/src/main.rs:619
+msgid "Keep this edit as plain text?"
+msgstr "[Kéép thíš édít äš pläíñ téxt? ············]"
+
+#: crates/segler-desktop/src/main.rs:624
+msgid ""
+"{what} could not be matched to what you typed, so keeping this edit will "
+"write the line as plain text without them."
+msgstr ""
+"[{what} cöüld ñöt bé mätchéd tö whät yöü typéd, šö kéépíñg thíš édít wíll "
+"wríté thé líñé äš pläíñ téxt wíthöüt thém. "
+"···············································]"
+
+#: crates/segler-desktop/src/main.rs:626
+msgid ""
+"{what} could not be matched to what you typed, so keeping this edit will "
+"write the line as plain text without it."
+msgstr ""
+"[{what} cöüld ñöt bé mätchéd tö whät yöü typéd, šö kéépíñg thíš édít wíll "
+"wríté thé líñé äš pläíñ téxt wíthöüt ít. "
+"··············································]"
+
+#: crates/segler-desktop/src/main.rs:637
+msgid "Keep as plain text"
+msgstr "[Kéép äš pläíñ téxt ········]"
+
+#: crates/segler-desktop/src/main.rs:642 crates/segler-desktop/src/main.rs:688
+#: crates/segler-desktop/src/main.rs:714
+msgid "Cancel"
+msgstr "[Cäñcél ···]"
+
+#: crates/segler-desktop/src/main.rs:660
+msgid "Edit discarded; the formatting is unchanged"
+msgstr "[Édít díšcärdéd; thé förmättíñg íš üñchäñgéd ··················]"
+
+#: crates/segler-desktop/src/main.rs:674
+msgid "this element"
+msgstr "[thíš éléméñt ·····]"
+
+#: crates/segler-desktop/src/main.rs:677
+msgid "Remove element?"
+msgstr "[Rémövé éléméñt? ·······]"
+
+#: crates/segler-desktop/src/main.rs:679
+msgid "{what} and everything inside it will be removed. Undo brings it back."
+msgstr ""
+"[{what} äñd évérythíñg íñšídé ít wíll bé rémövéd. Üñdö bríñgš ít bäck. "
+"····························]"
+
+#: crates/segler-desktop/src/main.rs:684
+msgid "Remove"
+msgstr "[Rémövé ···]"
+
+#: crates/segler-desktop/src/main.rs:704
+msgid "Save changes?"
+msgstr "[Sävé chäñgéš? ······]"
+
+#: crates/segler-desktop/src/main.rs:705
+msgid "The document has unsaved changes."
+msgstr "[Thé döcüméñt häš üñšävéd chäñgéš. ··············]"
+
+#: crates/segler-desktop/src/main.rs:708
+msgid "Save and close"
+msgstr "[Sävé äñd clöšé ······]"
+
+#: crates/segler-desktop/src/main.rs:711
+msgid "Discard"
+msgstr "[Díšcärd ···]"
+
+#: crates/segler-desktop/src/main.rs:795
+msgid "Open a DocLang document or archive."
+msgstr "[Öpéñ ä DöcLäñg döcüméñt ör ärchívé. ···············]"
+
+#: crates/segler-desktop/src/main.rs:858
+msgid "Open a DocLang document or archive (Ctrl+O)."
+msgstr "[Öpéñ ä DöcLäñg döcüméñt ör ärchívé (Ctrl+Ö). ··················]"
+
+#: crates/segler-desktop/src/main.rs:892
+msgid "Text changed"
+msgstr "[Téxt chäñgéd ·····]"
+
+#: crates/segler-desktop/src/main.rs:897
+msgid "{name} set to {value}"
+msgstr "[{name} šét tö {value} ·········]"
+
+#: crates/segler-desktop/src/main.rs:900
+msgid "{name} removed"
+msgstr "[{name} rémövéd ······]"
+
+#: crates/segler-desktop/src/main.rs:902
+msgid "Label set to {value}"
+msgstr "[Läbél šét tö {value} ·········]"
+
+#: crates/segler-desktop/src/main.rs:904
+msgid "Label removed"
+msgstr "[Läbél rémövéd ······]"
+
+#: crates/segler-desktop/src/main.rs:906
+msgid "Layer set to {value}"
+msgstr "[Läyér šét tö {value} ·········]"
+
+#: crates/segler-desktop/src/main.rs:911
+msgid "Box changed"
+msgstr "[Böx chäñgéd ·····]"
+
+#: crates/segler-desktop/src/main.rs:912
+msgid "Box removed"
+msgstr "[Böx rémövéd ·····]"
+
+#: crates/segler-desktop/src/main.rs:913
+msgid "Changed to {kind}"
+msgstr "[Chäñgéd tö {kind} ·······]"
+
+#: crates/segler-desktop/src/main.rs:914
+msgid "Moved"
+msgstr "[Mövéd ···]"
+
+#: crates/segler-desktop/src/main.rs:915
+msgid "Inserted {kind}"
+msgstr "[Îñšértéd {kind} ·······]"
+
+#: crates/segler-desktop/src/main.rs:916
+msgid "Element removed"
+msgstr "[Éléméñt rémövéd ·······]"
+
+#: crates/segler-desktop/src/main.rs:918
+msgid "List item {number} changed"
+msgstr "[Líšt ítém {number} chäñgéd ···········]"
+
+#: crates/segler-desktop/src/main.rs:922
+msgid "Cell row {row}, column {column} changed"
+msgstr "[Céll röw {row}, cölümñ {column} chäñgéd ················]"
+
+#: crates/segler-desktop/src/main.rs:926
+msgid "Cell row {row}, column {column} is now {kind}"
+msgstr "[Céll röw {row}, cölümñ {column} íš ñöw {kind} ···················]"
+
+#: crates/segler-desktop/src/page.rs:157
+msgid "{name} is missing from the archive"
+msgstr "[{name} íš míššíñg fröm thé ärchívé ··············]"
+
+#: crates/segler-desktop/src/page.rs:164 crates/segler-desktop/src/page.rs:174
+msgid "{name}: {reason}"
+msgstr "[{name}: {reason} ·······]"

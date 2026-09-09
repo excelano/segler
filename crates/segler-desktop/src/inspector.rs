@@ -8,6 +8,9 @@
 use std::collections::HashSet;
 
 use eframe::egui::{self, Align};
+use potext::fill;
+
+use crate::i18n::t;
 use segler_core::doclang::Kind;
 use segler_core::otsl::{CellKind, Grid};
 use segler_core::session::{Command, ElementView, PageView, Session, TextTarget};
@@ -40,7 +43,7 @@ pub fn structure(
     expanded: &mut HashSet<ElementId>,
     out: &mut Requests,
 ) {
-    ui.heading("Structure");
+    ui.heading(t("Structure"));
     ui.add_space(4.0);
 
     // Which picture each row sits under, if any, so a selection inside a
@@ -75,7 +78,7 @@ pub fn structure(
         .id_salt("structure")
         .show(ui, |ui| {
             if page.rows.is_empty() {
-                ui.weak("Nothing on this page.");
+                ui.weak(t("Nothing on this page."));
             }
             for (i, row) in page.rows.iter().enumerate() {
                 if owner[i].is_some_and(|pic| !expanded.contains(&pic)) {
@@ -117,9 +120,9 @@ pub fn structure(
                         ));
                         if response
                             .on_hover_text(if open {
-                                "Fold the picture's inner elements"
+                                t("Fold the picture's inner elements")
                             } else {
-                                "Show the picture's inner elements"
+                                t("Show the picture's inner elements")
                             })
                             .clicked()
                         {
@@ -188,11 +191,11 @@ impl Editor {
         cell: Option<(ElementId, usize, usize)>,
         out: &mut Requests,
     ) {
-        ui.heading("Element");
+        ui.heading(t("Element"));
         ui.add_space(4.0);
         let Some(view) = view else {
             self.for_element = None;
-            ui.weak("Select an element on the page or in the structure.");
+            ui.weak(t("Select an element on the page or in the structure."));
             return;
         };
         if self.for_element != Some(view.id) {
@@ -208,7 +211,7 @@ impl Editor {
                     .num_columns(2)
                     .spacing([8.0, 6.0])
                     .show(ui, |ui| {
-                        ui.label("Kind");
+                        ui.label(t("Kind"));
                         match view.kind {
                             Some(k) => {
                                 ui.label(
@@ -221,12 +224,12 @@ impl Editor {
                         }
                         ui.end_row();
 
-                        ui.label("Path");
+                        ui.label(t("Path"));
                         ui.monospace(&view.path);
                         ui.end_row();
 
                         if matches!(view.kind, Some(Kind::Heading | Kind::FieldHeading)) {
-                            ui.label("Level");
+                            ui.label(t("Level"));
                             let mut level: u32 = view
                                 .attrs
                                 .iter()
@@ -255,7 +258,7 @@ impl Editor {
                             _ => None,
                         };
                         if let Some(values) = class_values {
-                            ui.label("Class");
+                            ui.label(t("Class"));
                             let current = view
                                 .attrs
                                 .iter()
@@ -281,9 +284,10 @@ impl Editor {
                         }
 
                         if view.kind.is_some_and(Kind::is_semantic) {
-                            ui.label("Label");
-                            let r = ui
-                                .add(egui::TextEdit::singleline(&mut self.label).hint_text("none"));
+                            ui.label(t("Label"));
+                            let r = ui.add(
+                                egui::TextEdit::singleline(&mut self.label).hint_text(t("none")),
+                            );
                             if r.lost_focus()
                                 && self.label.trim() != view.label.as_deref().unwrap_or("")
                             {
@@ -295,7 +299,7 @@ impl Editor {
                             }
                             ui.end_row();
 
-                            ui.label("Layer");
+                            ui.label(t("Layer"));
                             egui::ComboBox::from_id_salt("layer")
                                 .selected_text(&view.layer)
                                 .show_ui(ui, |ui| {
@@ -312,7 +316,7 @@ impl Editor {
                                 });
                             ui.end_row();
 
-                            ui.label("Box");
+                            ui.label(t("Box"));
                             ui.horizontal(|ui| {
                                 let mut changed = false;
                                 for (i, v) in self.bounds.iter_mut().enumerate() {
@@ -332,10 +336,10 @@ impl Editor {
                                     });
                                 }
                                 if view.bounds.is_some() {
-                                    if ui.small_button("Clear").clicked() {
+                                    if ui.small_button(t("Clear")).clicked() {
                                         out.commands.push(Command::SetBounds { id, bounds: None });
                                     }
-                                } else if ui.small_button("Add").clicked() {
+                                } else if ui.small_button(t("Add")).clicked() {
                                     out.commands.push(Command::SetBounds {
                                         id,
                                         bounds: Some([
@@ -353,7 +357,7 @@ impl Editor {
 
                 ui.add_space(8.0);
                 if view.editable_text {
-                    ui.label("Text");
+                    ui.label(t("Text"));
                     let r = ui.add(
                         egui::TextEdit::multiline(&mut self.text)
                             .desired_rows(4)
@@ -399,7 +403,7 @@ impl Editor {
                     // Its parts are edited where they are, and since the
                     // first Windows walkthrough that includes a list's items,
                     // which are edited in the document pane.
-                    ui.label("Text (from its parts)");
+                    ui.label(t("Text (from its parts)"));
                     let collapsed = view
                         .body_text
                         .split_whitespace()
@@ -415,7 +419,13 @@ impl Editor {
                         .and_then(|el| Grid::parse(el).at(row, col).map(|c| c.kind));
                     if let Some(current) = current {
                         ui.add_space(8.0);
-                        ui.label(format!("Cell row {}, column {}", row + 1, col + 1));
+                        ui.label(fill(
+                            t("Cell row {row}, column {column}"),
+                            &[
+                                ("row", &(row + 1).to_string()),
+                                ("column", &(col + 1).to_string()),
+                            ],
+                        ));
                         egui::ComboBox::from_id_salt("cell-kind")
                             .selected_text(cell_kind_name(current))
                             .show_ui(ui, |ui| {
@@ -438,12 +448,12 @@ impl Editor {
                 }
 
                 ui.add_space(8.0);
-                if ui.button("Remove element…").clicked() {
+                if ui.button(t("Remove element…")).clicked() {
                     out.remove = Some(id);
                 }
 
                 ui.add_space(12.0);
-                ui.label("Markup");
+                ui.label(t("Markup"));
                 let mut markup = view.markup.as_str();
                 ui.add(
                     egui::TextEdit::multiline(&mut markup)
@@ -458,9 +468,9 @@ impl Editor {
 /// The problems list: every finding, and a click goes to its element.
 pub fn problems(ui: &mut egui::Ui, session: &Session, findings: &[Finding], out: &mut Requests) {
     ui.horizontal(|ui| {
-        ui.heading("Problems");
+        ui.heading(t("Problems"));
         if findings.is_empty() {
-            ui.weak("none; the document is valid");
+            ui.weak(t("none; the document is valid"));
         } else {
             ui.weak(format!("{}", findings.len()));
         }

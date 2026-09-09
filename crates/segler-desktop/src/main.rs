@@ -40,6 +40,28 @@ mod opened_document;
 mod page;
 mod system_theme;
 
+/// The messages this window draws, in the language the desktop asks for.
+///
+/// `potext::catalog!` declares the catalogue in this crate. `segler-core` has
+/// none and gets none: it is the model and the command boundary, and a core
+/// that knew what language a window was in would be the wrong crate knowing
+/// it. Every sentence a person reads is produced here, including `describe`,
+/// which turns a `Command` into the line the status bar shows.
+mod i18n {
+    potext::catalog!();
+}
+use i18n::t;
+use potext::fill;
+
+/// Every language this application is translated into.
+const CATALOGUES: &[(&str, &str)] = &[
+    ("de", include_str!("../../../po/de.po")),
+    // Debug builds alone, so a release carries nothing of it. `po/pseudo.sh`
+    // says what it finds and why it is run before any German rather than after.
+    #[cfg(debug_assertions)]
+    ("en-x-pseudo", include_str!("../../../po/en-x-pseudo.po")),
+];
+
 use std::path::{Path, PathBuf};
 
 use eframe::egui::{self, Key, Modifiers, ViewportCommand};
@@ -89,6 +111,14 @@ fn window_icon() -> Option<egui::IconData> {
 }
 
 fn main() -> eframe::Result {
+    // Before anything that could put a sentence in front of somebody, which on
+    // the next lines is a document named on the command line and the refusal it
+    // may produce. The only call to `activate` in the application: nothing else
+    // asks what language it is in, and a lookup that finds nothing hands back
+    // the English it was given, so the test suite sees English whatever the
+    // machine is set to.
+    i18n::activate(CATALOGUES);
+
     let viewport = egui::ViewportBuilder::default()
         .with_app_id(APP_ID)
         .with_title("Segler")
@@ -250,9 +280,19 @@ impl App {
                 self.selected_cell = None;
                 self.expanded.clear();
                 self.editor = Editor::default();
-                self.status = format!("Opened {}", path.display());
+                self.status = fill(t("Opened {file}"), &[("file", &path.display().to_string())]);
             }
-            Err(e) => self.status = format!("{}: {e}", path.display()),
+            // The reason is the library's own sentence and stays as it wrote
+            // it; what is translated is everything this application says.
+            Err(e) => {
+                self.status = fill(
+                    t("{file}: {reason}"),
+                    &[
+                        ("file", &path.display().to_string()),
+                        ("reason", &e.to_string()),
+                    ],
+                );
+            }
         }
     }
 
@@ -287,14 +327,17 @@ impl App {
                     .map(|p| p.display().to_string())
                     .unwrap_or_default();
                 self.status = if written {
-                    format!("Saved {path}")
+                    fill(t("Saved {file}"), &[("file", &path)])
                 } else {
-                    format!("Nothing to save: {path} is as it was opened")
+                    fill(
+                        t("Nothing to save: {file} is as it was opened"),
+                        &[("file", &path)],
+                    )
                 };
                 true
             }
             Err(e) => {
-                self.status = format!("Save failed: {e}");
+                self.status = fill(t("Save failed: {reason}"), &[("reason", &e.to_string())]);
                 false
             }
         }
@@ -343,8 +386,8 @@ impl App {
     fn undo(&mut self) {
         if let Some(session) = &mut self.session {
             self.status = match session.undo() {
-                Some(a) => format!("Undid: {}", describe(&a.command)),
-                None => "Nothing to undo".to_owned(),
+                Some(a) => fill(t("Undid: {what}"), &[("what", &describe(&a.command))]),
+                None => t("Nothing to undo").to_owned(),
             };
             self.editor = Editor::default();
         }
@@ -353,9 +396,9 @@ impl App {
     fn redo(&mut self) {
         if let Some(session) = &mut self.session {
             self.status = match session.redo() {
-                Some(Ok(a)) => format!("Redid: {}", describe(&a.command)),
+                Some(Ok(a)) => fill(t("Redid: {what}"), &[("what", &describe(&a.command))]),
                 Some(Err(e)) => e.to_string(),
-                None => "Nothing to redo".to_owned(),
+                None => t("Nothing to redo").to_owned(),
             };
             self.editor = Editor::default();
         }
@@ -438,7 +481,7 @@ impl App {
                     .path()
                     .and_then(Path::file_name)
                     .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| "Untitled".to_owned());
+                    .unwrap_or_else(|| t("Untitled").to_owned());
                 format!("{}{name} — Segler", if s.dirty() { "• " } else { "" })
             }
             None => "Segler".to_owned(),
@@ -447,13 +490,13 @@ impl App {
 
     fn toolbar(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            if ui.button("Open…").clicked() {
+            if ui.button(t("Open…")).clicked() {
                 self.pick_file();
             }
             let has_doc = self.session.is_some();
             let dirty = self.session.as_ref().is_some_and(Session::dirty);
             if ui
-                .add_enabled(has_doc && dirty, egui::Button::new("Save"))
+                .add_enabled(has_doc && dirty, egui::Button::new(t("Save")))
                 .clicked()
             {
                 self.save();
@@ -462,13 +505,13 @@ impl App {
             let can_undo = self.session.as_ref().is_some_and(Session::can_undo);
             let can_redo = self.session.as_ref().is_some_and(Session::can_redo);
             if ui
-                .add_enabled(can_undo, egui::Button::new("Undo"))
+                .add_enabled(can_undo, egui::Button::new(t("Undo")))
                 .clicked()
             {
                 self.undo();
             }
             if ui
-                .add_enabled(can_redo, egui::Button::new("Redo"))
+                .add_enabled(can_redo, egui::Button::new(t("Redo")))
                 .clicked()
             {
                 self.redo();
@@ -491,7 +534,7 @@ impl App {
             {
                 self.go_to_page(n);
             }
-            ui.label(format!("of {count}"));
+            ui.label(fill(t("of {count}"), &[("count", &count.to_string())]));
             if ui
                 .add_enabled(self.page_number < count, egui::Button::new("▶"))
                 .clicked()
@@ -517,7 +560,7 @@ impl App {
             // not there; the pane comes and goes and its controls can too.
             if self.show_scan && has_scan {
                 ui.separator();
-                ui.label("Zoom");
+                ui.label(t("Zoom"));
                 let mut z = self.zoom.unwrap_or(self.zoom_shown);
                 if ui
                     .add(
@@ -530,7 +573,7 @@ impl App {
                     self.zoom = Some(z);
                 }
                 ui.label(format!("{:.0}%", self.zoom_shown * 100.0));
-                if ui.small_button("Fit").clicked() {
+                if ui.small_button(t("Fit")).clicked() {
                     self.zoom = None;
                 }
                 if ui.small_button("100%").clicked() {
@@ -540,13 +583,13 @@ impl App {
 
             ui.separator();
             ui.add_enabled_ui(has_scan, |ui| {
-                ui.toggle_value(&mut self.show_scan, "Page image")
+                ui.toggle_value(&mut self.show_scan, t("Page image"))
                     .on_hover_text("Show the page image from the archive beside the document");
             });
             ui.separator();
-            ui.toggle_value(&mut self.show_structure, "Structure")
+            ui.toggle_value(&mut self.show_structure, t("Structure"))
                 .on_hover_text("Show the structure pane (Ctrl+1)");
-            ui.toggle_value(&mut self.show_element, "Element")
+            ui.toggle_value(&mut self.show_element, t("Element"))
                 .on_hover_text("Show the element pane (Ctrl+2)");
         });
     }
@@ -568,21 +611,24 @@ impl App {
             // "it" for one and "them" for two is worth the line: the message
             // names the real tags, and naming them and then getting the number
             // wrong reads like a message nobody looked at.
-            let (what, them) = match names.len() {
-                0 => ("Formatting in this text".to_owned(), "it"),
-                1 => (names[0].clone(), "it"),
-                _ => (names.join(", "), "them"),
+            let what = match names.len() {
+                0 => t("Formatting in this text").to_owned(),
+                1 => names[0].clone(),
+                _ => names.join(", "),
             };
+            let several = names.len() > 1;
             let mut next = None;
             egui::Modal::new(egui::Id::new("flatten")).show(ctx, |ui| {
-                ui.heading("Keep this edit as plain text?");
+                ui.heading(t("Keep this edit as plain text?"));
                 // "Keeping" rather than "saving": the flattening happens when
                 // the edit is applied, and the document in the window is what
                 // changes. A save writes whatever is there by then.
-                ui.label(format!(
-                    "{what} could not be matched to what you typed, so keeping this \
-                     edit will write the line as plain text without {them}."
-                ));
+                let sentence = if several {
+                    t("{what} could not be matched to what you typed, so keeping this edit will write the line as plain text without them.")
+                } else {
+                    t("{what} could not be matched to what you typed, so keeping this edit will write the line as plain text without it.")
+                };
+                ui.label(fill(sentence, &[("what", &what)]));
                 ui.add_space(4.0);
                 ui.weak(
                     "This happens when the formatted words themselves changed, or when \
@@ -591,12 +637,12 @@ impl App {
                 );
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    if ui.button("Keep as plain text").clicked()
+                    if ui.button(t("Keep as plain text")).clicked()
                         || ui.input(|i| i.key_pressed(Key::Enter))
                     {
                         next = Some(true);
                     }
-                    if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(Key::Escape)) {
+                    if ui.button(t("Cancel")).clicked() || ui.input(|i| i.key_pressed(Key::Escape)) {
                         next = Some(false);
                     }
                 });
@@ -614,7 +660,7 @@ impl App {
                     // the same reason; declining has to as well.
                     self.editor = Editor::default();
                     self.document.cancel_edit();
-                    self.status = "Edit discarded; the formatting is unchanged".to_owned();
+                    self.status = t("Edit discarded; the formatting is unchanged").to_owned();
                 }
             }
             return;
@@ -628,20 +674,23 @@ impl App {
                     .as_ref()
                     .and_then(|s| s.element(id))
                     .map(|v| format!("<{}> at {}", v.name, v.path))
-                    .unwrap_or_else(|| "this element".to_owned());
+                    .unwrap_or_else(|| t("this element").to_owned());
                 let mut next = None;
                 egui::Modal::new(egui::Id::new("remove")).show(ctx, |ui| {
-                    ui.heading("Remove element?");
-                    ui.label(format!(
-                        "{what} and everything inside it will be removed. Undo brings it back."
+                    ui.heading(t("Remove element?"));
+                    ui.label(fill(
+                        t("{what} and everything inside it will be removed. Undo brings it back."),
+                        &[("what", &what)],
                     ));
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
-                        if ui.button("Remove").clicked() || ui.input(|i| i.key_pressed(Key::Enter))
+                        if ui.button(t("Remove")).clicked()
+                            || ui.input(|i| i.key_pressed(Key::Enter))
                         {
                             next = Some(true);
                         }
-                        if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(Key::Escape))
+                        if ui.button(t("Cancel")).clicked()
+                            || ui.input(|i| i.key_pressed(Key::Escape))
                         {
                             next = Some(false);
                         }
@@ -657,17 +706,18 @@ impl App {
             Dialog::Close => {
                 let mut next = None;
                 egui::Modal::new(egui::Id::new("close")).show(ctx, |ui| {
-                    ui.heading("Save changes?");
-                    ui.label("The document has unsaved changes.");
+                    ui.heading(t("Save changes?"));
+                    ui.label(t("The document has unsaved changes."));
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
-                        if ui.button("Save and close").clicked() {
+                        if ui.button(t("Save and close")).clicked() {
                             next = Some(if self.save() { Some(true) } else { None });
                         }
-                        if ui.button("Discard").clicked() {
+                        if ui.button(t("Discard")).clicked() {
                             next = Some(Some(false));
                         }
-                        if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(Key::Escape))
+                        if ui.button(t("Cancel")).clicked()
+                            || ui.input(|i| i.key_pressed(Key::Escape))
                         {
                             next = Some(None);
                         }
@@ -747,8 +797,8 @@ impl eframe::App for App {
                     &mut requests,
                 ),
                 None => {
-                    ui.heading("Structure");
-                    ui.weak("Open a DocLang document or archive.");
+                    ui.heading(t("Structure"));
+                    ui.weak(t("Open a DocLang document or archive."));
                 }
             });
 
@@ -811,7 +861,7 @@ impl eframe::App for App {
             }
             _ => {
                 ui.centered_and_justified(|ui| {
-                    ui.label("Open a DocLang document or archive (Ctrl+O).");
+                    ui.label(t("Open a DocLang document or archive (Ctrl+O)."));
                 });
             }
         });
@@ -845,37 +895,49 @@ impl eframe::App for App {
 
 fn describe(command: &Command) -> String {
     match command {
-        Command::SetText { .. } => "Text changed".into(),
+        Command::SetText { .. } => t("Text changed").into(),
         Command::SetAttr {
             name,
             value: Some(v),
             ..
-        } => format!("{name} set to {v}"),
+        } => fill(t("{name} set to {value}"), &[("name", name), ("value", v)]),
         Command::SetAttr {
             name, value: None, ..
-        } => format!("{name} removed"),
-        Command::SetLabel { value: Some(v), .. } => format!("Label set to {v}"),
-        Command::SetLabel { value: None, .. } => "Label removed".into(),
-        Command::SetLayer { value, .. } => {
-            format!("Layer set to {}", value.as_deref().unwrap_or("body"))
+        } => fill(t("{name} removed"), &[("name", name)]),
+        Command::SetLabel { value: Some(v), .. } => {
+            fill(t("Label set to {value}"), &[("value", v)])
         }
+        Command::SetLabel { value: None, .. } => t("Label removed").into(),
+        Command::SetLayer { value, .. } => fill(
+            t("Layer set to {value}"),
+            &[("value", value.as_deref().unwrap_or("body"))],
+        ),
         Command::SetBounds {
             bounds: Some(_), ..
-        } => "Box changed".into(),
-        Command::SetBounds { bounds: None, .. } => "Box removed".into(),
-        Command::Rename { kind, .. } => format!("Changed to {}", kind.name()),
-        Command::Move { .. } => "Moved".into(),
-        Command::Insert { kind, .. } => format!("Inserted {}", kind.name()),
-        Command::Remove { .. } => "Element removed".into(),
-        Command::SetListItemText { item, .. } => format!("List item {} changed", item + 1),
-        Command::SetCellText { row, col, .. } => {
-            format!("Cell row {}, column {} changed", row + 1, col + 1)
-        }
-        Command::SetCellKind { row, col, kind, .. } => format!(
-            "Cell row {}, column {} is now {}",
-            row + 1,
-            col + 1,
-            document::cell_kind_name(*kind)
+        } => t("Box changed").into(),
+        Command::SetBounds { bounds: None, .. } => t("Box removed").into(),
+        Command::Rename { kind, .. } => fill(t("Changed to {kind}"), &[("kind", kind.name())]),
+        Command::Move { .. } => t("Moved").into(),
+        Command::Insert { kind, .. } => fill(t("Inserted {kind}"), &[("kind", kind.name())]),
+        Command::Remove { .. } => t("Element removed").into(),
+        Command::SetListItemText { item, .. } => fill(
+            t("List item {number} changed"),
+            &[("number", &(item + 1).to_string())],
+        ),
+        Command::SetCellText { row, col, .. } => fill(
+            t("Cell row {row}, column {column} changed"),
+            &[
+                ("row", &(row + 1).to_string()),
+                ("column", &(col + 1).to_string()),
+            ],
+        ),
+        Command::SetCellKind { row, col, kind, .. } => fill(
+            t("Cell row {row}, column {column} is now {kind}"),
+            &[
+                ("row", &(row + 1).to_string()),
+                ("column", &(col + 1).to_string()),
+                ("kind", document::cell_kind_name(*kind)),
+            ],
         ),
     }
 }

@@ -1,0 +1,365 @@
+# German translation for Segler.
+# Copyright (C) 2026 David M. Anderson
+# This file is distributed under the same licence as the segler package.
+# David M. Anderson <david.anderson@excelano.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: segler\n"
+"Report-Msgid-Bugs-To: https://github.com/excelano/segler/issues\n"
+"POT-Creation-Date: 2026-09-09 09:33-0500\n"
+"PO-Revision-Date: 2026-09-09 09:33-0500\n"
+"Last-Translator: David M. Anderson <david.anderson@excelano.com>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: crates/segler-desktop/src/document.rs:306
+msgid "picture: {src}"
+msgstr "Bild: {src}"
+
+#: crates/segler-desktop/src/document.rs:307
+msgid "picture"
+msgstr "Bild"
+
+#: crates/segler-desktop/src/document.rs:425
+msgid "(empty)"
+msgstr "(leer)"
+
+#: crates/segler-desktop/src/document.rs:544
+msgid "(empty table)"
+msgstr "(leere Tabelle)"
+
+#: crates/segler-desktop/src/document.rs:828
+msgid "cell"
+msgstr "Zelle"
+
+#: crates/segler-desktop/src/document.rs:829
+msgid "empty"
+msgstr "leer"
+
+#: crates/segler-desktop/src/document.rs:830
+msgid "column header"
+msgstr "Spaltenkopf"
+
+#: crates/segler-desktop/src/document.rs:831
+msgid "row header"
+msgstr "Zeilenkopf"
+
+#: crates/segler-desktop/src/document.rs:832
+msgid "corner"
+msgstr "Ecke"
+
+#: crates/segler-desktop/src/document.rs:833
+msgid "section row"
+msgstr "Abschnittszeile"
+
+#: crates/segler-desktop/src/inspector.rs:46
+#: crates/segler-desktop/src/main.rs:587 crates/segler-desktop/src/main.rs:794
+msgid "Structure"
+msgstr "Struktur"
+
+#: crates/segler-desktop/src/inspector.rs:81
+msgid "Nothing on this page."
+msgstr "Nichts auf dieser Seite."
+
+#: crates/segler-desktop/src/inspector.rs:123
+msgid "Fold the picture's inner elements"
+msgstr "Die inneren Elemente des Bildes einklappen"
+
+#: crates/segler-desktop/src/inspector.rs:125
+msgid "Show the picture's inner elements"
+msgstr "Die inneren Elemente des Bildes anzeigen"
+
+#: crates/segler-desktop/src/inspector.rs:194
+#: crates/segler-desktop/src/main.rs:589
+msgid "Element"
+msgstr "Element"
+
+#: crates/segler-desktop/src/inspector.rs:198
+msgid "Select an element on the page or in the structure."
+msgstr "Ein Element auf der Seite oder in der Struktur auswählen."
+
+#: crates/segler-desktop/src/inspector.rs:214
+msgid "Kind"
+msgstr "Art"
+
+#: crates/segler-desktop/src/inspector.rs:227
+msgid "Path"
+msgstr "Pfad"
+
+#: crates/segler-desktop/src/inspector.rs:232
+msgid "Level"
+msgstr "Ebene"
+
+#: crates/segler-desktop/src/inspector.rs:261
+msgid "Class"
+msgstr "Klasse"
+
+#: crates/segler-desktop/src/inspector.rs:287
+msgid "Label"
+msgstr "Beschriftung"
+
+#: crates/segler-desktop/src/inspector.rs:289
+msgid "none"
+msgstr "keine"
+
+#: crates/segler-desktop/src/inspector.rs:301
+msgid "Layer"
+msgstr "Lage"
+
+#: crates/segler-desktop/src/inspector.rs:318
+msgid "Box"
+msgstr "Rahmen"
+
+#: crates/segler-desktop/src/inspector.rs:338
+msgid "Clear"
+msgstr "Löschen"
+
+#: crates/segler-desktop/src/inspector.rs:341
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: crates/segler-desktop/src/inspector.rs:359
+msgid "Text"
+msgstr "Text"
+
+#: crates/segler-desktop/src/inspector.rs:405
+msgid "Text (from its parts)"
+msgstr "Text (aus seinen Teilen)"
+
+#: crates/segler-desktop/src/inspector.rs:422
+msgid "Cell row {row}, column {column}"
+msgstr "Zelle Zeile {row}, Spalte {column}"
+
+#: crates/segler-desktop/src/inspector.rs:447
+msgid "Remove element…"
+msgstr "Element entfernen …"
+
+#: crates/segler-desktop/src/inspector.rs:452
+msgid "Markup"
+msgstr "Auszeichnung"
+
+#: crates/segler-desktop/src/inspector.rs:467
+msgid "Problems"
+msgstr "Probleme"
+
+#: crates/segler-desktop/src/inspector.rs:469
+msgid "none; the document is valid"
+msgstr "keine; das Dokument ist gültig"
+
+#: crates/segler-desktop/src/main.rs:283
+msgid "Opened {file}"
+msgstr "{file} geöffnet"
+
+#: crates/segler-desktop/src/main.rs:289
+msgid "{file}: {reason}"
+msgstr "{file}: {reason}"
+
+#: crates/segler-desktop/src/main.rs:327
+msgid "Saved {file}"
+msgstr "{file} gespeichert"
+
+#: crates/segler-desktop/src/main.rs:330
+msgid "Nothing to save: {file} is as it was opened"
+msgstr "Nichts zu speichern: {file} ist so, wie es geöffnet wurde"
+
+#: crates/segler-desktop/src/main.rs:337
+msgid "Save failed: {reason}"
+msgstr "Speichern fehlgeschlagen: {reason}"
+
+#: crates/segler-desktop/src/main.rs:386
+msgid "Undid: {what}"
+msgstr "Rückgängig gemacht: {what}"
+
+#: crates/segler-desktop/src/main.rs:387
+msgid "Nothing to undo"
+msgstr "Nichts rückgängig zu machen"
+
+#: crates/segler-desktop/src/main.rs:396
+msgid "Redid: {what}"
+msgstr "Wiederholt: {what}"
+
+#: crates/segler-desktop/src/main.rs:398
+msgid "Nothing to redo"
+msgstr "Nichts zu wiederholen"
+
+#: crates/segler-desktop/src/main.rs:481
+msgid "Untitled"
+msgstr "Unbenannt"
+
+#: crates/segler-desktop/src/main.rs:490
+msgid "Open…"
+msgstr "Öffnen …"
+
+#: crates/segler-desktop/src/main.rs:496
+msgid "Save"
+msgstr "Speichern"
+
+#: crates/segler-desktop/src/main.rs:505
+msgid "Undo"
+msgstr "Rückgängig"
+
+#: crates/segler-desktop/src/main.rs:511
+msgid "Redo"
+msgstr "Wiederholen"
+
+#: crates/segler-desktop/src/main.rs:534
+msgid "of {count}"
+msgstr "von {count}"
+
+#: crates/segler-desktop/src/main.rs:560
+msgid "Zoom"
+msgstr "Zoom"
+
+#: crates/segler-desktop/src/main.rs:573
+msgid "Fit"
+msgstr "Einpassen"
+
+#: crates/segler-desktop/src/main.rs:583
+msgid "Page image"
+msgstr "Seitenbild"
+
+#: crates/segler-desktop/src/main.rs:612
+msgid "Formatting in this text"
+msgstr "Formatierung in diesem Text"
+
+#: crates/segler-desktop/src/main.rs:619
+msgid "Keep this edit as plain text?"
+msgstr "Diese Änderung als reinen Text behalten?"
+
+#: crates/segler-desktop/src/main.rs:624
+msgid ""
+"{what} could not be matched to what you typed, so keeping this edit will "
+"write the line as plain text without them."
+msgstr "{what} ließen sich dem Getippten nicht zuordnen; diese Änderung zu behalten schreibt die Zeile als reinen Text ohne sie."
+
+#: crates/segler-desktop/src/main.rs:626
+msgid ""
+"{what} could not be matched to what you typed, so keeping this edit will "
+"write the line as plain text without it."
+msgstr "{what} ließ sich dem Getippten nicht zuordnen; diese Änderung zu behalten schreibt die Zeile als reinen Text ohne sie."
+
+#: crates/segler-desktop/src/main.rs:637
+msgid "Keep as plain text"
+msgstr "Als reinen Text behalten"
+
+#: crates/segler-desktop/src/main.rs:642 crates/segler-desktop/src/main.rs:688
+#: crates/segler-desktop/src/main.rs:714
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: crates/segler-desktop/src/main.rs:660
+msgid "Edit discarded; the formatting is unchanged"
+msgstr "Änderung verworfen; die Formatierung bleibt unverändert"
+
+#: crates/segler-desktop/src/main.rs:674
+msgid "this element"
+msgstr "dieses Element"
+
+#: crates/segler-desktop/src/main.rs:677
+msgid "Remove element?"
+msgstr "Element entfernen?"
+
+#: crates/segler-desktop/src/main.rs:679
+msgid "{what} and everything inside it will be removed. Undo brings it back."
+msgstr "{what} und alles darin wird entfernt. Rückgängig holt es zurück."
+
+#: crates/segler-desktop/src/main.rs:684
+msgid "Remove"
+msgstr "Entfernen"
+
+#: crates/segler-desktop/src/main.rs:704
+msgid "Save changes?"
+msgstr "Änderungen speichern?"
+
+#: crates/segler-desktop/src/main.rs:705
+msgid "The document has unsaved changes."
+msgstr "Das Dokument hat ungespeicherte Änderungen."
+
+#: crates/segler-desktop/src/main.rs:708
+msgid "Save and close"
+msgstr "Speichern und schließen"
+
+#: crates/segler-desktop/src/main.rs:711
+msgid "Discard"
+msgstr "Verwerfen"
+
+#: crates/segler-desktop/src/main.rs:795
+msgid "Open a DocLang document or archive."
+msgstr "Ein DocLang-Dokument oder -Archiv öffnen."
+
+#: crates/segler-desktop/src/main.rs:858
+msgid "Open a DocLang document or archive (Ctrl+O)."
+msgstr "Ein DocLang-Dokument oder -Archiv öffnen (Strg+O)."
+
+#: crates/segler-desktop/src/main.rs:892
+msgid "Text changed"
+msgstr "Text geändert"
+
+#: crates/segler-desktop/src/main.rs:897
+msgid "{name} set to {value}"
+msgstr "{name} auf {value} gesetzt"
+
+#: crates/segler-desktop/src/main.rs:900
+msgid "{name} removed"
+msgstr "{name} entfernt"
+
+#: crates/segler-desktop/src/main.rs:902
+msgid "Label set to {value}"
+msgstr "Beschriftung auf {value} gesetzt"
+
+#: crates/segler-desktop/src/main.rs:904
+msgid "Label removed"
+msgstr "Beschriftung entfernt"
+
+#: crates/segler-desktop/src/main.rs:906
+msgid "Layer set to {value}"
+msgstr "Lage auf {value} gesetzt"
+
+#: crates/segler-desktop/src/main.rs:911
+msgid "Box changed"
+msgstr "Rahmen geändert"
+
+#: crates/segler-desktop/src/main.rs:912
+msgid "Box removed"
+msgstr "Rahmen entfernt"
+
+#: crates/segler-desktop/src/main.rs:913
+msgid "Changed to {kind}"
+msgstr "Geändert zu {kind}"
+
+#: crates/segler-desktop/src/main.rs:914
+msgid "Moved"
+msgstr "Verschoben"
+
+#: crates/segler-desktop/src/main.rs:915
+msgid "Inserted {kind}"
+msgstr "{kind} eingefügt"
+
+#: crates/segler-desktop/src/main.rs:916
+msgid "Element removed"
+msgstr "Element entfernt"
+
+#: crates/segler-desktop/src/main.rs:918
+msgid "List item {number} changed"
+msgstr "Listeneintrag {number} geändert"
+
+#: crates/segler-desktop/src/main.rs:922
+msgid "Cell row {row}, column {column} changed"
+msgstr "Zelle Zeile {row}, Spalte {column} geändert"
+
+#: crates/segler-desktop/src/main.rs:926
+msgid "Cell row {row}, column {column} is now {kind}"
+msgstr "Zelle Zeile {row}, Spalte {column} ist jetzt {kind}"
+
+#: crates/segler-desktop/src/page.rs:157
+msgid "{name} is missing from the archive"
+msgstr "{name} fehlt im Archiv"
+
+#: crates/segler-desktop/src/page.rs:164 crates/segler-desktop/src/page.rs:174
+msgid "{name}: {reason}"
+msgstr "{name}: {reason}"

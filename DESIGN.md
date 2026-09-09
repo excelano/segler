@@ -186,7 +186,47 @@ Whether the library should also be published under the name `doclang` on crates.
 
 ---
 
-## 10. Order of work
+## 10. The language a person reads
+
+The window draws in German where the desktop asks for German, and in English
+everywhere else. The mechanism is the `potext` crate, written in
+slipcase-desktop and made a crate so that more than one application could have
+it; this section is what the rest of this repository may assume.
+
+**A message is looked up by its English text, never by a key.** So a call site
+reads as the sentence a person sees, and a message with no translation is the
+original rather than a placeholder.
+
+**A translation that has gone stale is not shown.** When the English changes,
+`msgmerge` carries the old German onto the new text and marks it `#, fuzzy`;
+`potext` will not load a fuzzy entry, so the window falls back to English until
+somebody has read the new sentence.
+
+**`segler-core` has no catalogue and gets none.** It is the model and the
+command boundary. Every sentence a person reads is produced in
+`segler-desktop`, including `describe`, which turns a `Command` into the status
+line — so §7's rule that the interface is a renderer holds for language too,
+and a second front end would translate its own words rather than inherit these.
+The CLI is not translated: it prints for a terminal and a pipeline, and the
+fleet's other command-line tools are English.
+
+**What stays in English is what the file says.** An element's name, an
+attribute's name as it is written, and every attribute *value* a person picks
+from a list — `unordered`, `chart`, `read_only`, `body`, `background`,
+`furniture` — go into the document as they stand, and a translated one would be
+a different document. The labels beside them are the window's own words and are
+translated: *Kind*, *Level*, *Class*, *Layer*, *Box*. The cell kinds in the
+element pane are also the window's, not OTSL's tags, so they are translated
+too.
+
+**`po/update-po.sh` is the only way the catalogues move**, and `po/pseudo.sh`
+writes the pseudolocale that finds a string which never went through `t` and a
+label built to the width of English. Run the second before writing any
+translation rather than after.
+
+---
+
+## 11. Order of work
 
 The core first, proved by the CLI, with a window only when there is a model for it to draw.
 

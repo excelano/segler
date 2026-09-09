@@ -13,9 +13,12 @@ use std::collections::HashMap;
 use eframe::egui::{
     self, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, TextureHandle, TextureOptions, Vec2,
 };
+use potext::fill;
 use segler_core::doclang::Kind;
 use segler_core::session::{PageView, Session};
 use segler_core::tree::ElementId;
+
+use crate::i18n::t;
 
 /// The page pane's own state: decoded textures by page number.
 #[derive(Default)]
@@ -148,19 +151,33 @@ impl PagePane {
         let bytes = match session.part(name) {
             Ok(Some(bytes)) => bytes,
             Ok(None) => {
-                self.failed
-                    .insert(page.number, format!("{name} is missing from the archive"));
+                self.failed.insert(
+                    page.number,
+                    fill(t("{name} is missing from the archive"), &[("name", name)]),
+                );
                 return None;
             }
             Err(e) => {
-                self.failed.insert(page.number, format!("{name}: {e}"));
+                self.failed.insert(
+                    page.number,
+                    fill(
+                        t("{name}: {reason}"),
+                        &[("name", name), ("reason", &e.to_string())],
+                    ),
+                );
                 return None;
             }
         };
         let decoded = match image::load_from_memory(&bytes) {
             Ok(img) => img.to_rgba8(),
             Err(e) => {
-                self.failed.insert(page.number, format!("{name}: {e}"));
+                self.failed.insert(
+                    page.number,
+                    fill(
+                        t("{name}: {reason}"),
+                        &[("name", name), ("reason", &e.to_string())],
+                    ),
+                );
                 return None;
             }
         };

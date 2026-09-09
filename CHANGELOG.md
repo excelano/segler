@@ -5,6 +5,16 @@ store release notes and the apt changelog are written from this file, and every
 claim here is checked against the built application rather than remembered.
 `git log` is the record of why the code is the way it is; this is not that.
 
+## [Unreleased]
+
+- **German.** Segler comes up in German on a machine set to German — the
+  toolbar, both panes, the dialogs, and the status line after every edit. There
+  is nothing to choose: it reads the language the desktop already knows, and
+  falls back to English for any other.
+- What the document says stays as the document says it. An element's name, an
+  attribute's name and the values you pick from a list are the file's own words
+  and are never translated; only the window's words around them are.
+
 ## [0.1.0] - 2026-09-06
 
 The first packaged build.

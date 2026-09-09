@@ -19,11 +19,14 @@ use eframe::egui::{
     self, Align, Color32, FontId, Key, Sense, Stroke, StrokeKind, TextFormat, TextureHandle,
     TextureOptions, Vec2,
 };
+use potext::fill;
 use segler_core::blocks::{Block, CellBlock, Run, Style};
 use segler_core::doclang::Kind;
 use segler_core::otsl::CellKind;
 use segler_core::session::{Command, Session, TextTarget};
 use segler_core::tree::ElementId;
+
+use crate::i18n::t;
 
 use crate::page::color_for;
 
@@ -300,8 +303,8 @@ impl Cx<'_> {
                         }
                         None => {
                             let label = match src {
-                                Some(s) => format!("picture: {s}"),
-                                None => "picture".to_owned(),
+                                Some(s) => fill(t("picture: {src}"), &[("src", s)]),
+                                None => t("picture").to_owned(),
                             };
                             let (rect, _) = ui.allocate_exact_size(
                                 Vec2::new(ui.available_width(), 80.0),
@@ -419,7 +422,7 @@ impl Cx<'_> {
         let job = layout(runs, font, base, color, ui.available_width() - 12.0);
         let (response, label) = framed(ui, id, selected, color_for(kind), |ui| {
             let text = if runs.is_empty() {
-                egui::WidgetText::from(egui::RichText::new("(empty)").weak().italics())
+                egui::WidgetText::from(egui::RichText::new(t("(empty)")).weak().italics())
             } else {
                 job.into()
             };
@@ -538,7 +541,7 @@ impl Cx<'_> {
         cells: &[CellBlock],
     ) {
         if rows == 0 || cols == 0 {
-            ui.weak("(empty table)");
+            ui.weak(t("(empty table)"));
             return;
         }
         let col_w = (ui.available_width() / cols as f32).max(40.0);
@@ -822,12 +825,12 @@ fn layout(runs: &[Run], font: FontId, base: Style, color: Color32, wrap_width: f
 /// The cell kinds a person may choose in the element pane.
 pub fn cell_kind_name(k: CellKind) -> &'static str {
     match k {
-        CellKind::Full => "cell",
-        CellKind::Empty => "empty",
-        CellKind::ColumnHeader => "column header",
-        CellKind::RowHeader => "row header",
-        CellKind::Corner => "corner",
-        CellKind::SectionRow => "section row",
+        CellKind::Full => t("cell"),
+        CellKind::Empty => t("empty"),
+        CellKind::ColumnHeader => t("column header"),
+        CellKind::RowHeader => t("row header"),
+        CellKind::Corner => t("corner"),
+        CellKind::SectionRow => t("section row"),
     }
 }
 

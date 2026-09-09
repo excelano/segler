@@ -34,6 +34,8 @@ David's machine. The spec's `examples/` and `tests/` are the conformance corpus.
     cargo clippy --workspace --all-targets -- -D warnings   # must be silent
     cargo fmt --check
     cargo run -p segler -- inspect FILE
+    ./po/update-po.sh          # after changing any sentence a person reads
+    ./po/pseudo.sh             # then run a debug build with POTEXT_LANG=en-x-pseudo
     cargo run -p segler-desktop -- [FILE]
 
 **Seeing the window from here.** Launch it under XWayland and capture its own
@@ -58,6 +60,14 @@ files under that checkout's `examples/` are what to open by hand.
 ---
 
 ## Rules with no exceptions
+
+**The window is translated and the model is not.** German since 2026-09-09,
+through `potext`, with the catalogues in `po/`. `segler-core` has no catalogue
+and the CLI is not translated. What stays English is what the file says — an
+element's name, an attribute's name, and every attribute value a person picks
+from a list — because a translated one would be a different document.
+`DESIGN.md` §10 has the line and the two commands that keep the catalogues
+current.
 
 **The document model is lossless.** Every element, attribute, and text run in a
 file survives a parse and a serialize. If the model cannot represent something

@@ -82,6 +82,32 @@ walkthroughs used.
 12. **Close with unsaved edits.** The dialog offers Save and close, Discard,
     Cancel, and each does what it says.
 
+## Every platform: the language the window comes up in
+
+Added 2026-09-09 with German. Two runs, and the second one needs no German.
+
+**In the pseudolocale, first.** `./po/pseudo.sh`, then a debug build with
+`POTEXT_LANG=en-x-pseudo`. Every string this application owns comes back
+bracketed, accented and 40% long, so three things show themselves: a sentence
+still in plain English never went through `t`; one with no brackets is a
+message the catalogue never saw; and a label with its end cut off is a layout
+built to the width of English, which is what German meets first.
+
+**A screenshot only proves the paths that drew.** The toolbar, both panes and
+the status bar were checked that way on 2026-09-09; the three dialogs were not,
+because none of them was open. Walk them: edit a run so the flatten prompt
+appears, remove an element, and close the window with unsaved changes. Each is
+a heading and a sentence and two or three buttons, and each is a place a
+missed string would sit unseen.
+
+**Then in German**, with the machine set to German or `POTEXT_LANG=de`. Open a
+`.dclg` and a `.dclx`, edit a value, undo it, save, and read the status line
+after each: those sentences are built from `describe`, so they are the half a
+screenshot of a fresh window never reaches. An element's name and every
+attribute value stay English on purpose — `DESIGN.md` §10 says which and why —
+so a `<paragraph>` in the structure pane beside a German label is right rather
+than a miss.
+
 ## Linux: the package
 
 13. `sudo apt install ./dist/segler_X.Y.Z_amd64.deb` installs with no
