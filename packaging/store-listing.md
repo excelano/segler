@@ -122,7 +122,10 @@ Each lane takes its own with its platform's script, against the packaged
 application, light theme first because both platforms ship light by default,
 with the pointer parked off the window and the window photographed by its
 handle. The page image panel is open in at least one shot, because it is the
-one thing in this application no other DocLang tool has.
+one thing in this application no other DocLang tool has. **Something is
+selected in every shot**, and an edit is under way or just done in more than
+one, because a screenshot of an editor at rest is what guideline 2.3.3 sends
+back.
 
 **Windows, 2026-09-06**, from `v0.1.0` (`b1b71f0`), taken with
 `packaging/windows/screenshot.ps1` against the **installed MSIX** - the
@@ -136,6 +139,14 @@ packaged build and not a developer one - at 1366x768, light theme:
 
 They are in `dist/screenshots/` with the documents they were taken from, and
 are not committed; `dist` is where every built artefact goes.
+
+**These four are the set Apple rejected, in its Windows spelling**, and they
+have not been retaken. Nothing is selected in any of them and no edit is under
+way, which is the whole of what guideline 2.3.3 objected to on the other
+platform. Partner Center has not asked, and the same criticism is true of them:
+retake them the way the macOS five were taken before the Microsoft Store
+submission goes in. `screenshot.ps1` would want the same three actions
+`screenshot.sh` grew.
 
 **Two things the capture script now refuses on**, both learned by watching it
 lie. It checks the window is actually in the foreground, because a shell
@@ -223,38 +234,73 @@ the terminal that runs it. The script was run on 2026-09-06 against the
 specification's own `archive-demo`, packed into a `.dclx`, and produced a
 correct frame.
 
-**macOS, 2026-09-06**, from `v0.1.0` (`b1b71f0`, build 41), against a
-development-signed universal bundle in `dist-dev`, at 1440x900, light
-appearance. Four, the same frames as Windows:
+**macOS, 2026-09-06**, from `v0.1.0` (`b1b71f0`, build 41), at 1440x900,
+light appearance. Four frames of the document at rest, the same as Windows.
+**Apple rejected them on 2026-09-09 under guideline 2.3.3**, submission
+`7a2e17b6-64db-40a1-bcea-2d8e529f881b`: *the Mac screenshots do not show the
+actual app in use in the majority of the screenshots*. The rejection is right,
+and reading the four back says why in one line. Nothing was selected in any of
+them, so the element pane read *Select an element on the page or in the
+structure* in all four; no edit was in progress in any of them; and three of
+the four were one short document sitting still. Every feature the description
+claims was present in the window and none of it was happening. A frame of an
+editor with nothing selected is a frame of a viewer.
 
-    01  the document, the tree and the element pane, at rest
-    02  the same with the page image panel open, boxes drawn over the scan
-    03  page two: the picture from the archive's assets, with its caption
-    04  a document with six findings, each naming the element that carries it
+**macOS, 2026-09-09**, from the same commit and the same bundle, at 1440x900,
+light appearance. Five, and every one of them has the element pane populated,
+which is the thing the rejected set never had:
 
-The first three are `packaging/review/sailing-directions.dclx`, the document
-the review notes point at. The fourth is a copy of it with six faults put in
-by hand, the kind a model makes: an element that is not DocLang, a heading
-at level 0, a list class the spec does not have, a table row one cell short,
-a location block with its x coordinates reversed, and a location past the
-page's edge. It is in `dist-dev/screenshots/` beside the shots and is not
-committed; `segler validate` on it reports the six.
+    01  correcting a table cell in place: the cell open with the new value
+        being typed, the table selected, and the pane showing the cell's row,
+        column and kind
+    02  the page image beside the document, a paragraph selected, and its
+        located box drawn over the scan with the same coordinates in the pane
+    03  the correction committed: the title carries the modified mark, Save
+        and Undo have come on, the status line says which cell changed, and a
+        heading is selected with its level, layer and box in reach
+    04  page two: the picture selected, its class, its caption, its box on
+        the scan, and its markup
+    05  a document with six findings, one of them clicked, and the element it
+        names selected with the class the specification does not have showing
+        in the pane
 
-Two things about how they were made. The script grew `--click X,Y`, because
-two of the frames want a toolbar control pressed and the toolbar has no
-shortcut for the page image: shot 02 is `--click 422,39` and shot 03 is that
-followed by `--click 352,39` for the next-page arrow, coordinates read off
-shot 01. And the application follows the system appearance, which on the
-machine that took these is dark; the bundle was made to draw light with
-`NSRequiresAquaSystemAppearance` written into its sandbox container's
-preferences rather than by switching the desktop. The documents were opened
-from `/Users/Shared/DocLang/` so that the status line, which prints the
-path, does not carry a user name into a listing.
+The first four are `packaging/review/sailing-directions.dclx`, the document the
+review notes point at. The fifth is a copy of it with six faults put in by
+hand, the kind a model makes: an element that is not DocLang, a heading at
+level 0, a list class the spec does not have, a table row one cell short, a
+location block with its x coordinates reversed, and a location past the page's
+edge. It is in `dist-dev/screenshots/` beside the shots and is not committed;
+`segler validate` on it reports the six.
 
-The screenshots on App Store Connect are these four, uploaded through the
-API on 2026-09-06; shot 02 there is the frame the committed script produced,
-which differs from a first attempt by a few thousand pixels of text
-antialiasing and nothing a person can see.
+`screenshot.sh` grew what the five needed: `--double` for the double click that
+opens a block for typing, `--type` for the correction, and `--key` for the
+select-all before it. The recipes, each against `dist-dev/Segler.app` with the
+document under `/Users/Shared/DocLang/`:
+
+    01  --double 1020,384 --key cmd+a --type "-0:38"
+    02  --click 422,39 --click 520,300
+    03  --double 1020,384 --key cmd+a --type "-0:38" --click 352,500
+    04  --click 422,39 --click 352,39 --click 70,153
+    05  --click 400,831
+
+Two faults in the driving are worth naming, because both looked like the
+window ignoring input and neither was. The loop that runs the actions read them
+as its own standard input, so the helper it ran inherited the file and
+swallowed the actions after the one it was called for; they never ran. And a
+`--key cmd+a` left command down in the session's modifier state, so every
+character typed after one arrived as a shortcut and typed nothing. The list is
+read on its own descriptor now, the helper is given no input at all, and a
+modifier is let go as its own event.
+
+**A shot of a level-0 heading is the one frame this set cannot have**, and
+finding that out is what the fourth finding's click was changed away from. In
+0.1.0 selecting a heading whose `level` is outside 1 to 6 rewrote it on the
+spot: the element pane's drag value clamps to draw such a heading, and the
+clamp reached the document as though it had been typed. Clicking the finding
+that reports `level="0"` set it to 1, marked the document modified and made the
+finding disappear, and a valid `level="8"` heading became a level-6 one the
+moment it was selected. `05` clicks the list's finding instead, which changes
+nothing. The fault itself is not a screenshot matter and is fixed separately.
 
 Before either goes to Partner Center, look at it. A correct size is not a good
 screenshot, and the script says so when it writes one.
