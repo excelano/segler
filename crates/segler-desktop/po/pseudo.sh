@@ -38,7 +38,16 @@ out=crates/segler-desktop/po/en-x-pseudo.po
 # run time, and an accented `{réäsön}` would be a placeholder no call site
 # fills — the message would come out with braces in it and the defect would
 # look like the pseudolocale's rather than the window's.
-msgen "$pot" | msgfilter --keep-header --output-file="$out" awk '
+# **The charset is forced to UTF-8 before the filter and not after it.** Where
+# every message is ASCII, `msgen` writes `charset=ASCII` into the catalogue it
+# hands on, and `msgfilter` then drops every non-ASCII byte the filter produced:
+# the accents and the padding dots vanish and what comes back is the English
+# with letters missing. It reads as a broken filter and is a declared encoding.
+# Measured in slipcase-open on 2026-09-09, the first application here whose
+# messages carry no `…` or accent of their own to make `msginit` choose UTF-8.
+msgen "$pot" |
+    sed 's/charset=[A-Za-z0-9_-]*/charset=UTF-8/' |
+    msgfilter --keep-header --output-file="$out" awk '
 {
     line = $0
     out = ""

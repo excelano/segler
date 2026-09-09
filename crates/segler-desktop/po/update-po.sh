@@ -87,6 +87,13 @@ xgettext \
 # for, which is a placeholder no reader benefits from.
 sed -i "s/^\"Project-Id-Version: $domain VERSION/\"Project-Id-Version: $domain/" "$pot"
 
+# **And it writes `charset=CHARSET`, which is a trap when every message is
+# ASCII.** `msginit` reads that placeholder, sees nothing but ASCII, and writes
+# `charset=ASCII` into the new catalogue — after which the first German word
+# makes `msgfmt` refuse the file with *invalid multibyte sequence*. Declared
+# here so no catalogue starts life wrong. Measured in slipcase-open.
+sed -i 's/charset=CHARSET/charset=UTF-8/' "$pot"
+
 # Every catalogue beside the template. `msgmerge` is the whole reason this
 # project speaks `.po`: where a message's English has changed, it finds the
 # entry the new text descended from, carries the old German over, and marks it
