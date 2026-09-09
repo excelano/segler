@@ -55,11 +55,11 @@ use potext::fill;
 
 /// Every language this application is translated into.
 const CATALOGUES: &[(&str, &str)] = &[
-    ("de", include_str!("../../../po/de.po")),
+    ("de", include_str!("../po/de.po")),
     // Debug builds alone, so a release carries nothing of it. `po/pseudo.sh`
     // says what it finds and why it is run before any German rather than after.
     #[cfg(debug_assertions)]
-    ("en-x-pseudo", include_str!("../../../po/en-x-pseudo.po")),
+    ("en-x-pseudo", include_str!("../po/en-x-pseudo.po")),
 ];
 
 use std::path::{Path, PathBuf};

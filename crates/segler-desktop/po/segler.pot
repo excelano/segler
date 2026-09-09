@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: segler\n"
 "Report-Msgid-Bugs-To: https://github.com/excelano/segler/issues\n"
-"POT-Creation-Date: 2026-09-09 09:33-0500\n"
+"POT-Creation-Date: 2026-09-09 10:26-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -58,7 +58,7 @@ msgid "section row"
 msgstr ""
 
 #: crates/segler-desktop/src/inspector.rs:46
-#: crates/segler-desktop/src/main.rs:587 crates/segler-desktop/src/main.rs:794
+#: crates/segler-desktop/src/main.rs:590 crates/segler-desktop/src/main.rs:800
 msgid "Structure"
 msgstr ""
 
@@ -75,7 +75,7 @@ msgid "Show the picture's inner elements"
 msgstr ""
 
 #: crates/segler-desktop/src/inspector.rs:194
-#: crates/segler-desktop/src/main.rs:589
+#: crates/segler-desktop/src/main.rs:592
 msgid "Element"
 msgstr ""
 
@@ -107,47 +107,47 @@ msgstr ""
 msgid "none"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:301
+#: crates/segler-desktop/src/inspector.rs:302
 msgid "Layer"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:318
+#: crates/segler-desktop/src/inspector.rs:319
 msgid "Box"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:338
+#: crates/segler-desktop/src/inspector.rs:339
 msgid "Clear"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:341
+#: crates/segler-desktop/src/inspector.rs:342
 msgid "Add"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:359
+#: crates/segler-desktop/src/inspector.rs:360
 msgid "Text"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:405
+#: crates/segler-desktop/src/inspector.rs:406
 msgid "Text (from its parts)"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:422
+#: crates/segler-desktop/src/inspector.rs:423
 msgid "Cell row {row}, column {column}"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:447
+#: crates/segler-desktop/src/inspector.rs:451
 msgid "Remove element…"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:452
+#: crates/segler-desktop/src/inspector.rs:456
 msgid "Markup"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:467
+#: crates/segler-desktop/src/inspector.rs:471
 msgid "Problems"
 msgstr ""
 
-#: crates/segler-desktop/src/inspector.rs:469
+#: crates/segler-desktop/src/inspector.rs:473
 msgid "none; the document is valid"
 msgstr ""
 
@@ -159,207 +159,207 @@ msgstr ""
 msgid "{file}: {reason}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:327
+#: crates/segler-desktop/src/main.rs:330
 msgid "Saved {file}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:330
+#: crates/segler-desktop/src/main.rs:333
 msgid "Nothing to save: {file} is as it was opened"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:337
+#: crates/segler-desktop/src/main.rs:340
 msgid "Save failed: {reason}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:386
+#: crates/segler-desktop/src/main.rs:389
 msgid "Undid: {what}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:387
+#: crates/segler-desktop/src/main.rs:390
 msgid "Nothing to undo"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:396
+#: crates/segler-desktop/src/main.rs:399
 msgid "Redid: {what}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:398
+#: crates/segler-desktop/src/main.rs:401
 msgid "Nothing to redo"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:481
+#: crates/segler-desktop/src/main.rs:484
 msgid "Untitled"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:490
+#: crates/segler-desktop/src/main.rs:493
 msgid "Open…"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:496
+#: crates/segler-desktop/src/main.rs:499
 msgid "Save"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:505
+#: crates/segler-desktop/src/main.rs:508
 msgid "Undo"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:511
+#: crates/segler-desktop/src/main.rs:514
 msgid "Redo"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:534
+#: crates/segler-desktop/src/main.rs:537
 msgid "of {count}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:560
+#: crates/segler-desktop/src/main.rs:563
 msgid "Zoom"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:573
+#: crates/segler-desktop/src/main.rs:576
 msgid "Fit"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:583
+#: crates/segler-desktop/src/main.rs:586
 msgid "Page image"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:612
+#: crates/segler-desktop/src/main.rs:615
 msgid "Formatting in this text"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:619
+#: crates/segler-desktop/src/main.rs:622
 msgid "Keep this edit as plain text?"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:624
+#: crates/segler-desktop/src/main.rs:627
 msgid ""
 "{what} could not be matched to what you typed, so keeping this edit will "
 "write the line as plain text without them."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:626
+#: crates/segler-desktop/src/main.rs:629
 msgid ""
 "{what} could not be matched to what you typed, so keeping this edit will "
 "write the line as plain text without it."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:637
+#: crates/segler-desktop/src/main.rs:640
 msgid "Keep as plain text"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:642 crates/segler-desktop/src/main.rs:688
-#: crates/segler-desktop/src/main.rs:714
+#: crates/segler-desktop/src/main.rs:645 crates/segler-desktop/src/main.rs:692
+#: crates/segler-desktop/src/main.rs:719
 msgid "Cancel"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:660
+#: crates/segler-desktop/src/main.rs:663
 msgid "Edit discarded; the formatting is unchanged"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:674
+#: crates/segler-desktop/src/main.rs:677
 msgid "this element"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:677
+#: crates/segler-desktop/src/main.rs:680
 msgid "Remove element?"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:679
+#: crates/segler-desktop/src/main.rs:682
 msgid "{what} and everything inside it will be removed. Undo brings it back."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:684
+#: crates/segler-desktop/src/main.rs:687
 msgid "Remove"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:704
+#: crates/segler-desktop/src/main.rs:709
 msgid "Save changes?"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:705
+#: crates/segler-desktop/src/main.rs:710
 msgid "The document has unsaved changes."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:708
+#: crates/segler-desktop/src/main.rs:713
 msgid "Save and close"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:711
+#: crates/segler-desktop/src/main.rs:716
 msgid "Discard"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:795
+#: crates/segler-desktop/src/main.rs:801
 msgid "Open a DocLang document or archive."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:858
+#: crates/segler-desktop/src/main.rs:864
 msgid "Open a DocLang document or archive (Ctrl+O)."
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:892
+#: crates/segler-desktop/src/main.rs:898
 msgid "Text changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:897
+#: crates/segler-desktop/src/main.rs:903
 msgid "{name} set to {value}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:900
+#: crates/segler-desktop/src/main.rs:906
 msgid "{name} removed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:902
+#: crates/segler-desktop/src/main.rs:908
 msgid "Label set to {value}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:904
+#: crates/segler-desktop/src/main.rs:910
 msgid "Label removed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:906
+#: crates/segler-desktop/src/main.rs:912
 msgid "Layer set to {value}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:911
+#: crates/segler-desktop/src/main.rs:917
 msgid "Box changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:912
+#: crates/segler-desktop/src/main.rs:918
 msgid "Box removed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:913
+#: crates/segler-desktop/src/main.rs:919
 msgid "Changed to {kind}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:914
+#: crates/segler-desktop/src/main.rs:920
 msgid "Moved"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:915
+#: crates/segler-desktop/src/main.rs:921
 msgid "Inserted {kind}"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:916
+#: crates/segler-desktop/src/main.rs:922
 msgid "Element removed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:918
+#: crates/segler-desktop/src/main.rs:924
 msgid "List item {number} changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:922
+#: crates/segler-desktop/src/main.rs:928
 msgid "Cell row {row}, column {column} changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:926
+#: crates/segler-desktop/src/main.rs:935
 msgid "Cell row {row}, column {column} is now {kind}"
 msgstr ""
 
-#: crates/segler-desktop/src/page.rs:157
+#: crates/segler-desktop/src/page.rs:156
 msgid "{name} is missing from the archive"
 msgstr ""
 
-#: crates/segler-desktop/src/page.rs:164 crates/segler-desktop/src/page.rs:174
+#: crates/segler-desktop/src/page.rs:164 crates/segler-desktop/src/page.rs:177
 msgid "{name}: {reason}"
 msgstr ""

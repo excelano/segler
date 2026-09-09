@@ -193,6 +193,12 @@ everywhere else. The mechanism is the `potext` crate, written in
 slipcase-desktop and made a crate so that more than one application could have
 it; this section is what the rest of this repository may assume.
 
+The catalogues live in `crates/segler-desktop/po/`, inside the crate that reads
+them rather than beside the workspace, because `include_str!` reaching above a
+crate's own directory compiles here and fails in `cargo package`: the tarball
+carries only what is under the crate root, and `publish-crate.yml` publishes
+all three crates. flyleaf lost a release tag to exactly that on 2026-09-09.
+
 **A message is looked up by its English text, never by a key.** So a call site
 reads as the sentence a person sees, and a message with no translation is the
 original rather than a placeholder.
@@ -219,7 +225,7 @@ translated: *Kind*, *Level*, *Class*, *Layer*, *Box*. The cell kinds in the
 element pane are also the window's, not OTSL's tags, so they are translated
 too.
 
-**`po/update-po.sh` is the only way the catalogues move**, and `po/pseudo.sh`
+**`crates/segler-desktop/po/update-po.sh` is the only way the catalogues move**, and its `pseudo.sh`
 writes the pseudolocale that finds a string which never went through `t` and a
 label built to the width of English. Run the second before writing any
 translation rather than after.

@@ -31,8 +31,8 @@ of why everything is the way it is, and it is written to be read.
     cargo clippy --workspace --all-targets -- -D warnings   # must be silent
     cargo fmt --check
     cargo run -p segler -- inspect FILE
-    ./po/update-po.sh          # after changing any sentence a person reads
-    ./po/pseudo.sh             # then run a debug build with POTEXT_LANG=en-x-pseudo
+    ./crates/segler-desktop/po/update-po.sh   # after changing any sentence a person reads
+    ./crates/segler-desktop/po/pseudo.sh      # then run a debug build with POTEXT_LANG=en-x-pseudo
     cargo run -p segler-desktop -- [FILE]
 
 **Seeing the window from here.** Launch it under XWayland and capture its own
@@ -59,7 +59,9 @@ files under that checkout's `examples/` are what to open by hand.
 ## Rules with no exceptions
 
 **The window is translated and the model is not.** German since 2026-09-09,
-through `potext`, with the catalogues in `po/`. `segler-core` has no catalogue
+through `potext`, with the catalogues in `crates/segler-desktop/po/` — inside
+the crate that reads them, because `include_str!` reaching above a crate's own
+directory compiles here and fails in `cargo package`. `segler-core` has no catalogue
 and the CLI is not translated. What stays English is what the file says — an
 element's name, an attribute's name, and every attribute value a person picks
 from a list — because a translated one would be a different document.
