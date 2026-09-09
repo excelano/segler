@@ -52,8 +52,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: linux-${{ github.ref }}
-  cancel-in-progress: true
+  # Keyed by the tag when this is releasing and by the ref when it is checking,
+  # so the two never share a group. They did, and a push to main cancelled the
+  # dispatched run that was building flyleaf 0.2.2's packages a minute after it
+  # started — `github.ref` is refs/heads/main for a workflow_dispatch as much
+  # as for a push.
+  group: linux-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  # A superseded check is worth cancelling; a half-built release is not. The
+  # next push is not a reason to stop producing an artefact somebody is waiting
+  # to install.
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
   package:
