@@ -96,10 +96,16 @@ jobs:
           objects=$(find "${target}" -path '*/build/*' \( -name '*.o' -o -name '*.a' \) -print)
           [ -z "$objects" ] || { echo "a build script produced object files:"; echo "$objects"; exit 1; }
 
+          # The dynamic loader is named for the architecture and lives in a
+          # different directory on each: /lib64/ld-linux-x86-64.so.2 on amd64,
+          # /lib/ld-linux-aarch64.so.1 on arm64. The allowlist had the amd64
+          # path alone, so the first arm64 run reported the loader itself as an
+          # unexpected library — on a binary that links libc, libgcc and libm
+          # and nothing else, which is the answer this step wanted.
           echo "linked at load time:"
           ldd "${target}/release/segler-desktop" | sed 's/^/  /'
           strange=$(ldd "${target}/release/segler-desktop" |
-              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib64/ld-linux)' || true)
+              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib(64)?/ld-linux)' || true)
           [ -z "$strange" ] || { echo "unexpected shared libraries:"; echo "$strange"; exit 1; }
 
       - name: Build the package
