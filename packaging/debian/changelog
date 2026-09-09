@@ -1,3 +1,15 @@
+segler (0.1.1) unstable; urgency=medium
+
+  * German. Segler comes up in German on a machine set to German — the
+    toolbar, both panes, the dialogs and the status line — reading the
+    language the desktop already knows, with nothing to choose and English
+    for any other. What the document says stays as the document says it: an
+    element's name, an attribute's name and the values you pick from a list
+    are the file's own words and are never translated.
+  * The first release carrying an arm64 package.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 09 Sep 2026 23:15:00 -0500
+
 segler (0.1.0) unstable; urgency=medium
 
   * First packaged build. A window whose main pane is the document rendered
