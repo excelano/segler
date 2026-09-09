@@ -22,9 +22,6 @@ is the authority on the format; this repository neither restates nor amends it.
 `DESIGN.md` here is the authority on this application. `git log` is the record
 of why everything is the way it is, and it is written to be read.
 
-Clones of the spec, the official viewer and docling.rs are at `~/clones/` on
-David's machine. The spec's `examples/` and `tests/` are the conformance corpus.
-
 ---
 
 ## Commands
