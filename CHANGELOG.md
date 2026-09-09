@@ -5,6 +5,22 @@ store release notes and the apt changelog are written from this file, and every
 claim here is checked against the built application rather than remembered.
 `git log` is the record of why the code is the way it is; this is not that.
 
+## [Unreleased]
+
+### Fixed
+
+- Selecting a heading no longer changes it. A heading whose `level` the
+  element pane cannot show, because the document spells it as zero or deeper
+  than the field's range, was rewritten to the nearest level the field could
+  show the moment the heading was selected: the document was marked modified,
+  and a save would have written the substitution to the file. Two documents hit
+  it. One whose `level="0"` a finding reports, where clicking the finding is
+  the way to reach the heading and clicking it made the finding disappear; and
+  a valid one with `level="8"`, which carries no finding at all and was quietly
+  turned into a level-6 heading. Selecting an element is not an edit. The
+  field's range is the schema's now, `xs:positiveInteger` with no upper bound,
+  so a level the specification allows is shown as itself.
+
 ## [0.1.1] - 2026-09-09
 
 - **German.** Segler comes up in German on a machine set to German — the

@@ -29,6 +29,37 @@ pub struct Requests {
     pub go_to_page: Option<usize>,
 }
 
+/// What a heading's `level` may be. `xs:positiveInteger` in the schema, with no
+/// upper bound: `spec.md` is the authority on the format and this repository
+/// does not amend it.
+const LEVELS: std::ops::RangeInclusive<u32> = 1..=u32::MAX;
+
+/// The level the element pane shows for a heading.
+///
+/// A heading whose `level` the document spells wrongly is one of the things
+/// this application exists to correct, so a level outside the range really
+/// turns up and the field has to show *something* for it. It shows the nearest
+/// level it can, and that substitution must never reach the document.
+///
+/// 0.1.0 let it. The field's range was `1..=6` and `before` was read from the
+/// unclamped value, so egui's own clamp arrived looking exactly like a typed
+/// edit. Two things followed, both measured on 2026-09-09 against the build in
+/// review. Clicking the validation finding that reports `level="0"` — the one
+/// path anybody reaches such a heading by — set the level to 1, marked the
+/// document modified and made the finding disappear. And `level="8"`, which is
+/// valid DocLang and carries no finding at all, became `level="6"` the moment
+/// the heading was selected, on a document the window went on calling valid.
+/// Selecting an element is not an edit, and an editor that promises the file
+/// back with nothing else changed cannot have one.
+fn heading_level(attrs: &[(String, String)]) -> u32 {
+    attrs
+        .iter()
+        .find(|(n, _)| n == "level")
+        .and_then(|(_, v)| v.parse().ok())
+        .unwrap_or(1)
+        .max(*LEVELS.start())
+}
+
 /// The structure tree of the current page.
 /// The structure tree of the current page. A picture's inner rows, the
 /// words a model read inside a figure, fold under the picture by default:
@@ -230,18 +261,20 @@ impl Editor {
 
                         if matches!(view.kind, Some(Kind::Heading | Kind::FieldHeading)) {
                             ui.label(t("Level"));
-                            let mut level: u32 = view
-                                .attrs
-                                .iter()
-                                .find(|(n, _)| n == "level")
-                                .and_then(|(_, v)| v.parse().ok())
-                                .unwrap_or(1);
+                            let mut level = heading_level(&view.attrs);
+                            // Taken from the value the field is *given*, so that
+                            // bringing a level from outside the range inside it
+                            // reads as the refusal it is rather than as a new
+                            // value. `heading_level` says what that cost.
                             let before = level;
                             let r =
-                                ui.add(egui::DragValue::new(&mut level).range(1..=6).speed(0.1));
-                            // The range clamps a typed 0 back to 1: a refusal,
-                            // not a new value, and it must not reach the document.
-                            if r.changed() && level != before {
+                                ui.add(egui::DragValue::new(&mut level).range(LEVELS).speed(0.1));
+                            // A dragged value arrives when the drag stops and a
+                            // typed one when the field loses focus, the same as
+                            // the box below; neither fires on the frame the
+                            // field is first drawn, which is the frame a clamp
+                            // would happen on.
+                            if (r.drag_stopped() || r.lost_focus()) && level != before {
                                 out.commands.push(Command::SetAttr {
                                     id,
                                     name: "level".into(),
@@ -493,4 +526,57 @@ pub fn problems(ui: &mut egui::Ui, session: &Session, findings: &[Finding], out:
                 ui.add_space(4.0);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::heading_level;
+
+    fn attrs(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
+        pairs
+            .iter()
+            .map(|(n, v)| ((*n).to_owned(), (*v).to_owned()))
+            .collect()
+    }
+
+    /// The schema's default: a heading with no `level` is a level-1 heading.
+    #[test]
+    fn a_missing_level_reads_as_one() {
+        assert_eq!(heading_level(&attrs(&[])), 1);
+        assert_eq!(heading_level(&attrs(&[("label", "x")])), 1);
+    }
+
+    #[test]
+    fn a_level_inside_the_range_is_itself() {
+        for n in [1u32, 2, 6, 7, 40] {
+            assert_eq!(heading_level(&attrs(&[("level", &n.to_string())])), n);
+        }
+    }
+
+    /// Would catch the defect this function was written for. The pane cannot
+    /// show a zero, so it shows one; what matters is that the caller can tell
+    /// that substitution from an edit, which it does by comparing against what
+    /// this returned rather than against what the document said.
+    #[test]
+    fn a_level_below_the_range_is_shown_as_the_nearest_one() {
+        assert_eq!(heading_level(&attrs(&[("level", "0")])), 1);
+    }
+
+    /// A level too large for the field, and a level that is not a number at
+    /// all, are the same kind of thing: unshowable, and not an edit.
+    #[test]
+    fn an_unreadable_level_reads_as_one() {
+        assert_eq!(heading_level(&attrs(&[("level", "two")])), 1);
+        assert_eq!(heading_level(&attrs(&[("level", "-3")])), 1);
+        assert_eq!(heading_level(&attrs(&[("level", "")])), 1);
+    }
+
+    /// `level="8"` is valid DocLang and carried no finding, and 0.1.0 rewrote
+    /// it to 6 on selection because the field's range stopped there. The range
+    /// is the schema's now, so eight is eight.
+    #[test]
+    fn a_deep_level_is_left_alone() {
+        assert_eq!(heading_level(&attrs(&[("level", "8")])), 8);
+        assert_eq!(heading_level(&attrs(&[("level", "99")])), 99);
+    }
 }
