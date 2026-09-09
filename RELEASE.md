@@ -56,7 +56,6 @@ well. Ask `git tag --list` before deciding.
 
     cargo build --release --workspace
     ./packaging/linux/check-libraries.sh          # both display backends
-    ./packaging/debian/build-deb.sh
     ./packaging/preflight.sh --corpus ~/clones/doclang --ci
 
 `preflight.sh` is the gate: a clean tree, nothing unpushed, both changelogs
@@ -68,9 +67,23 @@ repairs.
 Then tag, release, and ship:
 
     git tag -a vX.Y.Z            # the commit the store packages were built from
-    gh release create vX.Y.Z dist/segler_X.Y.Z_amd64.deb \
+    gh release create vX.Y.Z \
         packaging/review/sailing-directions.dclx --notes-file …
+    # linux.yml attaches both .deb packages; wait for it
+    gh run watch "$(gh run list --workflow=linux.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
     apt-ship segler vX.Y.Z -y
+
+**The packages come from CI, not from this machine.** Publishing the release
+fires `linux.yml`, which builds amd64 and arm64 on runners of their own
+architecture, puts both through the checks a push gets, installs each one and
+runs the CLI out of it, and attaches them. `apt-ship` reads what the release
+carries, so it waits for that run.
+
+Until 2026-09-09 the package was built here by hand and there was only ever
+one of it, which is why the arm64 half of the apt repository has nothing in it
+for Segler and will stay that way until the next release. `build-deb.sh` still
+works and is what the workflow calls; running it locally is for looking at a
+package, not for shipping one.
 
 The tag push also runs `publish-crate.yml`, which publishes the three crates, `segler-core` first, to crates.io
 with the organisation's token before the GitHub release exists; the fleet's

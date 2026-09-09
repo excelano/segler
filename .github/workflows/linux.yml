@@ -1,7 +1,19 @@
-# Build the Linux package on every push and put it under the checks a machine
-# can run: the package's ownership and modes, its md5sums, lintian, and the
-# media-type association through GLib. The suite, clippy and formatting are the
-# fleet's `ci.yml` and are not repeated here.
+# Build the Linux packages and put them under the checks a machine can run:
+# the package's ownership and modes, its md5sums, lintian, the media-type
+# association through GLib, and that the thing installs and runs. The suite,
+# clippy and formatting are the fleet's `ci.yml` and are not repeated here.
+#
+# On a push this is a check. On a published release it is also where the
+# packages come from: both architectures are built here and attached to the
+# release, rather than one being built by hand on whichever machine happened
+# to cut it. Until 2026-09-09 that hand-built package was the only one, so
+# every Segler release shipped amd64 alone, and the arm64 half of the apt
+# repository had nothing in it — while comma, whose loop this is, had been
+# building both in CI all along.
+#
+# The checks are not skipped for a release. They are the reason the build is
+# here rather than in a workflow of its own that would have to repeat them or
+# do without.
 #
 # What it reaches and what it does not, stated because a green tick invites
 # more faith than it has earned. The build needs no development packages:
@@ -23,6 +35,18 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Fires when a person publishes the release, which on this loop is what
+  # happens: nothing else creates it. A release created by a workflow using
+  # the default GITHUB_TOKEN fires no event at all — a GitHub safeguard with
+  # no opt-out — so the dispatch below is the fallback for that case.
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build packages for (e.g. v0.1.1)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -33,10 +57,23 @@ concurrency:
 
 jobs:
   package:
-    runs-on: ubuntu-latest
+    # Each architecture on a runner of that architecture rather than
+    # cross-compiled, which is what lets every check below mean something
+    # about the package it actually produced.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
@@ -67,6 +104,15 @@ jobs:
 
       - name: Build the package
         run: ./packaging/debian/build-deb.sh
+
+      # Cheap, and the one thing that goes wrong silently when a package is
+      # built somewhere other than where it was compiled: a package labelled
+      # arm64 carrying an x86-64 executable installs perfectly and then does
+      # not run.
+      - name: The package is the architecture it claims
+        run: |
+          deb=$(ls dist/*.deb)
+          test "$(dpkg-deb -f "$deb" Architecture)" = "${{ matrix.arch }}"
 
       # Everything `root/root` and nothing carrying a mode a package should not
       # ship; `md5sums` present, which is what `dpkg -V` reads; and every
@@ -148,3 +194,49 @@ jobs:
           # ever stops being the generic answer the format has grown a
           # signature and the declaration can carry it.
           echo "magic alone: $(file --mime-type -b "${RUNNER_TEMP}/sample.dclx") / $(file --mime-type -b "${RUNNER_TEMP}/sample.dclg")"
+
+      # Last, because it installs the package system-wide and the step above
+      # asks GLib which handler is registered — an installed copy in
+      # /usr/bin would change the question it is answering.
+      #
+      # `segler-desktop` cannot run here: nothing headless reaches a window,
+      # which is what `CHECKLIST.md` is for. The CLI can, and until today
+      # nothing had ever run either binary on arm64 — the package was built,
+      # attached and installed by people without one execution behind it.
+      - name: It installs, and what it installed runs
+        run: |
+          set -eux
+          deb=$(ls dist/*.deb)
+          sudo apt-get install -y "./${deb#./}"
+          command -v segler
+          segler --version
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb-${{ matrix.arch }}
+          path: dist/*.deb
+
+  # Only on a release. A push builds the packages to check them and then
+  # throws them away, which is the point of building them on a push.
+  attach:
+    needs: package
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Attach the packages to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          ls -l packages
+          gh release upload \
+            "${{ github.event.release.tag_name || inputs.tag }}" \
+            packages/*.deb --clobber
