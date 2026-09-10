@@ -79,19 +79,22 @@
   </Dependencies>
 
   <Resources>
-    <!-- The package's language. `en-us` because the application is written
+    <!-- The package's languages. `en-us` because the application is written
          in US English; it said `en-gb` until 2026-09-06, inherited from
-         slipcase-desktop's manifest and argued for nowhere. It shows in
-         Partner Center's Packages panel - 0.1.0's read `en-gb` - and must
-         match `build-msix.ps1`'s makepri `/dq`, or the index has no default
-         language and fails silently. It takes effect on the next package
-         uploaded. this is the tag Partner Center opens a *new*
-         submission's Store listing under, which is how a package language
-         becomes a listing language. It cannot rename a listing that already
+         slipcase-desktop's manifest and argued for nowhere. `de-de` beside it
+         since 2026-09-10, because the application now speaks German. Both
+         show in Partner Center's Packages panel - 0.1.0's read `en-gb` - and
+         both must match `build-msix.ps1`'s makepri `/dq`, which spells the
+         pair `en-US_de-DE`, or the index has no default language and fails
+         silently. They take effect on the next package uploaded. Each is a
+         tag Partner Center opens a *new* submission's Store listing under,
+         which is how a package language becomes a listing language - measured
+         on duckling 2026-09-09. It cannot rename a listing that already
          exists - that one is deleted and a new one added on the Store
          listings page. slipcase-desktop's `RELEASE.md` recorded this first,
-         on 2026-08-31. -->
+         on 2026-08-31; `~/fenster/LIMITS.md` is the long-form record. -->
     <Resource Language="en-us" />
+    <Resource Language="de-de" />
   </Resources>
 
   <Applications>

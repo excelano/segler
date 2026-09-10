@@ -15,10 +15,21 @@ Limits, so a later edit does not overrun them:
 | --- | --- | --- |
 | App name | unmeasured | 30 |
 | Description | 10,000 | 4,000 |
-| Short description | 1,000 | — |
+| Short description | 500 | — |
 | Subtitle | — | 30 |
 | Promotional text | — | 170 |
 | Keywords | 7 terms | 100 characters |
+
+**The API's limit is not the form's, and the API's is the one that binds.**
+Partner Center's form takes 1,000 characters of short description, which is
+what this table said until 2026-09-10. The submission API refuses anything over
+500 - *The length of ShortDescription must be 500 or less* - and it refuses it
+while copying the **published** listing into the new draft, so a listing that
+went up through the form over 500 blocks the next upload before the new text is
+ever sent. Measured 2026-09-09 on Duckling's first API submission, and the
+number above is the API's. Nothing of Segler's has been submitted yet, so
+writing to 500 from the start is what keeps that wall from ever being built
+here.
 
 ## App name
 
@@ -39,13 +50,13 @@ Edit DocLang documents
 
 Open a DocLang document, read it as a reader would, correct it where you read it, and save the same file with your edits and nothing else changed.
 
-## Short description (Microsoft Store, 1,000)
+## Short description (Microsoft Store, 500)
 
-DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong.
+DocLang is the open markup format for documents that language models read and write. Most of it is a model's reading of a PDF or a scan, and sometimes wrong.
 
-Segler opens a DocLang document or archive and shows it as a reader would see it: headings, paragraphs, lists, tables and pictures in reading order, with the element tree beside it. Retype a misread line where you read it, in a paragraph, a list item or a table cell. Change a heading's level, change a cell from body to header, correct a bounding box. When the archive carries the page images the model read, open them beside the document to check a doubtful line against the page.
+Segler shows such a document as a reader would see it and lets you correct it there: a misread line, a heading's level, a table cell. When the archive carries page images, open them beside the document to check a doubtful line against the scan.
 
-Every edit can be undone. What is saved is the file you opened with your edits and nothing else changed.
+Save writes the file you opened with your edits and nothing else changed.
 
 ## App features (Microsoft Store, up to 20 bullets of 200 characters)
 

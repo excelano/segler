@@ -413,12 +413,15 @@ if ($left) {
 $makepri = Find-SdkTool 'makepri.exe'
 if (-not $makepri) { Refuse 'no makepri.exe in any Windows SDK' }
 $priConfig = Join-Path $OutDir 'priconfig.xml'
-# `en-US` matches the `<Resource Language="en-us" />` the manifest declares. If
-# the two disagree the index has no default language and the shell falls back to
-# the literal paths, which is the failure this whole step exists to remove -
-# and it fails silently, so it is spelled once here from the manifest's value.
-# It was `en-GB` until 2026-09-06; the manifest carries the why.
-& $makepri createconfig /cf $priConfig /dq en-US /o | Out-Null
+# `en-US_de-DE` matches the `<Resource Language="en-us" />` and
+# `<Resource Language="de-de" />` the manifest declares - makepri joins the
+# tags with an underscore, and `createconfig` writes them as the Language
+# qualifier `en-US;de-DE`. If the two sides disagree the index has no default
+# language and the shell falls back to the literal paths, which is the failure
+# this whole step exists to remove - and it fails silently, so it is spelled
+# once here from the manifest's values. It was `en-GB` until 2026-09-06 and
+# `en-US` alone until 2026-09-10; the manifest carries the why.
+& $makepri createconfig /cf $priConfig /dq en-US_de-DE /o | Out-Null
 if ($LASTEXITCODE -ne 0) { Refuse "makepri createconfig failed ($LASTEXITCODE)" }
 
 # The default configuration splits qualified resources into *resource packages*,
