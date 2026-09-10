@@ -1,3 +1,15 @@
+segler (0.1.2) unstable; urgency=medium
+
+  * Selecting a heading no longer changes it. A heading whose level the element
+    pane could not show — the document spelling it as zero, or deeper than the
+    field's range — was rewritten to the nearest level the field could show the
+    moment the heading was selected, marking the document modified, and a save
+    would have written that substitution to the file. Selecting an element is
+    not an edit. The field's range is the schema's now, so a level the
+    specification allows is shown as itself.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 09 Sep 2026 19:05:11 -0500
+
 segler (0.1.1) unstable; urgency=medium
 
   * German. Segler comes up in German on a machine set to German — the
@@ -8,7 +20,7 @@ segler (0.1.1) unstable; urgency=medium
     are the file's own words and are never translated.
   * The first release carrying an arm64 package.
 
- -- David M. Anderson <david.anderson@excelano.com>  Wed, 09 Sep 2026 23:15:00 -0500
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 09 Sep 2026 18:13:00 -0500
 
 segler (0.1.0) unstable; urgency=medium
 

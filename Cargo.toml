@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/segler-core", "crates/segler", "crates/segler-desktop"]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["David M. Anderson"]
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ repository = "https://github.com/excelano/segler"
 rust-version = "1.95"
 
 [workspace.dependencies]
-segler-core = { path = "crates/segler-core", version = "0.1.1" }
+segler-core = { path = "crates/segler-core", version = "0.1.2" }
 # Pure Rust and no build script. Every dependency in this tree has to say the
 # same; DESIGN.md §5 is the rule and `cargo tree -i cc` is the check.
 # The tokenizer under roxmltree, taken directly: it hands back raw spans for

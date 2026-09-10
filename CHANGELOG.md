@@ -5,7 +5,7 @@ store release notes and the apt changelog are written from this file, and every
 claim here is checked against the built application rather than remembered.
 `git log` is the record of why the code is the way it is; this is not that.
 
-## [Unreleased]
+## [0.1.2] - 2026-09-09
 
 ### Fixed
 
