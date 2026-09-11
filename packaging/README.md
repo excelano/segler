@@ -79,9 +79,12 @@ error. `.github/workflows/linux.yml` runs lintian on every push.
 
 ## The icons
 
-`linux/icons/segler-desktop.svg` is the application: a sailboat in a blue
-roundel, mainsail, jib and hull as filled shapes with the roundel's outline
-the only line, on a 64-unit grid. The name is German for sailor. It is
+`linux/icons/segler-desktop.svg` is the application: a sailboat on a blue
+square, mainsail, jib and hull as filled shapes and no strokes at all, on a
+64-unit grid. The tile is a plain square, full bleed and unframed, because
+that is the shape a store takes and it applies its own corner rounding to
+it; a drawing carrying a smaller shape or its own outline into that frame
+reads as a sticker. The name is German for sailor. It is
 deliberately not DocLang's logo, which is a stylised document and that
 project's own. The two document icons beside it are a page carrying the same
 boat, blue for an archive and cream for bare markup, so the two kinds tell
@@ -103,6 +106,25 @@ from an icon directory when the scripts are, so `make-ico` writes `segler.ico`,
 and a `.dclg` would carry the same picture in Explorer while carrying different
 ones in a Linux file manager, which is the sort of difference nobody notices
 until they have both machines open.
+
+### Both shapes, for a submission form
+
+`icons/` holds the application icon in two shapes - `segler-square` and
+`segler-rounded`, each as an SVG and as PNGs at 256, 512, 1024, 1080 and 2160.
+`windows/make-ico` writes the directory and clips the rounded one from the same
+source; neither shape is duplicated as a drawing and neither is edited by hand.
+
+Which to upload is a decision taken at the form, which is why both exist and
+neither is the default. A store that masks what it is given wants the square:
+the iOS and iPadOS Store does, and so does Icon Composer. A form that draws what
+it is handed wants the rounded one. The corner is 22.37% of the side, which is
+Apple's proportion, drawn as a circular arc rather than the continuous curve
+Apple's own tooling produces; below about 512 pixels the two do not tell apart,
+and where they would, Icon Composer on a Mac is what draws Apple's shape.
+
+Nothing in `icons/` ships. The deb installs named files out of `linux/icons`
+and `build-msix.ps1` copies `windows/assets/*.png`, so neither reaches a
+package, and no code reads one at run time.
 
 ## windows
 

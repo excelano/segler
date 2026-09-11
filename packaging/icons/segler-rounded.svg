@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <clipPath id="rounded"><rect width="64" height="64" rx="14.317"/></clipPath>
+  <g clip-path="url(#rounded)">
   <!--
     Segler: a sailboat on a blue square. Mainsail, jib, hull.
 
@@ -42,4 +44,5 @@
   <path d="M27 19 L27 42 L14 42 Q16 30 27 19 z" fill="#d9d3c3"/>
   <!-- The hull. -->
   <path d="M11 46 h42 l-5 7 h-32 z" fill="#2f3337"/>
+</g>
 </svg>
