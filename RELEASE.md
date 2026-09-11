@@ -7,6 +7,16 @@ step is prose, that is a claim it cannot be scripted, and a later reader is
 invited to prove it wrong. The loop is slipcase-desktop's, which is the
 hand-cut loop in the fleet's `~/notes/releasing.md`.
 
+| | |
+|---|---|
+| Loop | hand-cut |
+| Version lives in | `Cargo.toml` |
+| Version mirrored in | `packaging/windows/AppxManifest.xml.in` `packaging/macos/Info.plist.in` |
+| `apt-ship` argument | `segler` |
+| Packages per release | 2, amd64 arm64 |
+| crates | `segler-core` `segler` `segler-desktop` |
+| Store lanes | msix appstore |
+
 Two documents are named here and not committed, because each carries an
 account's own identifiers: `packaging/windows/SUBMITTING.local.md` and
 `packaging/macos/SUBMITTING.local.md`. `packaging/windows/identity.psd1` is the
