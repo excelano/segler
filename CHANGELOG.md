@@ -5,6 +5,32 @@ store release notes and the apt changelog are written from this file, and every
 claim here is checked against the built application rather than remembered.
 `git log` is the record of why the code is the way it is; this is not that.
 
+## [0.1.3] - 2026-09-14
+
+The packaging, caught up with what the application already does. Nothing in
+the editor has changed since 0.1.2.
+
+### Fixed
+
+- **The macOS bundle says Segler is offered in German.** The German shipped in
+  0.1.1, but the property list never claimed it, and
+  `CFBundleDevelopmentRegion` is the language the application is written in
+  rather than a list of what it is offered in. App Store Connect listed
+  English alone, and the per-app language picker in System Settings, under
+  Language & Region, had nothing for a German speaker to choose.
+  `CFBundleLocalizations` names `en` and `de` now.
+- **The property list parses.** Two of its comments wrote out a command's flag
+  with a double hyphen in it, which is illegal inside an XML comment and left
+  the file ill-formed for anything stricter than `plutil`.
+
+### Changed
+
+- **The application icon is a full-bleed square.** It was the boat in a blue
+  roundel, and every store frames an icon in a square and applies its own
+  corner rounding, so a disc inside that frame was a smaller shape stuck on a
+  larger one and read as a sticker. The two document icons keep the page
+  shape, which is what tells a `.dclg` apart from an application at 16 pixels.
+
 ## [0.1.2] - 2026-09-09
 
 ### Fixed

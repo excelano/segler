@@ -122,12 +122,12 @@ asset on GitHub, not a page; `packaging/review/README.md` has the URL shape.
 *What's new in this version* on the Microsoft Store and *What's New* on the Mac
 App Store, one version's text each, written from `CHANGELOG.md` the way
 everything else here is and kept latest first. Only the version being submitted
-needs a subsection, and 0.1.0 and 0.1.1 have none because neither store has ever
-served Segler: there is nobody upgrading from them to tell. The first submission
+needs a subsection, and 0.1.0 through 0.1.2 have none because neither store has
+ever served Segler: there is nobody upgrading from them to tell. The first submission
 says so and the ones after it say what changed. Neither field's limit has been
 measured, and the text below is short enough that it has not had to be.
 
-### 0.1.2
+### 0.1.3
 
 First release.
 
@@ -135,7 +135,7 @@ First release.
 
 Segler is an editor for DocLang documents. DocLang is the open markup format for documents that language models read and write, from the LF AI & Data Foundation. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
 
-**Open a document first — with nothing open, the window is empty and there is nothing to try.** One is at https://github.com/excelano/segler/releases/download/v0.1.2/sailing-directions.dclx — *Sailing directions for the western approaches*, a two-page archive written for this purpose and carrying every feature the listing claims: a heading hierarchy, running text, a four-column table with a caption, ordered and unordered lists, a picture, and the two page images the document was read from. It is the same document the screenshots show. Download it and open it, or launch the application and use Open. Nothing in it is anybody else's copyright.
+**Open a document first — with nothing open, the window is empty and there is nothing to try.** One is at https://github.com/excelano/segler/releases/download/v0.1.3/sailing-directions.dclx — *Sailing directions for the western approaches*, a two-page archive written for this purpose and carrying every feature the listing claims: a heading hierarchy, running text, a four-column table with a caption, ordered and unordered lists, a picture, and the two page images the document was read from. It is the same document the screenshots show. Download it and open it, or launch the application and use Open. Nothing in it is anybody else's copyright.
 
 What to look at once it is open: the document rendered in reading order in the main pane, the element tree beside it, and the selected element's properties below that. Click a line of text and edit it where you read it. With the page images present, the located boxes are drawn over the page so a doubtful line can be checked against the scan. Save writes the same file back with the edit and nothing else changed.
 
