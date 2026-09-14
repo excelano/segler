@@ -37,14 +37,35 @@
   `LSMinimumSystemVersion` is 11.0. Nothing here calls anything newer than
   the Apple Event manager and `NSFileManager`, and 11.0 is where Apple silicon
   begins, so an arm64 slice cannot claim lower whatever the floor says. The
-  executable has to agree: `build-app.sh --universal` refuses a slice built
-  for a different floor, and `MACOSX_DEPLOYMENT_TARGET=11.0` is what sets it.
+  executable has to agree: a universal build from `build-app.sh` refuses a
+  slice built for a different floor, and `MACOSX_DEPLOYMENT_TARGET=11.0` is
+  what sets it.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+
+	<!--
+	  What the application is offered in, as against what it is written in.
+	  Without this key App Store Connect lists English alone however much of
+	  the bundle is German, and the per-app language picker in System
+	  Settings, under Language & Region, builds its list from it, so a German
+	  speaker has nothing there to choose. Translating the application does
+	  not reach either of them: `crates/segler-desktop/po/de.po` is the
+	  window's words and this is the package's claim about them.
+
+	  The array names the catalogues `CATALOGUES` in `main.rs` names, less
+	  `en-x-pseudo`, which a debug build alone carries and no package ever
+	  holds.
+	-->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>de</string>
+	</array>
+
 	<key>CFBundleExecutable</key>
 	<string>segler-desktop</string>
 	<key>CFBundleIdentifier</key>
@@ -71,7 +92,8 @@
 	  must increase on every upload of a bundle, including a rejected one
 	  resubmitted with nothing changed. The release version cannot do that,
 	  so this is the commit count, which only rises.
-	  `packaging/version.sh --build` is where it comes from and says why.
+	  The build number `packaging/version.sh` prints is where it comes from,
+	  and that script says why.
 	-->
 	<key>CFBundleVersion</key>
 	<string>@BUILD@</string>
