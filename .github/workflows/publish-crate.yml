@@ -1,24 +1,39 @@
 name: Publish to crates.io
 
 # Fires on the version tag the hand-cut release loop pushes (RELEASE.md), and
-# can be run by hand. `cargo publish` compiles and uploads from source, so it
-# is independent of the .deb and the store packages and runs beside them; the
-# tag is pushed before the GitHub release exists, so the crate lands first.
+# can be run by hand. `cargo publish` compiles and uploads from source, so it is
+# independent of the `.deb` and the store packages and runs beside them; the
+# tag is pushed before the GitHub release exists, so the crates land first.
+#
+# **Every crate, published one at a time and in order.** `cargo publish
+# --workspace` is the shorter spelling and it cannot be resumed: it refuses the
+# whole run when any member's version is already on the index, so a partial
+# publish can only be finished by hand. That is not a hypothetical. odox 0.1.0
+# published its first two crates, then cargo's sixty-second wait for the index
+# expired before the rest, and the retry refused with *already exists on
+# crates.io index*. This file is odox's answer, taken unchanged: each crate is
+# asked for separately, one already on the index is skipped, and the index is
+# waited for rather than assumed.
+#
+# The order comes from `ship.conf`, which is where it already lives and is read
+# by `ship` and `fleet` too. Naming it here as well would be one fact in two
+# files.
 #
 # The step is token-gated: it skips cleanly, with no failed run, unless a
-# CRATES_IO_TOKEN secret is available (repo- or org-level). Once it is, every
-# tagged release keeps the crate on crates.io in lockstep with the GitHub
-# release. Versions there are immutable: a bad one is yanked, never
-# re-published, and the fix is the next number.
-#
-# Three crates, one command: `--workspace` publishes `segler-core`, then
-# `segler` and `segler-desktop` on top of it, in dependency order, waiting for
-# the index between them.
+# CRATES_IO_TOKEN secret is available. The excelano organisation carries one.
+# Versions on crates.io are immutable: a bad one is yanked, never re-published,
+# and the fix is the next number.
+
 on:
   push:
     tags:
       - '**[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish from (e.g. v0.1.0). Defaults to the branch this is dispatched on.'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -27,14 +42,59 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
+        with:
+          # A dispatch runs this file from the branch it was started on and
+          # publishes the tree named here, so a fix to the workflow can finish a
+          # release cut before the fix existed.
+          ref: ${{ inputs.tag || github.ref }}
+
       - name: Check for a crates.io token
         id: token
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: echo "present=${CRATES_IO_TOKEN:+true}" >> "$GITHUB_OUTPUT"
+
       - name: Publish
         if: steps.token.outputs.present == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo publish --workspace
+        run: |
+          set -eu
+          version=$(./packaging/version.sh)
+          crates=$(sed -n 's/^crates=//p' ship.conf)
+          echo "publishing ${crates} at ${version}"
+
+          # crates.io asks for a User-Agent that says who is calling and refuses
+          # a request without one.
+          agent='segler release workflow (https://github.com/excelano/segler)'
+
+          on_index() {
+              code=$(curl -s -o /dev/null -w '%{http_code}' -H "User-Agent: ${agent}" \
+                  "https://crates.io/api/v1/crates/$1/$2")
+              [ "$code" = 200 ]
+          }
+
+          for crate in $crates; do
+              if on_index "$crate" "$version"; then
+                  echo "== ${crate} ${version} is already on the index"
+                  continue
+              fi
+
+              echo "== publishing ${crate} ${version}"
+              cargo publish -p "$crate"
+
+              # `cargo publish` waits for the crate to become resolvable and
+              # gives up after a minute. The next crate in the list depends on
+              # this one, so a run that raced the index would fail resolving it;
+              # this waits again rather than assuming, and says so while it does.
+              for attempt in $(seq 1 30); do
+                  if on_index "$crate" "$version"; then
+                      echo "   on the index after ${attempt} check(s)"
+                      break
+                  fi
+                  sleep 10
+              done
+              on_index "$crate" "$version" ||
+                  { echo "${crate} ${version} never appeared on the index" >&2; exit 1; }
+          done
