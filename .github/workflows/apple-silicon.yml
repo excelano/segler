@@ -30,6 +30,11 @@ on:
         description: 'Tag to build the universal binary for (e.g. v0.1.4)'
         required: true
         type: string
+      screenshots:
+        description: 'Also take the Store screenshots'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -203,3 +208,26 @@ jobs:
           package: segler-desktop
           tag: ${{ github.event.release.tag_name || inputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Off unless asked for. A bug fix should not pay for a set of Store
+      # screenshots, and a set nobody asked for is a set nobody looks at.
+      # `shots.sh` carries the recipes and is the same command that retakes
+      # them by hand on the Mac; `screenshot.sh` beside it is the driver and
+      # knows nothing about Segler.
+      #
+      # Driving another application's window goes through System Events and
+      # CGEventPost, both gated by TCC Accessibility. A hosted runner is
+      # trusted for it — asked rather than assumed, because a refused click is
+      # dropped rather than reported and the capture then succeeds, so the
+      # failure would be a correctly sized photograph of the wrong thing.
+      - name: The Store screenshots
+        if: inputs.screenshots
+        run: ./packaging/macos/shots.sh --app dist/Segler.app
+
+      - name: Keep them
+        if: inputs.screenshots
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-screenshots
+          path: dist/screenshots/*.png
+          if-no-files-found: error
