@@ -25,20 +25,33 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      # Optional, because a screenshots run has no tag to give. With one the
+      # package is attached to that release; without one it is built and kept
+      # as an artefact.
       tag:
         description: 'Tag to package for (e.g. v0.1.4)'
-        required: true
+        required: false
         type: string
+      # A choice rather than the boolean `apple-silicon.yml` has, because this
+      # lane has a third thing to ask for. Three of the controls the recipes
+      # name have never been measured on this platform, so `reference` takes
+      # the one plain frame they get measured off and `full` takes the set.
+      screenshots:
+        description: 'Store screenshots'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'reference', 'full']
 
 permissions:
   contents: write
 
 concurrency:
-  # Keyed by the tag when this is releasing and by the ref when it is checking,
-  # so the two never share a group. `github.ref` is refs/heads/main for a
-  # workflow_dispatch as much as for a push, so keying on it alone lets a push
-  # to main cancel the dispatched run that is building a release's package.
-  group: windows-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  # Keyed by the tag when this is releasing, and by the event and the ref when
+  # it is not. `github.ref` is refs/heads/main for a workflow_dispatch as much
+  # as for a push, so keying on it alone lets a push to main cancel a dispatched
+  # run - and a dispatch asking only for screenshots has no tag to key on.
+  group: windows-${{ github.event.release.tag_name || inputs.tag || format('{0}-{1}', github.event_name, github.ref) }}
   # A superseded check is worth cancelling; a half-built release is not.
   cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
@@ -163,6 +176,60 @@ jobs:
           publisher: ${{ secrets.STORE_PUBLISHER }}
           tag: ${{ github.event.release.tag_name || inputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      # Off unless asked for. A bug fix should not pay for a set of Store
+      # screenshots, and a set nobody asked for is a set nobody looks at.
+      # `shots.ps1` carries the recipes and is the same command that retakes
+      # them by hand on the Windows machine; `screenshot.ps1` beside it is the
+      # driver and knows nothing about Segler.
+      #
+      # The document is opened through the shell, so the association has to
+      # exist: `install.ps1` puts the release binary behind `.dclx` the way it
+      # does on a person's machine. The install check above runs `-NoBinary`
+      # and takes its registration off again, so this is a second, real one.
+      - name: The desktop is big enough to photograph a window on
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms
+          function Screen { [System.Windows.Forms.SystemInformation]::VirtualScreen }
+          Write-Host "as found: $((Screen).Width)x$((Screen).Height)"
+          # A hosted runner starts at 1024x768, which cannot hold a 1366x768
+          # window placed at 200,100. Whether this cmdlet is here at all is the
+          # question this step exists to answer, so it is tried and reported
+          # rather than assumed either way.
+          if (Get-Command Set-DisplayResolution -ErrorAction SilentlyContinue) {
+            Set-DisplayResolution -Width 1920 -Height 1080 -Force
+            Start-Sleep -Seconds 2
+            Write-Host "after Set-DisplayResolution: $((Screen).Width)x$((Screen).Height)"
+          } else {
+            Write-Host 'no Set-DisplayResolution on this image'
+          }
+          # The window goes at 200,100 and the frame is 1366x768, so this is
+          # what the desktop has to hold. A smaller one clips the window, the
+          # driver reads a frame under the size it asked for, and it refuses -
+          # which is correct but says nothing about why.
+          if ((Screen).Width -lt 1566 -or (Screen).Height -lt 868) {
+            throw "the desktop is $((Screen).Width)x$((Screen).Height) and a 1366x768 window at 200,100 needs 1566x868"
+          }
+
+      - name: Install the association
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        run: powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
+
+      - name: The Store screenshots
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        run: >
+          powershell -ExecutionPolicy Bypass -File packaging/windows/shots.ps1
+          ${{ inputs.screenshots == 'reference' && '-Reference' || '' }}
+
+      - name: Keep them
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        uses: actions/upload-artifact@v7
+        with:
+          name: store-screenshots
+          path: dist/screenshots/*.png
+          if-no-files-found: error
+
       - name: The committed icons and Store assets still match their generator
         run: |
           cd packaging/windows/make-ico
