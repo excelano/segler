@@ -115,6 +115,17 @@ jobs:
           }
           Write-Host 'subsystem 2, and the application manifest is embedded'
 
+      # The install scripts against the registry, read back. The steps are
+      # excelano/.github's: it was the same script in three repositories and
+      # absent from three more, and the absent ones included the repository
+      # whose uninstall reported success while leaving the association dead.
+      - name: The integration goes on and comes off cleanly
+        uses: excelano/.github/.github/actions/windows-install-check@main
+        with:
+          associations: '[{"extension": ".dclx", "progId": "Excelano.Segler.Archive", "contentType": "application/vnd.doclang.archive+zip"}, {"extension": ".dclg", "progId": "Excelano.Segler.Document", "contentType": "application/vnd.doclang.document+xml"}]'
+          owns-extension: 'false'
+          install-args: '-NoBinary'
+
       # The Store takes the package unsigned, and the runner assembles the one that
       # is uploaded. The steps are excelano/.github's, because they were the same in
       # every repository that has this target; the publisher is the organisation
