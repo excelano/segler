@@ -258,7 +258,7 @@ not DPI aware until this existed.
 
 ## What a Store build is
 
-`build-msix.ps1` produces it and `RELEASE.md` has the process; what belongs here
+`build-msix.ps1` produces it and `ship` has the process; what belongs here
 is why it is shaped that way.
 
 **Signing is not optional for a local install.** The shell will not accept an
@@ -280,5 +280,5 @@ application's executables live under `WindowsApps` behind an app-execution
 alias, declaring one is a manifest extension nobody has asked for, and a
 command-line tool a person cannot type the name of is worse than one they
 install another way. The Debian package carries both because one `apt install`
-is one product; the Store package is the window. `RELEASE.md` says the CLI ships
+is one product; the Store package is the window. The release record says the CLI ships
 through cargo-dist.

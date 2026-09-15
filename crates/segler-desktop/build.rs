@@ -15,7 +15,7 @@
 //! route needs no compiler.
 //!
 //! **A second use for this file is a decision, not a precedent.** The one
-//! opened here is narrow on purpose. `RELEASE.md` names it as the one build
+//! opened here is narrow on purpose. The release record names it as the one build
 //! script the tree may carry.
 //!
 //! Author: David M. Anderson

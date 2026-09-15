@@ -116,6 +116,6 @@ CI is the fleet's `excelano/.github` Rust workflow; change policy there, not
 here. `linux.yml` beside it builds the package on every push and runs lintian
 and the media-type check against it. Packaging is cloned from
 `excelano/slipcase-desktop`, one directory per platform; `packaging/README.md`
-says what is there and `RELEASE.md` what each release costs.
+says what is there; `ship segler` runs a release.
 `packaging/linux/check-libraries.sh` needs a display and is a command, never a
 test.

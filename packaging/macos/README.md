@@ -146,7 +146,7 @@ rather than notarized.
 
 ## What a Store build is
 
-`build-app.sh --store PROFILE` produces it and `RELEASE.md` has the process.
+`build-app.sh --store PROFILE` produces it and `ship` has the process.
 A universal bundle carrying the profile as `embedded.provisionprofile`,
 signed with the distribution identity and entitlements generated from the
 profile, wrapped by `productbuild` into a signed `.pkg`. The script refuses

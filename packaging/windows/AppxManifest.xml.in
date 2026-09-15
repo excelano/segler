@@ -11,7 +11,7 @@
   is rejected at upload rather than at review, so there is no way to find out
   you guessed wrong except by trying. @PUBLISHER@ in particular is a full X.500
   string - `CN=` with a GUID - and not the display name. Reserving the name is
-  cheap and unblocks this file, which is why `RELEASE.md` puts it first in the
+  cheap and unblocks this file, which is why the release record puts it first in the
   Windows section.
 
   @VERSION_APPX@ is what `packaging/version.sh` prints when asked for the appx
@@ -91,7 +91,7 @@
          which is how a package language becomes a listing language - measured
          on duckling 2026-09-09. It cannot rename a listing that already
          exists - that one is deleted and a new one added on the Store
-         listings page. slipcase-desktop's `RELEASE.md` recorded this first,
+         listings page. slipcase-desktop's release record recorded this first,
          on 2026-08-31; `~/fenster/LIMITS.md` is the long-form record. -->
     <Resource Language="en-us" />
     <Resource Language="de-de" />
