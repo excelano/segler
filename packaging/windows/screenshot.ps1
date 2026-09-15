@@ -15,15 +15,25 @@
 #
 #   ...\screenshot.ps1 -Launch shell,C:\path\to\demo.dclx -Process segler-desktop `
 #       -Out C:\shots\01-window.png
-#   ...\screenshot.ps1 -Launch C:\bin\xodt.exe,C:\docs\report.odt -Process xodt `
+#   ...\screenshot.ps1 -Launch exe,C:\bin\xodt.exe,C:\docs\report.odt -Process xodt `
 #       -Out C:\shots\xodt-01.png -Do 'click 423,40'
 #
-# `-Launch` is how the application starts. `shell,<path>` opens the path through
-# its association, which is what reaches an installed package: a package
-# declares no execution alias and `WindowsApps` is not a directory a script can
-# launch out of, so the shell is the only way in to it. Anything else is an
-# executable and its arguments, which is what to use where the machine has an
-# office suite that would win the association.
+# `-Launch` is how the application starts, and its first element names which of
+# three ways:
+#
+#   shell,<path>                open the path through its association
+#   exe,<path>[,<arg>...]       run an executable
+#   package,<aumid>[,<arg>...]  run an installed package
+#
+# `shell` is what a person's machine does, and is the wrong one where an office
+# suite would win the association. `package` reaches the packaged build by its
+# `<PackageFamilyName>!<ApplicationId>`, which is the only way in to one: a
+# package declares no execution alias, and `WindowsApps` refuses `Start-Process`
+# with *Access is denied* even to its owner.
+#
+# A verb rather than a guess from the shape of the first element. A typo in an
+# executable's path would otherwise be launched as a document, or looked for as
+# an executable that is not there, and both answers are about the wrong thing.
 #
 # FOUR ACTIONS, IN THE ORDER GIVEN
 #
@@ -88,12 +98,12 @@
 
 [CmdletBinding()]
 param(
-    # How the application starts. `shell,<path>` opens the path through its
-    # association; anything else is an executable and its arguments.
+    # How the application starts: a verb and its arguments. The header has the
+    # three.
     [Parameter(Mandatory = $true)][string[]] $Launch,
-    # The process to photograph, and to stop first so the window in the frame
-    # is this run's and not a previous one's. No .exe.
-    [Parameter(Mandatory = $true)][string] $Process,
+    # The processes to stop first, so the window in the frame is this run's and
+    # not a previous one's. The first is the one the window belongs to. No .exe.
+    [Parameter(Mandatory = $true)][string[]] $Process,
     [Parameter(Mandatory = $true)][string] $Out,
     # The Store's minimum for a desktop screenshot, and the default because a
     # window this size looks like a window rather than like an advertisement.
@@ -128,7 +138,26 @@ Add-Type -Namespace Shot -Name Win -MemberDefinition @'
 [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
 [DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder text, int count);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
 public struct RECT { public int Left, Top, Right, Bottom; }
+
+// What has the foreground, said in full. A refusal that only knows the window
+// is not ours sends the next person guessing, and the guesses are all
+// plausible: the pointer parked on a hot corner, a shell window raised behind,
+// an installer the image runs on a timer. The answer is one call away.
+public static string WhatIsInFront() {
+    IntPtr h = GetForegroundWindow();
+    if (h == IntPtr.Zero) { return "nothing"; }
+    System.Text.StringBuilder title = new System.Text.StringBuilder(512);
+    GetWindowText(h, title, title.Capacity);
+    uint pid;
+    GetWindowThreadProcessId(h, out pid);
+    string name;
+    try { name = System.Diagnostics.Process.GetProcessById((int)pid).ProcessName; }
+    catch { name = "pid " + pid; }
+    return name + " \"" + title.ToString() + "\"";
+}
 
 // Typing goes in as Unicode on a synthetic key event rather than as a key
 // code, so a line with punctuation in it needs no layout table and a machine
@@ -185,17 +214,45 @@ function Get-Frame([IntPtr] $h) {
 Get-Process $Process -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 1
 
-if ($Launch[0] -eq 'shell') {
-    if ($Launch.Count -ne 2) { Refuse "-Launch shell wants one path and was given $($Launch.Count - 1)" }
-    if (-not (Test-Path -LiteralPath $Launch[1])) { Refuse "nothing at $($Launch[1])" }
-    Start-Process (Resolve-Path -LiteralPath $Launch[1]).Path
-} else {
-    if (-not (Test-Path -LiteralPath $Launch[0])) { Refuse "no executable at $($Launch[0])" }
-    $exe = (Resolve-Path -LiteralPath $Launch[0]).Path
-    if ($Launch.Count -gt 1) {
-        Start-Process $exe -ArgumentList $Launch[1..($Launch.Count - 1)]
-    } else {
-        Start-Process $exe
+# The window belongs to the first named process; the rest are stopped because
+# they would hold the document open or claim the window.
+$window = $Process[0]
+
+$verb = $Launch[0]
+$rest = @()
+if ($Launch.Count -gt 1) { $rest = $Launch[1..($Launch.Count - 1)] }
+
+switch ($verb) {
+    'shell' {
+        if ($rest.Count -ne 1) { Refuse "-Launch shell wants one path and was given $($rest.Count)" }
+        if (-not (Test-Path -LiteralPath $rest[0])) { Refuse "nothing at $($rest[0])" }
+        Start-Process (Resolve-Path -LiteralPath $rest[0]).Path
+    }
+    'exe' {
+        if ($rest.Count -lt 1) { Refuse '-Launch exe wants an executable' }
+        if (-not (Test-Path -LiteralPath $rest[0])) { Refuse "no executable at $($rest[0])" }
+        $exe = (Resolve-Path -LiteralPath $rest[0]).Path
+        if ($rest.Count -gt 1) {
+            Start-Process $exe -ArgumentList $rest[1..($rest.Count - 1)]
+        } else {
+            Start-Process $exe
+        }
+    }
+    'package' {
+        if ($rest.Count -lt 1) { Refuse '-Launch package wants a PackageFamilyName!ApplicationId' }
+        # Quoted one argument at a time: a document path with a space in it
+        # arrives at the package as two arguments otherwise, and the package
+        # opens neither.
+        $target = "shell:appsFolder\$($rest[0])"
+        if ($rest.Count -gt 1) {
+            $quoted = @($rest[1..($rest.Count - 1)] | ForEach-Object { '"' + $_ + '"' })
+            Start-Process $target -ArgumentList $quoted
+        } else {
+            Start-Process $target
+        }
+    }
+    default {
+        Refuse "no launch called '$verb' - the three are shell, exe and package, each with its arguments after it, as in 'shell,C:\path\to\demo.dclx'"
     }
 }
 
@@ -205,7 +262,7 @@ if ($Launch[0] -eq 'shell') {
 $handle = [IntPtr]::Zero
 $waited = 0
 while ($waited -lt $Appear) {
-    $app = Get-Process $Process -ErrorAction SilentlyContinue | Select-Object -First 1
+    $app = Get-Process $window -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($app) {
         $app.Refresh()
         if ($app.MainWindowHandle -ne [IntPtr]::Zero) {
@@ -217,12 +274,12 @@ while ($waited -lt $Appear) {
     $waited += 0.5
 }
 if ($handle -eq [IntPtr]::Zero) {
-    if ($Launch[0] -eq 'shell') {
-        Refuse "no $Process window after $Appear seconds - did the shell open $($Launch[1]) with something else? The association is what decides."
+    if ($verb -eq 'shell') {
+        Refuse "no $window window after $Appear seconds - did the shell open $($rest[0]) with something else? The association is what decides."
     }
-    Refuse "no $Process window after $Appear seconds"
+    Refuse "no $window window after $Appear seconds"
 }
-Write-Host "  $Process had a window after $waited second(s)"
+Write-Host "  $window had a window after $waited second(s)"
 
 # --- placing it -------------------------------------------------------------
 
@@ -239,16 +296,19 @@ $NOTOPMOST = [IntPtr](-2)
 # releases the foreground lock that stops a background process raising a window;
 # without it `SetForegroundWindow` returns false and the window stays where it
 # was, which is how a picture of a terminal reached the store folder.
-$front = $false
-foreach ($try in 1..10) {
-    [Shot.Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
-    [Shot.Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
-    [void][Shot.Win]::SetForegroundWindow($handle)
-    Start-Sleep -Milliseconds 400
-    if ([Shot.Win]::GetForegroundWindow() -eq $handle) { $front = $true; break }
+function Take-Foreground([int] $tries = 10) {
+    foreach ($try in 1..$tries) {
+        if ([Shot.Win]::GetForegroundWindow() -eq $handle) { return $true }
+        [Shot.Win]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+        [Shot.Win]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+        [void][Shot.Win]::SetForegroundWindow($handle)
+        Start-Sleep -Milliseconds 400
+    }
+    return ([Shot.Win]::GetForegroundWindow() -eq $handle)
 }
-if (-not $front) {
-    Refuse 'the window would not come to the foreground - a capture now would photograph whatever is on top of it'
+
+if (-not (Take-Foreground)) {
+    Refuse "the window would not come to the foreground - a capture now would photograph whatever is on top of it; $([Shot.Win]::WhatIsInFront()) has it"
 }
 
 # And wait for it to stop moving. Two consecutive equal reads of the frame, or
@@ -402,8 +462,18 @@ $away = [System.Windows.Forms.SystemInformation]::VirtualScreen
 # on demand, and a capture taken during the resize catches a half-laid-out frame.
 Start-Sleep -Seconds $Settle
 
+# Losing the foreground between the last action and the shutter is taken back
+# rather than refused on. A machine that runs its own errands - a shell window
+# raised behind, a scheduled task, an image's own housekeeping - takes it for a
+# moment and gives it up again, and a set of four that dies on the first is
+# worse than a set that says what interrupted it. The guarantee is unchanged:
+# the capture happens only with the window verified in front.
 if ([Shot.Win]::GetForegroundWindow() -ne $handle) {
-    Refuse 'the window lost the foreground between settling and the capture'
+    $thief = [Shot.Win]::WhatIsInFront()
+    if (-not (Take-Foreground)) {
+        Refuse "the window lost the foreground between settling and the capture; $thief has it"
+    }
+    Write-Host "  $thief took the foreground and it was taken back"
 }
 
 $rect = Get-Frame $handle
