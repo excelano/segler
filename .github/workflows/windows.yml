@@ -51,6 +51,32 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
+      # The scripts in `packaging/windows` are the only code in this repository
+      # no other job compiles or runs. `install.ps1` and `build-msix.ps1` are
+      # executed by later steps and so are checked by being used, but
+      # `uninstall.ps1`'s error paths, `shots.ps1` and anything added beside
+      # them are not, and a syntax error in one waits until a person runs it on
+      # the Windows machine. Parsing is not running, but it is the half a
+      # machine can do, and it costs seconds.
+      - name: The packaging scripts parse
+        shell: pwsh
+        run: |
+          $bad = 0
+          foreach ($file in Get-ChildItem packaging/windows -Filter *.ps1 -Recurse) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName, [ref]$null, [ref]$errors)
+            if ($errors) {
+              $bad++
+              foreach ($e in $errors) {
+                Write-Host "$($file.Name):$($e.Extent.StartLineNumber): $($e.Message)"
+              }
+            } else {
+              Write-Host "$($file.Name): parses"
+            }
+          }
+          if ($bad) { throw "$bad script(s) will not parse" }
+
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
 

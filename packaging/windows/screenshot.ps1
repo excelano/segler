@@ -4,16 +4,36 @@
 # assumption rather than a measurement. What a script cannot do is decide which
 # document to open and whether the result is a good advertisement. What it can
 # do is every mechanical part: size the window so the visible frame is exactly
-# the size asked for, bring it to the front, capture it, and refuse if what came
-# back is the wrong size.
+# the size asked for, bring it to the front, drive it into the state the shot is
+# of, capture it, and refuse if what came back is the wrong size.
 #
 #   powershell -ExecutionPolicy Bypass -File packaging\windows\screenshot.ps1 `
 #       -Document C:\path\to\demo.dclx -Out C:\path\to\01-window.png
-#   ...\screenshot.ps1 -Document ... -Out ... -Click '353,40','620,440'
 #
-# One `-Click` taking an array, rather than the repeatable flag the Mac script
-# has: PowerShell binds a parameter once, and a second `-Click` is an error
-# rather than a second value.
+# `packaging\windows\shots.ps1` is the caller that knows which document and
+# which shot; this file knows neither.
+#
+# FOUR ACTIONS, IN THE ORDER GIVEN
+#
+# `-Do` takes them as one ordered list of strings, each a verb and its argument:
+#
+#   -Do 'click 423,40','double 1020,384','key ctrl+a','type -0:38'
+#
+# `click X,Y` presses a control. `double X,Y` presses it twice inside the
+# system's double-click interval, which is how a block in the document pane
+# opens for typing. `type TEXT` types. `key NAME` sends one key, optionally
+# with modifiers: `key ctrl+a`, `key return`. X and Y are measured from the
+# frame's top-left corner on a shot of the same size, so a coordinate read off
+# an earlier shot is the coordinate to give.
+#
+# One parameter holding an ordered list, rather than the four repeatable flags
+# `packaging/macos/screenshot.sh` has: PowerShell binds a parameter once, so a
+# second `-Click` is an error rather than a second value, and four separate
+# parameters could not say which of them came first.
+#
+# They exist because a listing wants more than a document at rest: a store
+# reviewer reads a frame of an application with nothing selected as a frame of
+# a viewer, and driving the window is the only way to get one that is not.
 #
 # WHAT IT REFUSES ON, AND WHY EACH ONE IS HERE
 #
@@ -67,13 +87,9 @@ param(
     # enough for a document of a few pages; a large archive decoding its page
     # images wants more.
     [int] $Settle = 3,
-    # Points to click inside the window before capturing, as "X,Y" in the
-    # coordinates of the picture this writes, repeatable and applied in order.
-    # Two of the four listing frames want a toolbar control pressed and the
-    # toolbar has no keyboard shortcut for the page image or the page arrows.
-    # `packaging/macos/screenshot.sh` grew the same option for the same reason;
-    # the coordinates differ because the two toolbars are not the same size.
-    [string[]] $Click = @()
+    # What to do to the window before the shutter, in the order given. The
+    # header lists the four verbs.
+    [string[]] $Do = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,7 +108,50 @@ Add-Type -Namespace Shot -Name Win -MemberDefinition @'
 [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
 [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+[DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
 public struct RECT { public int Left, Top, Right, Bottom; }
+
+// Typing goes in as Unicode on a synthetic key event rather than as a key
+// code, so a line with punctuation in it needs no layout table and a build
+// running under a German keyboard types what it was given. `keybd_event`
+// cannot do this: it carries a virtual key, and a virtual key is a position on
+// the current layout rather than a character.
+//
+// The union is declared as a union rather than as a keyboard-shaped struct
+// with the difference padded out, and the size is asked for rather than
+// written down. `SendInput` refuses any `cbSize` that is not its own, and the
+// number is 40 on x64 and 28 on x86; a constant here is a constant that is
+// wrong on one of them and silently does nothing, since the call reports how
+// many events it sent and nobody was reading that either.
+[StructLayout(LayoutKind.Sequential)]
+public struct MOUSEINPUT { public int dx, dy; public uint mouseData, dwFlags, time; public IntPtr extra; }
+[StructLayout(LayoutKind.Sequential)]
+public struct KEYBDINPUT { public ushort wVk, wScan; public uint dwFlags, time; public IntPtr extra; }
+[StructLayout(LayoutKind.Explicit)]
+public struct INPUTUNION { [FieldOffset(0)] public MOUSEINPUT mi; [FieldOffset(0)] public KEYBDINPUT ki; }
+[StructLayout(LayoutKind.Sequential)]
+public struct INPUT { public uint type; public INPUTUNION u; }
+[DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint n, INPUT[] inputs, int size);
+
+// A surrogate pair is two code units and goes in as two events, which is what
+// iterating the string rather than the characters gives for free.
+public static void TypeText(string text) {
+    int size = Marshal.SizeOf(typeof(INPUT));
+    foreach (char unit in text) {
+        INPUT[] pair = new INPUT[2];
+        for (int i = 0; i < 2; i++) {
+            pair[i].type = 1;                              // INPUT_KEYBOARD
+            pair[i].u.ki.wScan = unit;
+            pair[i].u.ki.dwFlags = (uint)(0x0004 | (i == 1 ? 0x0002 : 0));  // UNICODE | KEYUP
+        }
+        if (SendInput(2, pair, size) != 2) {
+            throw new Exception("SendInput would not send '" + unit + "'");
+        }
+        // The window redraws between characters, and faster than this drops
+        // them the way the Linux lane's xdotool does.
+        System.Threading.Thread.Sleep(40);
+    }
+}
 '@
 
 # The visible frame, which is what everything below is measured against.
@@ -160,32 +219,114 @@ foreach ($try in 1..40) {
 }
 if (-not $still) { Refuse 'the window never stopped moving' }
 
-# The clicks, in the coordinates of the picture this writes. The window is in
+# The keys `key` knows by name. Anything else is a single character, which is
+# its own virtual key on a US layout; a name is how the ones that are not reach
+# this. Windows spells the document-wide modifier ctrl, so `cmd` is refused by
+# name rather than quietly translated - a recipe carried over from the Mac
+# should be read and converted, not assumed to mean the same thing.
+$KEYS = @{
+    'return' = 0x0D; 'enter' = 0x0D; 'tab' = 0x09; 'escape' = 0x1B; 'esc' = 0x1B
+    'space' = 0x20; 'backspace' = 0x08; 'delete' = 0x2E; 'home' = 0x24; 'end' = 0x23
+    'left' = 0x25; 'up' = 0x26; 'right' = 0x27; 'down' = 0x28
+    'pageup' = 0x21; 'pagedown' = 0x22
+}
+$MODIFIERS = @{ 'ctrl' = 0x11; 'control' = 0x11; 'alt' = 0x12; 'shift' = 0x10; 'win' = 0x5B }
+$KEYUP = 2
+
+function Send-Key([string] $name) {
+    $parts = $name.ToLower() -split '\+'
+    $key = $parts[-1]
+    # Sliced only when there is something to slice: `0..-1` in PowerShell counts
+    # down and yields 0 then -1, so an unmodified key would be read as its own
+    # modifier twice over.
+    $mods = @()
+    foreach ($m in @($parts | Select-Object -SkipLast 1)) {
+        if ($m -eq 'cmd' -or $m -eq 'command') {
+            Refuse "key '$name': Windows has no cmd - the modifier here is ctrl, and a recipe carried over from the Mac wants reading rather than translating"
+        }
+        if (-not $MODIFIERS.ContainsKey($m)) { Refuse "key '$name': no modifier called '$m'" }
+        $mods += $MODIFIERS[$m]
+    }
+    if ($KEYS.ContainsKey($key)) {
+        $vk = $KEYS[$key]
+    } elseif ($key.Length -eq 1) {
+        $vk = [int][char] $key.ToUpper()
+    } else {
+        Refuse "key '$name': no key called '$key', and it is not a single character"
+    }
+    foreach ($m in $mods) { [Shot.Win]::keybd_event($m, 0, 0, [UIntPtr]::Zero) }
+    [Shot.Win]::keybd_event($vk, 0, 0, [UIntPtr]::Zero)
+    [Shot.Win]::keybd_event($vk, 0, $KEYUP, [UIntPtr]::Zero)
+    # Released in reverse, and always: a modifier left down is read by every
+    # keystroke after it, so one stuck ctrl turns the text that follows into a
+    # run of shortcuts that type nothing and may do something else entirely.
+    [array]::Reverse($mods)
+    foreach ($m in $mods) { [Shot.Win]::keybd_event($m, 0, $KEYUP, [UIntPtr]::Zero) }
+}
+
+# A press is a move, then a down and an up a moment apart, which is what egui
+# reads as a click. A double press is that twice, with the gap between the two
+# comfortably inside the system's double-click interval - that interval is what
+# winit measures to tell a second click from a first, and below it a block in
+# the document pane opens for typing rather than merely being selected again.
+$interval = [Shot.Win]::GetDoubleClickTime()
+$MOUSEDOWN = 0x02
+$MOUSEUP = 0x04
+
+function Press-At([int] $x, [int] $y, [int] $times) {
+    $frame = Get-Frame $handle
+    [void][Shot.Win]::SetCursorPos(($frame.Left + $x), ($frame.Top + 2 + $y))
+    Start-Sleep -Milliseconds 300
+    for ($n = 1; $n -le $times; $n++) {
+        [Shot.Win]::mouse_event($MOUSEDOWN, 0, 0, 0, [UIntPtr]::Zero)
+        Start-Sleep -Milliseconds 40
+        [Shot.Win]::mouse_event($MOUSEUP, 0, 0, 0, [UIntPtr]::Zero)
+        if ($n -lt $times) { Start-Sleep -Milliseconds ([int] ($interval / 4)) }
+    }
+    Start-Sleep -Milliseconds 700
+}
+
+function Get-Point([string] $verb, [string] $argument) {
+    $n = @($argument -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+    if ($n.Count -ne 2) { Refuse "$verb wants X,Y and was given '$argument'" }
+    foreach ($v in $n) {
+        if ($v -notmatch '^-?\d+$') { Refuse "$verb wants two whole numbers and was given '$argument'" }
+    }
+    return @([int] $n[0], [int] $n[1])
+}
+
+# The actions, in the coordinates of the picture this writes. The window is in
 # front and settled by now, which matters: the first click on an inactive window
 # activates it and is swallowed, so a click sent any earlier would land nowhere
 # and leave a frame that shows none of what it was for.
-if ($Click.Count -gt 0) {
-    # Flattened to a list of numbers and consumed in pairs, rather than parsed
-    # one "X,Y" at a time. `powershell -File` hands every argument over as a
-    # string and collapses `'353,40','620,440'` into one of them, so a parser
-    # that insists on two numbers per element refuses a call that looks right.
-    # This way `-Click '353,40'`, `-Click '353,40','620,440'` and
-    # `-Click 353,40,620,440` all mean what they appear to.
-    $numbers = @($Click -join ',' -split ',' | ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -ne '' })
-    if ($numbers.Count % 2 -ne 0) {
-        Refuse "-Click wants pairs of coordinates and was given $($numbers.Count) number(s): $($numbers -join ',')"
-    }
-    $frame = Get-Frame $handle
-    for ($i = 0; $i -lt $numbers.Count; $i += 2) {
-        $cx = $frame.Left + [int] $numbers[$i]
-        $cy = $frame.Top + 2 + [int] $numbers[$i + 1]
-        [void][Shot.Win]::SetCursorPos($cx, $cy)
-        Start-Sleep -Milliseconds 300
-        [Shot.Win]::mouse_event(0x02, 0, 0, 0, [UIntPtr]::Zero)
-        [Shot.Win]::mouse_event(0x04, 0, 0, 0, [UIntPtr]::Zero)
-        Start-Sleep -Milliseconds 700
-        Write-Host "  clicked $cx,$cy"
+foreach ($action in $Do) {
+    $verb, $argument = $action -split ' ', 2
+    switch ($verb) {
+        'click' {
+            $p = Get-Point 'click' $argument
+            Press-At $p[0] $p[1] 1
+            Write-Host "  clicked $($p[0]),$($p[1])"
+        }
+        'double' {
+            $p = Get-Point 'double' $argument
+            Press-At $p[0] $p[1] 2
+            Write-Host "  double-clicked $($p[0]),$($p[1])"
+        }
+        'type' {
+            if ($null -eq $argument) { Refuse 'type wants text' }
+            [Shot.Win]::TypeText($argument)
+            Start-Sleep -Milliseconds 300
+            Write-Host "  typed $argument"
+        }
+        'key' {
+            if ($null -eq $argument) { Refuse 'key wants a name' }
+            Send-Key $argument
+            Start-Sleep -Milliseconds 400
+            Write-Host "  key $argument"
+        }
+        default {
+            Refuse "no action called '$verb' - the four are click, double, type and key, each with its argument after a space, as in 'click 423,40'"
+        }
     }
 }
 

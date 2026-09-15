@@ -85,7 +85,8 @@ virtualised.
 | `identity.psd1` | What Partner Center assigned when the name was reserved, less the publisher, which is the `STORE_PUBLISHER` organisation secret |
 | `build-msix.ps1` | Builds the package from a release binary, and optionally signs it and runs the certification kit |
 | `check-imports.ps1` | Walks the PE import table and refuses any DLL not known to ship with Windows |
-| `screenshot.ps1` | Photographs the window at a size the Store accepts |
+| `screenshot.ps1` | Photographs the window at a size the Store accepts, driving it first if asked |
+| `shots.ps1` | The listing's four shots as recipes: which document, which frame, and what happens before the shutter |
 | `segler-desktop.manifest` | The Win32 application manifest, embedded by `crates/segler-desktop/build.rs` |
 
 ## Two scripts rather than an installer

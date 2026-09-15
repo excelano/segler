@@ -183,9 +183,20 @@ are not committed; `dist` is where every built artefact goes.
 have not been retaken. Nothing is selected in any of them and no edit is under
 way, which is the whole of what guideline 2.3.3 objected to on the other
 platform. Partner Center has not asked, and the same criticism is true of them:
-retake them the way the macOS five were taken before the Microsoft Store
-submission goes in. `screenshot.ps1` would want the same three actions
-`screenshot.sh` grew.
+retake them before the Microsoft Store submission goes in.
+
+**What retaking them needs is three coordinates.**
+`packaging/windows/shots.ps1` carries the four replacement recipes, written to
+match the macOS set frame for frame, and `screenshot.ps1` has the four actions
+they need. Three of the controls they name were measured at 1366x768 on
+2026-09-06 and are in the file: the page image toggle at 423,40, the forward
+arrow at 353,40, and the picture on page two at 620,440. Three have never been
+measured on this platform - a table cell, a paragraph and a heading, all on
+page one - because the Mac has them at 1440x900 against a different toolbar and
+a different pane width, and a coordinate carried across from there lands
+somewhere else. `shots.ps1 -Reference` takes the frame to read them off, and
+until they are filled in it refuses the set rather than photographing four
+clicks that landed on nothing.
 
 **Two things the capture script now refuses on**, both learned by watching it
 lie. It checks the window is actually in the foreground, because a shell
@@ -236,17 +247,18 @@ rather than writing; it polls the frame until two reads agree; and it checks
 the foreground again between settling and the shutter. Those first two are what
 the paragraph above already claimed it did, which is its own lesson.
 
-It also grew `-Click`, for the same reason `packaging/macos/screenshot.sh`
-grew `--click`: two of the four frames want a toolbar control pressed and the
-toolbar has no shortcut for the page image or the page arrows. One parameter
-taking a flat list of coordinates, consumed in pairs, because `powershell
--File` collapses an array argument into one string.
+It also drives the window, for the same reason `packaging/macos/screenshot.sh`
+does: a frame of an editor with nothing selected is a frame of a viewer, and
+the toolbar has no shortcut for the page image or the page arrows. `-Do` takes
+the actions as one ordered list - `click`, `double`, `type`, `key` - rather
+than as the four repeatable flags the Mac script has, because PowerShell binds
+a parameter once and four separate parameters could not say which came first.
 
 **The four, all from the installed v0.1.0 package at 1366x768, light theme:**
 
-    01  no clicks - the document, the tree and the element pane, at rest
-    02  -Click 423,40 - the page image panel open, boxes drawn over the scan
-    03  -Click 353,40,620,440 - page two, then the picture itself: it is
+    01  nothing pressed - the document, the tree and the element pane, at rest
+    02  423,40 - the page image panel open, boxes drawn over the scan
+    03  353,40 then 620,440 - page two, then the picture itself: it is
         selected in the tree and on the page at once, and the element pane
         carries its kind, path, class, layer, box and markup
     04  the six findings, from `problems.dclg`

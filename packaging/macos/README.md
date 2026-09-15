@@ -8,7 +8,8 @@ else is generated:
     Segler.entitlements   what a development build is signed with
     build-app.sh          assembles dist/Segler.app, signs it, and for the Store wraps it
     check-install.sh      asks an installed bundle what it is, on the machine it is on
-    screenshot.sh         photographs the window at a size App Store Connect accepts
+    screenshot.sh         photographs the window at a size App Store Connect accepts, driving it first if asked
+    shots.sh              the listing's four shots as recipes: which document, which frame, and what happens before the shutter
     window-probe.swift    asks the window server whether a window appeared, for CI
 
 Build it, sign it, register it:
