@@ -30,6 +30,8 @@
 name: Apple silicon
 
 on:
+  schedule:
+    - cron: '0 6 * * 1'
   push:
     branches: [main]
   pull_request:
@@ -95,6 +97,7 @@ jobs:
       #
       # SPEC-PIN: 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
       - name: The conformance corpus, every file
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
         run: |
           git clone --quiet https://github.com/doclang-project/doclang.git "${RUNNER_TEMP}/doclang"
           git -C "${RUNNER_TEMP}/doclang" checkout --quiet --detach 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
