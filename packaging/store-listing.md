@@ -5,7 +5,7 @@ so everything here is written to the shorter limit. Nothing here is submitted
 yet; the Windows and Mac lanes copy from this file into their forms and record
 in their `SUBMITTING.local.md` what the form did with it.
 
-This is written from `CHANGELOG.md`, not beside it. Every claim below appears
+This is written from the release notes, not beside it. Every claim below appears
 there first, checked against the built application. If the two disagree, the
 changelog is right and this is stale.
 
@@ -120,7 +120,7 @@ asset on GitHub, not a page; `packaging/review/README.md` has the URL shape.
 ## Release notes
 
 *What's new in this version* on the Microsoft Store and *What's New* on the Mac
-App Store, one version's text each, written from `CHANGELOG.md` the way
+App Store, one version's text each, written from the release notes the way
 everything else here is and kept latest first. Only the version being submitted
 needs a subsection, and 0.1.0 through 0.1.2 have none because neither store has
 ever served Segler: there is nobody upgrading from them to tell. The first submission

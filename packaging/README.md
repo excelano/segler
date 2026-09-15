@@ -2,7 +2,7 @@
 
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
 distributed, and three files shared by all of them: `version.sh`, which is the
-only thing that reads the version out of `Cargo.toml`; `preflight.sh`, which
+only thing that reads the version out of `Cargo.toml`; `ship`, which
 asks everything that must be true before a release at once; and
 `store-listing.md`, the text both stores are given.
 

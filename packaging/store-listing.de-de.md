@@ -72,7 +72,7 @@ Segler ist Open Source unter derselben Lizenz wie DocLang selbst, und die Biblio
 
 ## Release notes
 
-*Neu in dieser Version*, aus `CHANGELOG.md`, neueste zuerst. Nur die Fassung,
+*Neu in dieser Version*, aus den Release Notes, neueste zuerst. Nur die Fassung,
 die eingereicht wird, braucht einen Abschnitt; 0.1.0 bis 0.1.2 haben keinen,
 weil kein Store Segler je ausgeliefert hat und es niemanden gibt, der von
 ihnen aufrüstet.
