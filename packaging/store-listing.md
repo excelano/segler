@@ -205,8 +205,8 @@ running text with bold and italic, a four-column table with a header row and a
 caption, an ordered and an unordered list, a picture with a caption and its
 own inner text, and two page images drawn to match. Every feature the listing
 claims is visible across four frames and none of it is somebody else's
-copyright. **It is not a substitute for the real corpus**, which is what
-`CHECKLIST.md` asks for and what the Linux lane has.
+copyright. **It is not a substitute for the real corpus**, which `segler corpus`
+runs against the specification checkout.
 
 **The document used is `packaging/review/sailing-directions.dclx`**, which is
 the same archive under the name it has now that it is committed rather than

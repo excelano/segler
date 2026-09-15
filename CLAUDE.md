@@ -1,28 +1,12 @@
 # CLAUDE.md
 
-Guidance for Claude Code working in `segler`. It is short because `DESIGN.md`
-is where the reasoning lives; read that before touching anything.
-
----
-
-## What this is
-
-An editor for DocLang documents, and the lossless Rust library underneath
-it. The main pane is the document rendered from the tree and edited in place;
-the page scans an archive may carry are a reference pane, not the document.
-DESIGN.md §3 records the walkthrough that settled that. Three crates in one workspace:
-
-- `crates/segler-core` — the library. Document model, parser, serializer,
-  validation, `.dclx` archives, edit commands, undo. `#![forbid(unsafe_code)]`.
-- `crates/segler` — the CLI, binary `segler`.
-- `crates/segler-desktop` — the eframe application, presented as **Segler**.
-
-**Three documents, three authorities.** `spec.md` in `doclang-project/doclang`
-is the authority on the format; this repository neither restates nor amends it.
-`DESIGN.md` here is the authority on this application. `git log` is the record
-of why everything is the way it is, and it is written to be read.
-
----
+An editor for DocLang documents and the lossless Rust library underneath it. The main pane
+is the document rendered from the tree and edited in place; the page scans an archive may
+carry are a reference pane, not the document. `crates/segler-core` is the library — model,
+parser, serializer, validation, `.dclx` archives, edit commands, undo, `forbid(unsafe_code)`;
+`crates/segler` is the CLI; `crates/segler-desktop` is the eframe window, **Segler**.
+`spec.md` in `doclang-project/doclang` is the authority on the format and this repository
+neither restates nor amends it. `DESIGN.md` is the authority on the application.
 
 ## Commands
 
@@ -31,91 +15,34 @@ of why everything is the way it is, and it is written to be read.
     cargo clippy --workspace --all-targets -- -D warnings   # must be silent
     cargo fmt --check
     cargo run -p segler -- inspect FILE
-    ./crates/segler-desktop/po/update-po.sh   # after changing any sentence a person reads
-    ./crates/segler-desktop/po/pseudo.sh      # then run a debug build with POTEXT_LANG=en-x-pseudo
+    cargo run -p segler -- corpus /path/to/doclang   # needs the spec checkout; never a test
     cargo run -p segler-desktop -- [FILE]
+    ./crates/segler-desktop/po/update-po.sh   # after changing any sentence a person reads
+    ./crates/segler-desktop/po/pseudo.sh      # then a debug build with POTEXT_LANG=en-x-pseudo
 
-**Seeing the window from here.** Launch it under XWayland and capture its own
-window: `env -u WAYLAND_DISPLAY DISPLAY=:0 setsid target/debug/segler-desktop
-FILE &`, find the client window with `xwininfo -root -tree | grep
-'"segler-desktop"'`, then `xwd -id ID | convert xwd:- shot.png`. Drive it with
-`xdotool`; synthetic typing needs `--delay 100` or more, since faster
-keystrokes outrun the window and characters go missing. A one-frame
-defect is invisible to a screenshot: capture a burst instead (`xwd` in a loop
-of fourteen with 30ms sleeps around the click) and compare the mean brightness
-of a cropped region across frames. Run at `WINIT_X11_SCALE_FACTOR=1.25` as
-well as 1x, since David's desktop is at a fractional scale and text at
-fractional offsets behaves differently there. That proves a code path draws;
-it does not stand in for David's keyboard walkthrough, which every slice that
-touches the window gets.
+Seeing the window from here: launch it under XWayland and capture its own window with
+`env -u WAYLAND_DISPLAY DISPLAY=:0 setsid target/debug/segler-desktop FILE &`, find the
+client window with `xwininfo -root -tree | grep '"segler-desktop"'`, then `xwd -id ID |
+convert xwd:- shot.png`. Drive it with `xdotool`, whose synthetic typing needs `--delay 100`
+or more. A one-frame defect is invisible to a single capture: take a burst and compare mean
+brightness across frames. Run at `WINIT_X11_SCALE_FACTOR=1.25` as well as 1x, since David's
+desktop is at a fractional scale. Releases: run `ship segler`. There is no release document.
 
-**The conformance corpus is a command and never a test.** It needs a checkout
-of `doclang-project/doclang`, which `cargo test` does not imply. When the runner
-exists it is `cargo run -p segler -- corpus /path/to/doclang`; until then the
-files under that checkout's `examples/` are what to open by hand.
+## Rules
 
----
-
-## Rules with no exceptions
-
-**The window is translated and the model is not.** German since 2026-09-09,
-through `potext`, with the catalogues in `crates/segler-desktop/po/` — inside
-the crate that reads them, because `include_str!` reaching above a crate's own
-directory compiles here and fails in `cargo package`. `segler-core` has no catalogue
-and the CLI is not translated. What stays English is what the file says — an
-element's name, an attribute's name, and every attribute value a person picks
-from a list — because a translated one would be a different document.
-`DESIGN.md` §10 has the line and the two commands that keep the catalogues
-current.
-
-**The document model is lossless.** Every element, attribute, and text run in a
-file survives a parse and a serialize. If the model cannot represent something
-the spec allows, the model is wrong, not the file. This is the one property that
-separates an editor from a converter and it does not bend for convenience.
-
-**docling.rs is an import engine, never the model.** The `docling` crate reads
-DocLang into a flat, lossy node list by design. It may appear behind a feature
-flag for "Import PDF". It never touches the document model.
-
-**Nothing compiles C.** A crate that links a system library is fine; one that
-builds C is not. The check is the artefact, not the manifest: after a build,
-`find target -name '*.o' -o -name '*.a'` under the build directories is empty.
-`cargo tree -i cc` is *not* empty and never will be, because `wayland-backend`
-declares `cc` as a build dependency and only uses it under its `client_system`
-feature, which nothing here turns on. The `zip` dependency names `deflate`
-alone for this reason. slipcase-desktop has the same rule and the Store
-rejection that taught it. Across the fleet it is a preference, not a rule;
-`~/notes/pure_rust_preference.md` holds the stance and what taking C costs.
-
-**The UI is a renderer.** Selection, edits, undo, validation and save live in
-the core behind a view-model and command boundary, so that a native front-end
-could replace the egui one without touching the core. Logic that appears in
-`segler-desktop` and would be needed by any other front-end is in the wrong
-crate.
-
-**Unsafe has one home, and it is named.** `segler-core` is `forbid` and that
-does not move; the macOS save path in `replace.rs` compiles under it because
-the `objc2-foundation` bindings are safe functions. `segler-desktop` is
-`deny`, lifted for exactly one module, `opened_document.rs`, because macOS
-delivers a double-clicked document as an Apple Event and receiving one needs
-an Objective-C method that cannot be written without `unsafe`. It is
-slipcase-desktop's module renamed. A second `allow` is a decision to take
-with David.
-
----
-
-## Conventions
-
-Every source file carries `Author: David M. Anderson` and `Built with AI
-assistance (Claude, Anthropic)` in its header comment. Commits carry a
-`Co-Authored-By` trailer for the Claude model in use and a `Signed-off-by`
-trailer for David (DCO, as an LF AI & Data project would expect), and no
-session URL.
-
-CI is the fleet's `excelano/.github` Rust workflow; change policy there, not
-here. `linux.yml` beside it builds the package on every push and runs lintian
-and the media-type check against it. Packaging is cloned from
-`excelano/slipcase-desktop`, one directory per platform; `packaging/README.md`
-says what is there; `ship segler` runs a release.
-`packaging/linux/check-libraries.sh` needs a display and is a command, never a
-test.
+The document model is lossless: every element, attribute and text run in a file survives a
+parse and a serialize, and a model that cannot represent something the spec allows is the
+thing that is wrong. docling.rs is an import engine behind a feature flag and never touches
+the model. Nothing compiles C — the check is the artefact, so `find target -name '*.o' -o
+-name '*.a'` is empty; `cargo tree -i cc` is not and never will be, because
+`wayland-backend` declares `cc` for a feature nothing here enables
+(`~/notes/pure_rust_preference.md`). The UI is a renderer: selection, edits, undo,
+validation and save live in the core behind the view-model and command boundary, and logic
+in `segler-desktop` that another front end would need is in the wrong crate. The window is
+translated and the model is not: an element's name and every attribute value a person picks
+from a list stay English, because a translated one would be a different document.
+`segler-core` is `forbid(unsafe_code)`; `segler-desktop` is `deny`, lifted for
+`opened_document.rs` alone, where a macOS Apple Event needs an Objective-C method. A second
+`allow` is David's decision. Every source file header carries `Author: David M. Anderson`
+and `Built with AI assistance (Claude, Anthropic)`; commits carry a `Co-Authored-By` for the
+model and a `Signed-off-by` for David (DCO), and no session URL.

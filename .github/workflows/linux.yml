@@ -1,29 +1,10 @@
-# Build the Linux packages and put them under the checks a machine can run:
-# the package's ownership and modes, its md5sums, lintian, the media-type
-# association through GLib, and that the thing installs and runs. The suite,
-# clippy and formatting are the fleet's `ci.yml` and are not repeated here.
-#
-# On a push this is a check. On a published release it is also where the
-# packages come from: both architectures are built here and attached to the
-# release, rather than one being built by hand on whichever machine happened
-# to cut it. Until 2026-09-09 that hand-built package was the only one, so
-# every Segler release shipped amd64 alone, and the arm64 half of the apt
-# repository had nothing in it — while comma, whose loop this is, had been
-# building both in CI all along.
-#
-# The checks are not skipped for a release. They are the reason the build is
-# here rather than in a workflow of its own that would have to repeat them or
-# do without.
-#
-# What it reaches and what it does not, stated because a green tick invites
-# more faith than it has earned. The build needs no development packages:
-# `ldd` on the binary names libc, libgcc and libm and nothing else, because
-# everything a window needs is opened at run time rather than linked. Nothing
-# headless reaches a window, so `packaging/linux/check-libraries.sh` and
-# `CHECKLIST.md` stay commands run by a person with a display.
-#
-# The shape is slipcase-desktop's `linux.yml`, which is where each step's
-# reasoning was first measured.
+# Build the Linux packages, both architectures, and put them under the checks a
+# machine can run: ownership and modes, md5sums, lintian, the media-type
+# association through GLib, and that the package installs and what it installed
+# runs. The suite, clippy and formatting are the fleet's `ci.yml`. On a push
+# this is a check; on a published release it is also where the packages come
+# from and what attaches them. Nothing headless reaches a window, so
+# `packaging/linux/check-libraries.sh` stays a command run with a display.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -213,10 +194,9 @@ jobs:
       # asks GLib which handler is registered — an installed copy in
       # /usr/bin would change the question it is answering.
       #
-      # `segler-desktop` cannot run here: nothing headless reaches a window,
-      # which is what `CHECKLIST.md` is for. The CLI can, and until today
-      # nothing had ever run either binary on arm64 — the package was built,
-      # attached and installed by people without one execution behind it.
+      # `segler-desktop` cannot run here: nothing headless reaches a window.
+      # The CLI can, and on arm64 this is the only execution either binary
+      # gets before the package is attached.
       - name: It installs, and what it installed runs
         run: |
           set -eux

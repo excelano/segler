@@ -11,9 +11,9 @@
   cannot create a temporary file beside a document under this grant.
 
   The entitlement does nothing until it is inside a signature. An unsigned
-  bundle carrying this file is not sandboxed, which is why the measurements in
-  CHECKLIST.md are all made against a signed one, and why an Apple Development
-  certificate is enough to make them. A Store build is signed with these two
+  bundle carrying this file is not sandboxed, so anything measured against one
+  says nothing about the sandbox; an Apple Development certificate is enough to
+  make a bundle that does. A Store build is signed with these two
   and the two identifiers the profile grants; the Store path of `build-app.sh` writes
   that file rather than this repository carrying the team identifier.
 

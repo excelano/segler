@@ -1,27 +1,13 @@
-# The Windows checks a machine can run: that the tree builds and passes on this
-# platform, that the shipped binary imports nothing Windows does not have, and
-# that the committed icons still match the drawings they were generated from.
-#
-# The shape is slipcase-desktop's `windows.yml`, and `linux.yml` beside this is
-# its counterpart. The suite, clippy and formatting are also the fleet's
-# `ci.yml`; they are repeated here because `ci.yml` runs on Linux and three
-# things in this repository are compiled only for this target - `build.rs`'s
-# manifest arm, the `ico` dependency, and the window icon `include_bytes!`
-# reaches. A cross-check with `cargo check --target` would compile them; it
-# would not run the binary or read its import table.
-#
-# What this reaches and what it does not, stated because a green tick invites
-# more faith than it has earned.
-#
-# Nothing here reaches the window, the installer scripts, an MSIX package, a
-# file association, the certification kit, or the icon as a person sees it at
-# any size. `CHECKLIST.md` holds those and a green run here does not stand in
-# for one. `build-msix.ps1` is not run either: it needs the Windows SDK and the
-# package identity, and the identity is not committed.
-#
-# The conformance corpus is absent for the reason `CLAUDE.md` gives - it needs a
-# checkout of `doclang-project/doclang`, which nothing here has, and it is a
-# command and never a test.
+# The Windows checks a machine can run: that the tree builds and passes here,
+# that the shipped binary imports nothing Windows does not have, that the
+# committed icons still match the drawings they were generated from, and, on a
+# release, the unsigned Store package. The suite is repeated from the fleet's
+# `ci.yml` because that runs on Linux and three things here are compiled only
+# for this target — `build.rs`'s manifest arm, the `ico` dependency, and the
+# window icon `include_bytes!` reaches. Out of reach: the window, the installer
+# scripts, a file association, the certification kit, and the icon as a person
+# sees it. The conformance corpus needs a checkout of `doclang-project/doclang`
+# and is a command, never a test.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

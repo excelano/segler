@@ -38,10 +38,9 @@ in this copy is short enough to list:
 
 **If you install with the scripts and later install Segler from the Microsoft
 Store, run `uninstall.ps1` first.** The reason is not the one slipcase-desktop
-records, and this paragraph said that reason for as long as it took to run the
-checklist once.
+records.
 
-**Measured here on 2026-09-04, in both orders, CHECKLIST item 22.** With the
+**Measured here, in both install orders.** With the
 package and the scripts both registered, Windows puts up no picker and asks
 nothing: it opens the **script's** copy from `%LOCALAPPDATA%`, every time. The
 extension's default value in `HKCU\Software\Classes\.dclx` is the script's

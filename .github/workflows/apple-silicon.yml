@@ -1,28 +1,12 @@
-# Run the suite, the corpus and the window on Apple silicon, because nothing
-# else here can.
-#
-# The Mac this application is built and walked through on is x86_64, and a
-# Store build has to be universal. `cargo build --target aarch64-apple-darwin`
-# cross-compiles on an Intel Mac but cannot run what it produces, so without
-# this file the arm64 half of a released bundle is code nobody has executed.
-#
-# It reaches the window. `src/opened_document.rs` receives a double-clicked
-# document through an Apple Event, and `open` on a document goes through
-# Launch Services and produces the same event Finder does, so the last step
-# opens one and asks the window server whether a window appeared. That module
-# is the only `unsafe` in the desktop crate, and the one piece of the arm64
-# walkthrough no test could reach.
-#
-# It asks the window server rather than looking at a screenshot, and the
-# difference is the whole point: slipcase-desktop records `screencapture`
-# returning the desktop with every window omitted while reporting no error, so
-# a job asserting on pixels would go green against a build that drew nothing.
-# A screenshot is still uploaded, for a person to look at.
-#
-# What it does not reach is a sandbox, which needs a signing identity no
-# runner has; a high-density display; and the Finder icons. `CHECKLIST.md`
-# holds those and a green run here does not stand in for them. It also runs
-# the macOS arms of clippy, which the fleet's Linux `ci.yml` never compiles.
+# Run the suite, the corpus, clippy's macOS arms and the window on Apple
+# silicon, because nothing else here can: the Mac this is built on is x86_64
+# and a Store build has to be universal. The last step opens a document through
+# Launch Services, which delivers the Apple Event Finder does, so
+# `src/opened_document.rs` runs on arm64. It asks the window server whether a
+# window appeared rather than asserting on pixels, since `screencapture` can
+# return the desktop with every window omitted and report no error. A
+# screenshot is uploaded for a person to look at. Out of reach here: a sandbox,
+# which needs a signing identity; a high-density display; the Finder icons.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

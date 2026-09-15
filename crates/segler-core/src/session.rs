@@ -1191,8 +1191,8 @@ fn splice(before: &[Node], range: std::ops::Range<usize>, inner: Vec<Node>) -> V
 
 /// `inner` with the framing whitespace of `old` put back on the outside.
 ///
-/// The frame is the file's shape and is kept exactly: `CHECKLIST.md` item 11
-/// diffs a save against the original and expects only the edit. It is merged
+/// The frame is the file's shape and is kept exactly, so that a save diffs
+/// against the original at the edit and nowhere else. It is merged
 /// into a text node where there is one, so that no save gains an empty
 /// sibling it did not have.
 fn with_frame(old: &[Node], mut inner: Vec<Node>) -> Vec<Node> {
@@ -1817,8 +1817,8 @@ mod tests {
         assert!(s.keeps_formatting(TextTarget::Body(text), "one <bold>two three"));
     }
 
-    /// The frame is the file's shape; `CHECKLIST.md` item 11 diffs a save
-    /// against the original and expects only the edit.
+    /// The frame is the file's shape: a save diffs against the original at
+    /// the edit and nowhere else.
     #[test]
     fn editing_markup_keeps_the_framing_whitespace() {
         let src = "<doclang><text>\n    Lead <bold>bold</bold> trail\n  </text></doclang>";

@@ -550,10 +550,9 @@ impl App {
             // Zoom belongs to the page image and to nothing else, so it is
             // here only while there is a page image on screen. It used to be
             // here always: four controls that looked operable, drove the panel
-            // that was not drawn, and reported a percentage of nothing - which
-            // is every `.dclg` and every archive with the panel closed, so the
-            // usual state of the window was four dead controls. Found at
-            // David's keyboard on 2026-09-04, running CHECKLIST item 7.
+            // that is not drawn and report a percentage of nothing - which is
+            // every `.dclg` and every archive with the panel closed, so the
+            // usual state of the window would be four dead controls.
             //
             // Hidden rather than disabled. A greyed slider still asks to be
             // read, and the answer would be that it applies to a pane that is

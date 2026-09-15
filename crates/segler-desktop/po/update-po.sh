@@ -31,13 +31,10 @@
 # **It prints a screen of warnings and they are noise.** `unterminated
 # character constant` is a Rust lifetime — `&'static str` — read as the start
 # of a C character literal, and `unterminated string literal` is an apostrophe
-# in a comment. Measured on 2026-09-09 rather than assumed: every string handed
-# to `t`, `tc` or `tn` was compared against the msgids this produced and the
-# two sets matched exactly — measured in slipcase-desktop, where this script was
-# written, and again here. The warnings cost nothing, but
-# they are also where a genuine miss would hide, so the way a dropped string is
-# found is not by reading them — it is the pseudolocale in `CHECKLIST.md`,
-# where anything still in English stands out on sight.
+# in a comment. The warnings cost nothing, but they are also where a genuine
+# miss would hide, so the way a dropped string is found is not by reading them
+# — it is `pseudo.sh` beside this, where anything still in English stands out
+# on sight.
 set -eu
 
 # Three directories up: this script sits in the crate that owns the

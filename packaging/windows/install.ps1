@@ -268,11 +268,10 @@ $uninstallCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$
 # names itself Segler with a publisher of Excelano, and so did this entry, so a
 # machine with both showed two rows in Settings > Apps reading "Segler" by
 # "Excelano" with the same icon, separated by nothing but 0.1.0 against
-# 0.1.0.0. David hit exactly that on 2026-09-04 running CHECKLIST item 24: he
-# picked the one that said Excelano, which was both of them, and removed the
-# package instead of this.
+# 0.1.0.0. Asked to remove one, a person picks the row that says Excelano,
+# which is both of them, and removes the package instead of this.
 #
-# That is worse than an annoyance because of what item 22 measured. A script
+# That is worse than an annoyance because of what the README measured. A script
 # install silently shadows the package - the extension's default ProgID wins
 # over a packaged association - so somebody who installs from the Store and
 # wants the Store copy to be the one that opens their files has to remove this
