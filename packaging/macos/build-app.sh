@@ -57,13 +57,22 @@ usage: build-app.sh [--binary PATH] [--outdir DIR] [--universal] [--sign ID]
                  build what the Mac App Store takes: a universal bundle
                  carrying PROFILE as embedded.provisionprofile, signed for
                  distribution, wrapped by productbuild into the .pkg that is
-                 uploaded. Implies --universal, chooses its own identities,
-                 and refuses rather than producing something subtly wrong.
-                 PROFILE is the .provisionprofile downloaded from the
-                 developer portal:
+                 uploaded. It chooses its own identities and refuses rather
+                 than producing something subtly wrong: the binary must carry
+                 both architectures and must agree with the floor Info.plist
+                 declares, however it was built. PROFILE is the
+                 .provisionprofile downloaded from the developer portal.
 
+                 The release binary is built on the Apple silicon runner and
+                 attached to the release, so signing it here is a download and
+                 this command, with no toolchain and nothing compiled:
+
+                   gh release download v0.1.4 -p segler-desktop-universal
                    ./packaging/macos/build-app.sh \
+                       --binary ./segler-desktop-universal \
                        --store ~/Downloads/Segler_Mac_App_Store.provisionprofile
+
+                 Building it here instead is --universal beside --store.
 USAGE
 }
 
@@ -173,15 +182,6 @@ if [ "$universal" = yes ]; then
     binary="${target_dir}/release/segler-desktop-universal"
     # shellcheck disable=SC2086
     lipo -create ${slices} -output "$binary"
-    # A `lipo` that quietly produced one architecture would be a Store upload
-    # rejected days later, or worse, accepted and unrunnable on half the
-    # machines that bought it. Checked here instead.
-    for triple in x86_64 arm64; do
-        lipo -info "$binary" | grep -q "$triple" || {
-            echo "build-app.sh: the joined executable has no ${triple} slice" >&2
-            exit 1
-        }
-    done
 fi
 
 if [ -z "$binary" ]; then
@@ -191,6 +191,21 @@ fi
     echo "build-app.sh: no executable at $binary — run 'cargo build --release' first" >&2
     exit 1
 }
+
+# A binary with one architecture would be a Store upload rejected days later,
+# or worse, accepted and unrunnable on half the machines that bought it. Asked
+# of whatever is about to be packaged rather than only of what `lipo` just
+# wrote, because `--binary` takes one built elsewhere: the release binary is
+# built on the runner and signed here, so the joining is no longer the only
+# way a universal binary arrives.
+if [ "$universal" = yes ] || [ -n "$store_profile" ]; then
+    for triple in x86_64 arm64; do
+        lipo -info "$binary" | grep -q "$triple" || {
+            echo "build-app.sh: ${binary} has no ${triple} slice" >&2
+            exit 1
+        }
+    done
+fi
 
 # **A private symbol in the binary is a rejection, and one cost slipcase-desktop
 # a review cycle.** Its 0.1.1 was refused on 2026-08-31 for referencing
@@ -346,11 +361,11 @@ install -m 0755 "$binary" "${app}/Contents/MacOS/segler-desktop"
 # there. `MACOSX_DEPLOYMENT_TARGET` is what moves it, and this is the check
 # that catches forgetting to set it.
 #
-# Only for `--universal`, which is the release path. A plain `cargo build
-# --release` for the local test loop is left alone, because failing the
-# everyday bundle over a floor that only matters on somebody else's machine
-# would be theatre.
-if [ "$universal" = yes ]; then
+# For every release path, which is `--universal` and anything bound for the
+# Store. A plain `cargo build --release` for the local test loop is left alone,
+# because failing the everyday bundle over a floor that only matters on
+# somebody else's machine would be theatre.
+if [ "$universal" = yes ] || [ -n "$store_profile" ]; then
     floor=$(plutil -extract LSMinimumSystemVersion raw "${app}/Contents/Info.plist")
     for arch in x86_64 arm64; do
         # Two shapes: a modern build emits LC_BUILD_VERSION with `minos`, and

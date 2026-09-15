@@ -20,13 +20,27 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The release event is what builds the binary the Mac signs. A person's
+  # token creates the release, so the event fires.
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build the universal binary for (e.g. v0.1.4)'
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: apple-silicon-${{ github.ref }}
-  cancel-in-progress: true
+  # Keyed by the tag when this is releasing and by the ref when it is checking,
+  # so the two never share a group: github.ref is refs/heads/main for a
+  # workflow_dispatch as much as for a push.
+  group: apple-silicon-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  # A superseded check is worth cancelling; a half-built release is not.
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
   arm64:
@@ -34,6 +48,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
       # The architecture is the whole reason this workflow exists, and a label
       # is a promise rather than a fact: `macos-13` is Intel and `macos-14`
@@ -174,3 +190,34 @@ jobs:
           name: arm64-window
           path: ${{ runner.temp }}/screen.png
           if-no-files-found: ignore
+
+      # The binary the Mac App Store package is built from. It is compiled here
+      # rather than on the Mac so that what ships is built by a clean machine
+      # from the tagged commit, and so that the two checks that cost a review
+      # cycle — both architectures present, and the private-symbol scan — run
+      # before anybody is waiting on them. `--universal` alone signs nothing
+      # and needs no credential: the Distribution certificate stays on the Mac,
+      # which downloads this and runs `build-app.sh --binary ... --store ...`.
+      - name: The universal binary the Store package is built from
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -eux
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          floor=$(plutil -extract LSMinimumSystemVersion raw packaging/macos/Info.plist.in)
+          for triple in x86_64-apple-darwin aarch64-apple-darwin; do
+            MACOSX_DEPLOYMENT_TARGET="$floor" \
+              cargo build --release -p segler-desktop --target "$triple"
+          done
+          # Joins the slices, checks both are there, and runs the private-symbol
+          # scan. No --sign and no --store, so nothing here holds a credential.
+          ./packaging/macos/build-app.sh --universal
+          target=$(cargo metadata --format-version 1 --no-deps |
+            sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          cp "${target}/release/segler-desktop-universal" .
+          lipo -info segler-desktop-universal
+
+      - name: Attach it to the release
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" segler-desktop-universal --clobber
