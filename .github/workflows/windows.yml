@@ -33,9 +33,19 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The release event is what attaches the package. A person's token creates
+  # the release, so the event fires.
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to package for (e.g. v0.1.4)'
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: windows-${{ github.ref }}
@@ -47,6 +57,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
@@ -135,6 +147,8 @@ jobs:
         run: |
           if ($env:STORE_IDENTITY_PSD1) {
             Set-Content -Path packaging\windows\identity.psd1 -Value $env:STORE_IDENTITY_PSD1
+          } elseif ('${{ github.event_name }}' -eq 'release') {
+            throw 'a release package needs the real identity: set the repository variable STORE_IDENTITY_PSD1 to the contents of identity.psd1'
           } else {
             Copy-Item packaging\windows\identity.psd1.example packaging\windows\identity.psd1
           }
@@ -146,6 +160,13 @@ jobs:
         with:
           name: msix
           path: dist/*.msix
+
+      - name: Attach the package to the release
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" (Get-ChildItem dist\*.msix).FullName
 
       - name: The committed icons and Store assets still match their generator
         run: |
