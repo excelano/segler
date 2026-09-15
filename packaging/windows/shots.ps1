@@ -59,8 +59,14 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $WIDTH = 1366
 $HEIGHT = 768
 
-# The document the review notes point at, which rides every release.
+# The document the review notes point at, which rides every release. It is
+# opened through the shell, so what appears is whatever is registered for
+# `.dclx` on this machine - see the note at the top of this file.
 $DOCUMENT = Join-Path $root 'packaging\review\sailing-directions.dclx'
+
+# The process the window belongs to, which the driver stops first so the frame
+# holds this run's window and not a previous one's.
+$PROCESS = 'segler-desktop'
 
 # Where the shots land. Not committed: dist is where every built artefact goes.
 if (-not $OutDir) { $OutDir = Join-Path $root 'dist\screenshots' }
@@ -68,11 +74,9 @@ if (-not $OutDir) { $OutDir = Join-Path $root 'dist\screenshots' }
 # The controls, by what they do rather than by where they are, so a recipe
 # below reads as the thing it is doing. Each is "X,Y" in the frame.
 #
-# The three with numbers were read off the 2026-09-06 set at this size. The
-# three that are empty have never been measured on this platform - the Mac has
-# them at 1440x900 against a different toolbar and a different pane width, and
-# a coordinate carried across from there lands somewhere else. Take a reference
-# frame, read them off it, and fill them in:
+# All of these were read off a frame of this document at this size. Retake one
+# when the window changes, rather than adjusting a number until a shot looks
+# right:
 #
 #     powershell -ExecutionPolicy Bypass -File packaging\windows\shots.ps1 -Reference
 #
@@ -80,12 +84,13 @@ $PAGE_IMAGE_PANEL = '423,40'   # the toolbar toggle for the page images
 $NEXT_PAGE = '353,40'          # the toolbar's forward arrow
 $THE_PICTURE = '620,440'       # the picture on page two, on the page itself
 
-$A_TABLE_CELL = ''             # a body cell of the four-column table, page one
-$A_PARAGRAPH = ''              # a line of running text, page one
-$A_HEADING = ''                # a heading, page one
+$A_TABLE_CELL = '956,385'      # Newlyn's high water, in the HW column
+$A_PARAGRAPH = '600,139'       # the opening line under the title
+$A_HEADING = '350,494'         # *Hazards*, the second-level heading on page one
 
-# What a corrected cell is corrected to. Short, and visibly a correction of
-# what the scan shows rather than a different number.
+# What the cell is corrected to. One digit away from what is in the document,
+# so the frame reads as a correction rather than as a different number, and
+# short enough to be typed before the shutter.
 $CORRECTION = '-0:38'
 
 # One shot to a line: name, then the actions that put the window into the state
@@ -106,8 +111,12 @@ function Get-Shots {
     # box drawn over the scan with the same coordinates in the pane. The page
     # image panel is in the set because it is the one thing in this application
     # no other DocLang tool has.
+    #
+    # The paragraph is selected before the panel opens, not after. Opening the
+    # panel narrows the document pane, so every coordinate in it moves, and
+    # `$A_PARAGRAPH` was read off a frame with the panel shut.
     Shot '02-the-page-beside-the-document' @(
-        "click $PAGE_IMAGE_PANEL", "click $A_PARAGRAPH")
+        "click $A_PARAGRAPH", "click $PAGE_IMAGE_PANEL")
 
     # The correction committed: the title carries the modified mark, Save and
     # Undo have come on, the status line says which cell changed, and a heading
@@ -143,7 +152,8 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 if ($Reference) {
     $out = Join-Path $OutDir 'reference.png'
     Write-Host 'shots.ps1: reference'
-    & $driver -Document $DOCUMENT -Out $out -Width $WIDTH -Height $HEIGHT
+    & $driver -Launch @('shell', $DOCUMENT) -Process $PROCESS `
+        -Out $out -Width $WIDTH -Height $HEIGHT
     Write-Host "shots.ps1: read the coordinates off $out and fill them in at the top of this file"
     return
 }
@@ -169,7 +179,8 @@ $taken = 0
 foreach ($shot in $shots) {
     $out = Join-Path $OutDir "$($shot.Name).png"
     Write-Host "shots.ps1: $($shot.Name)"
-    & $driver -Document $DOCUMENT -Out $out -Width $WIDTH -Height $HEIGHT -Do $shot.Actions
+    & $driver -Launch @('shell', $DOCUMENT) -Process $PROCESS `
+        -Out $out -Width $WIDTH -Height $HEIGHT -Do $shot.Actions
     $taken++
 }
 

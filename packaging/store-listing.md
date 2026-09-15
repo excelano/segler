@@ -185,18 +185,23 @@ way, which is the whole of what guideline 2.3.3 objected to on the other
 platform. Partner Center has not asked, and the same criticism is true of them:
 retake them before the Microsoft Store submission goes in.
 
-**What retaking them needs is three coordinates.**
-`packaging/windows/shots.ps1` carries the four replacement recipes, written to
-match the macOS set frame for frame, and `screenshot.ps1` has the four actions
-they need. Three of the controls they name were measured at 1366x768 on
-2026-09-06 and are in the file: the page image toggle at 423,40, the forward
-arrow at 353,40, and the picture on page two at 620,440. Three have never been
-measured on this platform - a table cell, a paragraph and a heading, all on
-page one - because the Mac has them at 1440x900 against a different toolbar and
-a different pane width, and a coordinate carried across from there lands
-somewhere else. `shots.ps1 -Reference` takes the frame to read them off, and
-until they are filled in it refuses the set rather than photographing four
-clicks that landed on nothing.
+**The replacement four are recipes.** `packaging/windows/shots.ps1` carries
+them, written to match the macOS set frame for frame, and every coordinate they
+name was read off a 1366x768 frame of this document: the page image toggle at
+423,40, the forward arrow at 353,40, the picture on page two at 620,440,
+Newlyn's high water cell at 956,385, the opening line at 600,139 and the
+*Hazards* heading at 350,494. `shots.ps1 -Reference` takes that frame, which is
+how they are read again when the window changes; a recipe naming a coordinate
+that has been blanked stops all four rather than photographing a click that
+landed on nothing.
+
+**The set is taken on the runner.** `windows.yml` has an optional `screenshots`
+input - `reference` for the one frame, `full` for the set - and the run raises
+the desktop from the 1024x768 a hosted runner starts at, installs the
+association with `install.ps1` so the shell opens the document with Segler, and
+uploads the result. The window photographed is therefore the release binary of
+the commit, not the MSIX; the Mac has the same gap for the same reason and the
+commit is what makes them the same application.
 
 **Two things the capture script now refuses on**, both learned by watching it
 lie. It checks the window is actually in the foreground, because a shell
