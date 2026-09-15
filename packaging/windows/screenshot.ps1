@@ -44,9 +44,9 @@
 # `click X,Y` presses a control. `double X,Y` presses it twice inside the
 # system's double-click interval, which is how a block of a document opens for
 # typing. `type TEXT` types. `key NAME` sends one key, optionally with
-# modifiers: `key ctrl+a`, `key return`. X and Y are measured from the frame's
-# top-left corner on a shot of the same size, so a coordinate read off an
-# earlier shot is the coordinate to give.
+# modifiers: `key ctrl+a`, `key return`, `key ctrl+plus`. X and Y are measured
+# from the frame's top-left corner on a shot of the same size, so a coordinate
+# read off an earlier shot is the coordinate to give.
 #
 # One parameter holding an ordered list, rather than the four repeatable flags
 # `packaging/macos/screenshot.sh` has: PowerShell binds a parameter once, so a
@@ -375,6 +375,14 @@ $KEYS = @{
     'space' = 0x20; 'backspace' = 0x08; 'delete' = 0x2E; 'home' = 0x24; 'end' = 0x23
     'left' = 0x25; 'up' = 0x26; 'right' = 0x27; 'down' = 0x28
     'pageup' = 0x21; 'pagedown' = 0x22
+    # The zoom pair, by name because the characters cannot be given: `+` is not
+    # a virtual key, `ctrl++` splits into an empty key, and the key that carries
+    # both is OEM_PLUS. `key ctrl+plus` four times is about 140%, which is what
+    # a Store listing wants - the Store renders screenshots small, and egui's
+    # default scale puts this fleet's text at around ten pixels in a thumbnail.
+    # It is egui's own shortcut, so it does nothing a person could not do, and
+    # eframe's persistence is off across the fleet so the next launch is at 100%.
+    'plus' = 0xBB; 'minus' = 0xBD
 }
 $MODIFIERS = @{ 'ctrl' = 0x11; 'control' = 0x11; 'alt' = 0x12; 'shift' = 0x10; 'win' = 0x5B }
 $KEYUP = 2
