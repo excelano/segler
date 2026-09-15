@@ -70,10 +70,17 @@
 # sends the ALT tap that releases the foreground lock, retries, and refuses if
 # the window is still not in front.
 #
-# **It waits for a window rather than for a number of seconds.** A cold start
-# under a loaded runner takes longer than a cold start on a desk, and a fixed
-# sleep is either wasted or short. It polls for the process and for a main
-# window handle, and says how long it took.
+# **It waits for a window rather than for a number of seconds, and then waits
+# for that window to be the one.** A cold start under a loaded runner takes
+# longer than a cold start on a desk, and a fixed sleep is either wasted or
+# short. But the first handle a process reports is not always the window a
+# person sees: Segler's first cold launch on a runner reported one, this script
+# sized and drove it, and the picture came back a third desktop wallpaper with
+# the real window offset inside it and the correction never typed. So the
+# handle has to be visible, titled, and the same on two reads before anything
+# is done to it - and it is read again before the shutter, because actions sent
+# to a window that is no longer the one is a photograph of the wrong thing
+# reported as a success.
 #
 # **And it polls the geometry until it stops moving.** A cold start of the
 # packaged application is still positioning itself seconds in, and a rect read
@@ -140,6 +147,13 @@ Add-Type -Namespace Shot -Name Win -MemberDefinition @'
 [DllImport("user32.dll")] public static extern uint GetDoubleClickTime();
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder text, int count);
 [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+
+public static string TitleOf(IntPtr h) {
+    System.Text.StringBuilder title = new System.Text.StringBuilder(512);
+    GetWindowText(h, title, title.Capacity);
+    return title.ToString();
+}
 public struct RECT { public int Left, Top, Right, Bottom; }
 
 // What has the foreground, said in full. A refusal that only knows the window
@@ -259,19 +273,29 @@ switch ($verb) {
 # Polled rather than slept through. A fixed wait is either wasted time on a
 # desk or too short on a loaded runner, and the second reads as "nothing opened
 # it" when the truth is that it had not opened it yet.
+#
+# What counts as the window: visible, titled, and the same handle twice running.
+# A handle that is none of those is a window on its way to being one.
+function Get-Window {
+    $app = Get-Process $window -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $app) { return [IntPtr]::Zero }
+    $app.Refresh()
+    $h = $app.MainWindowHandle
+    if ($h -eq [IntPtr]::Zero) { return [IntPtr]::Zero }
+    if (-not [Shot.Win]::IsWindowVisible($h)) { return [IntPtr]::Zero }
+    if ([Shot.Win]::TitleOf($h) -eq '') { return [IntPtr]::Zero }
+    return $h
+}
+
 $handle = [IntPtr]::Zero
+$seen = [IntPtr]::Zero
 $waited = 0
 while ($waited -lt $Appear) {
-    $app = Get-Process $window -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($app) {
-        $app.Refresh()
-        if ($app.MainWindowHandle -ne [IntPtr]::Zero) {
-            $handle = $app.MainWindowHandle
-            break
-        }
-    }
-    Start-Sleep -Milliseconds 500
-    $waited += 0.5
+    $now = Get-Window
+    if ($now -ne [IntPtr]::Zero -and $now -eq $seen) { $handle = $now; break }
+    $seen = $now
+    Start-Sleep -Milliseconds 700
+    $waited += 0.7
 }
 if ($handle -eq [IntPtr]::Zero) {
     if ($verb -eq 'shell') {
@@ -279,7 +303,17 @@ if ($handle -eq [IntPtr]::Zero) {
     }
     Refuse "no $window window after $Appear seconds"
 }
-Write-Host "  $window had a window after $waited second(s)"
+Write-Host "  $window had a window after $waited second(s): $([Shot.Win]::TitleOf($handle))"
+
+# One more look before anything is done to it. Nothing has been sized or driven
+# yet, so a window replaced in this gap is simply the newer one; after the
+# actions it would be a refusal instead.
+Start-Sleep -Milliseconds 800
+$again = Get-Window
+if ($again -ne [IntPtr]::Zero -and $again -ne $handle) {
+    Write-Host '  it was replaced by another before anything was done to it'
+    $handle = $again
+}
 
 # --- placing it -------------------------------------------------------------
 
@@ -474,6 +508,17 @@ if ([Shot.Win]::GetForegroundWindow() -ne $handle) {
         Refuse "the window lost the foreground between settling and the capture; $thief has it"
     }
     Write-Host "  $thief took the foreground and it was taken back"
+}
+
+# The window is read once more, because everything above was done to a handle
+# and the capture is of a rectangle. An application that replaced its window
+# between the first click and here has taken the actions with it, and the
+# rectangle now holds whatever is at those coordinates - which came back once
+# as a third of the desktop wallpaper with the real window offset inside it,
+# and was reported as a success.
+$current = Get-Window
+if ($current -ne [IntPtr]::Zero -and $current -ne $handle) {
+    Refuse "the window was replaced between the actions and the capture: $([Shot.Win]::TitleOf($handle)) became $([Shot.Win]::TitleOf($current)), and what was driven is not what would be photographed"
 }
 
 $rect = Get-Frame $handle

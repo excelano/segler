@@ -12,6 +12,7 @@
 #     function Get-Shots {
 #         Shot '01-window' @()
 #         Shot '02-a-correction' @("double $A_CELL", 'key ctrl+a', "type 4.2")
+#         Shot '03-another-document' -Launch @('shell', $OTHER)
 #     }
 #
 #     Take-Shots -Launch @('shell', $DOCUMENT) -Process 'thing-desktop' `
@@ -27,8 +28,28 @@
 
 function Refuse([string] $message) { Write-Error "shots.ps1: $message" }
 
-function Shot([string] $name, [string[]] $actions) {
-    [pscustomobject]@{ Name = $name; Actions = $actions }
+# A shot is a name, what to do to the window, and - where this shot is not like
+# the rest of the set - what to launch for it. A set whose frames open different
+# documents is ordinary: slipcase-desktop photographs one container and then a
+# second carrying a `Zone.Identifier`, and odox photographs three applications.
+function Shot {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)][string] $Name,
+        [Parameter(Position = 1)][string[]] $Actions = @(),
+        # Overrides for this shot alone. Unset means the set's.
+        [string[]] $Launch,
+        [string[]] $Process,
+        [int] $Settle = 0,
+        # Run before the application is launched for this shot. What belongs
+        # here is state the application reads at startup and no click can
+        # reach: the desktop's theme, a preference file, an alternate data
+        # stream on the document.
+        [scriptblock] $Before
+    )
+    [pscustomobject]@{
+        Name = $Name; Actions = $Actions
+        Launch = $Launch; Process = $Process; Settle = $Settle; Before = $Before
+    }
 }
 
 function Take-Shots {
@@ -57,11 +78,19 @@ function Take-Shots {
     # thing entirely - there the hashtable is stringified and the receiving
     # program sees one argument - so this shape is only safe because the driver
     # is a script.
-    $common = @{
-        Launch = $Launch; Process = $Process
-        Width  = $Width; Height = $Height
+    function Arguments($shot) {
+        $a = @{
+            Launch = $Launch; Process = $Process
+            Width  = $Width; Height = $Height
+        }
+        if ($Settle -gt 0) { $a['Settle'] = $Settle }
+        if ($null -ne $shot) {
+            if ($shot.Launch) { $a['Launch'] = $shot.Launch }
+            if ($shot.Process) { $a['Process'] = $shot.Process }
+            if ($shot.Settle -gt 0) { $a['Settle'] = $shot.Settle }
+        }
+        return $a
     }
-    if ($Settle -gt 0) { $common['Settle'] = $Settle }
 
     # The reference frame is what an unmeasured constant is measured off, so it
     # has to be reachable while that constant is still empty - before the check
@@ -69,6 +98,7 @@ function Take-Shots {
     if ($Reference) {
         $out = Join-Path $OutDir 'reference.png'
         Write-Host 'shots.ps1: reference'
+        $common = Arguments $null
         & $driver @common -Out $out
         Write-Host "shots.ps1: read the coordinates off $out and fill them in at the top of shots.ps1"
         return
@@ -99,6 +129,8 @@ function Take-Shots {
     foreach ($shot in $shots) {
         $out = Join-Path $OutDir "$($shot.Name).png"
         Write-Host "shots.ps1: $($shot.Name)"
+        if ($shot.Before) { & $shot.Before }
+        $common = Arguments $shot
         & $driver @common -Out $out -Do $shot.Actions
         $taken++
     }
