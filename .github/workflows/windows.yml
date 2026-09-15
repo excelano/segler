@@ -156,7 +156,7 @@ jobs:
           Get-ChildItem dist\*.msix | ForEach-Object { "$($_.Name) $([math]::Round($_.Length/1MB,1)) MB" }
 
       - name: Keep the package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: msix
           path: dist/*.msix
