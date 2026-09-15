@@ -208,28 +208,31 @@ if ($ReadReport) {
 
 # --- the identity, from one place -------------------------------------------
 
-# `identity.psd1` holds what Partner Center assigned. The manifest keeps its
-# placeholders, so that nothing has to be edited per build and so that the one
-# file a person might mistype lives beside a comment saying where its values
-# came from.
-#
-# It is not committed - `.gitignore` says why - so a fresh checkout does not
-# have one, and the refusal names the template rather than just the missing
-# path. A build script whose first failure is "no such file" teaches nothing.
+# `identity.psd1` beside this holds what is public: the reserved name, the
+# publisher display name, and the calculated forms. `Publisher` is the X.500
+# string Partner Center assigns per account, the same for every Excelano
+# product, and it comes from the environment so that a public repository does
+# not carry an account identifier: `windows.yml` passes the organisation
+# variable STORE_PUBLISHER, and a Windows machine sets STORE_PUBLISHER in its
+# own environment before running this.
 $identityFile = Join-Path $here 'identity.psd1'
 if (-not (Test-Path $identityFile)) {
-    Refuse "no identity at $identityFile - copy identity.psd1.example beside it and fill in what Partner Center shows under Product management, Product identity"
+    Refuse "no identity at $identityFile - it is committed beside this script and should not be missing"
 }
 $identity = Import-PowerShellDataFile $identityFile
-foreach ($field in 'Name', 'Publisher', 'PublisherDisplayName') {
+foreach ($field in 'Name', 'PublisherDisplayName') {
     if (-not $identity.$field) { Refuse "identity.psd1 has no $field" }
+}
+$publisher = $env:STORE_PUBLISHER
+if (-not $publisher) {
+    Refuse 'no STORE_PUBLISHER in the environment - it is the X.500 string Partner Center shows under Product management, Product identity, as Package/Identity/Publisher, and it is the excelano organisation variable of that name'
 }
 # The one value with a shape worth checking. `Publisher` is an X.500 string and
 # the display name is what gets put there by mistake; a package whose Publisher
 # does not match the reservation is rejected at upload, which is the most
 # expensive place to find out.
-if ($identity.Publisher -notmatch '^CN=') {
-    Refuse "identity.psd1's Publisher is '$($identity.Publisher)', which is not an X.500 string - Partner Center's Package/Identity/Publisher begins CN="
+if ($publisher -notmatch '^CN=') {
+    Refuse "STORE_PUBLISHER is '$publisher', which is not an X.500 string - Partner Center's Package/Identity/Publisher begins CN="
 }
 
 # --- the version, from the one parser ---------------------------------------
@@ -371,7 +374,7 @@ foreach ($image in 'StoreLogo.png', 'Square150x150Logo.png', 'Square44x44Logo.pn
 $manifest = Get-Content (Join-Path $here 'AppxManifest.xml.in') -Raw
 $manifest = $manifest.
     Replace('@IDENTITY_NAME@', $identity.Name).
-    Replace('@PUBLISHER@', $identity.Publisher).
+    Replace('@PUBLISHER@', $publisher).
     Replace('@PUBLISHER_DISPLAY_NAME@', $identity.PublisherDisplayName).
     Replace('@VERSION_APPX@', $version)
 
@@ -461,7 +464,7 @@ if ($LASTEXITCODE -ne 0) { Refuse "makeappx pack failed ($LASTEXITCODE)" }
 Write-Host ''
 Write-Host "built $package"
 Write-Host "  identity  $($identity.Name)"
-Write-Host "  publisher $($identity.Publisher)"
+Write-Host "  publisher $($publisher)"
 Write-Host "  version   $version"
 Write-Host "  from      $Binary"
 # Said out loud because the package name is deterministic, so a plain run
@@ -490,13 +493,13 @@ if ($SelfSign) {
     # signtool checks, both packages are this account's, and the certificate is
     # a throwaway either way.
     $cert = Get-ChildItem Cert:\CurrentUser\My |
-        Where-Object { $_.Subject -eq $identity.Publisher -and $_.HasPrivateKey } |
+        Where-Object { $_.Subject -eq $publisher -and $_.HasPrivateKey } |
         Sort-Object NotAfter -Descending |
         Select-Object -First 1
     if (-not $cert) {
-        Write-Host "making a throwaway signing certificate for $($identity.Publisher)"
+        Write-Host "making a throwaway signing certificate for $($publisher)"
         $cert = New-SelfSignedCertificate -Type CodeSigningCert `
-            -Subject $identity.Publisher `
+            -Subject $publisher `
             -KeyUsage DigitalSignature `
             -FriendlyName 'Excelano MSIX test signing (throwaway)' `
             -CertStoreLocation Cert:\CurrentUser\My `
