@@ -191,33 +191,15 @@ jobs:
           path: ${{ runner.temp }}/screen.png
           if-no-files-found: ignore
 
-      # The binary the Mac App Store package is built from. It is compiled here
-      # rather than on the Mac so that what ships is built by a clean machine
-      # from the tagged commit, and so that the two checks that cost a review
-      # cycle — both architectures present, and the private-symbol scan — run
-      # before anybody is waiting on them. `--universal` alone signs nothing
-      # and needs no credential: the Distribution certificate stays on the Mac,
-      # which downloads this and runs `build-app.sh --binary ... --store ...`.
-      - name: The universal binary the Store package is built from
+      # Built here and signed on the Mac: the Distribution certificate stays
+      # where it is, and the slow half plus the two checks that cost a review
+      # cycle happen before anybody is waiting. The steps are excelano/.github's,
+      # because every repository with this target needs the same ones.
+      - name: The binary the Store package is built from
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-        run: |
-          set -eux
-          rustup target add x86_64-apple-darwin aarch64-apple-darwin
-          floor=$(plutil -extract LSMinimumSystemVersion raw packaging/macos/Info.plist.in)
-          for triple in x86_64-apple-darwin aarch64-apple-darwin; do
-            MACOSX_DEPLOYMENT_TARGET="$floor" \
-              cargo build --release -p segler-desktop --target "$triple"
-          done
-          # Joins the slices, checks both are there, and runs the private-symbol
-          # scan. No --sign and no --store, so nothing here holds a credential.
-          ./packaging/macos/build-app.sh --universal
-          target=$(cargo metadata --format-version 1 --no-deps |
-            sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
-          cp "${target}/release/segler-desktop-universal" .
-          lipo -info segler-desktop-universal
-
-      - name: Attach it to the release
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" segler-desktop-universal --clobber
+        uses: excelano/.github/.github/actions/mac-release-binary@main
+        with:
+          binary: segler-desktop
+          package: segler-desktop
+          tag: ${{ github.event.release.tag_name || inputs.tag }}
+          token: ${{ secrets.GITHUB_TOKEN }}
