@@ -123,7 +123,7 @@ jobs:
         uses: excelano/.github/.github/actions/windows-install-check@main
         with:
           associations: '[{"extension": ".dclx", "progId": "Excelano.Segler.Archive", "contentType": "application/vnd.doclang.archive+zip"}, {"extension": ".dclg", "progId": "Excelano.Segler.Document", "contentType": "application/vnd.doclang.document+xml"}]'
-          owns-extension: 'false'
+          owns-extension: 'true'
           install-args: '-NoBinary'
 
       # The Store takes the package unsigned, and the runner assembles the one that

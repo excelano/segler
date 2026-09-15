@@ -32,12 +32,53 @@ $icons = @('segler.ico', 'dclx.ico', 'dclg.ico')
 # The .NET API for the same reason install.ps1 uses it: PowerShell's registry
 # provider reads the forward slash in a media type as a path separator, so it
 # would look for the wrong key here and leave the right one behind.
+function Test-OurKey {
+    param([string] $Path)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
+    if (-not $key) { return $false }
+    $key.Close()
+    return $true
+}
+
+# A key that is not there is nothing to do; a key that is there and will not go
+# is a failure, and catching every exception cannot tell the two apart. Both are
+# read back, so the only thing passed over is the absence.
 function Remove-Key {
     param([string] $Path)
+    if (-not (Test-OurKey $Path)) { return }
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
+    if (Test-OurKey $Path) { throw "uninstall.ps1: HKCU\$Path is still there after being deleted" }
+}
+
+# The same, for a key that cannot be opened for writing. Explorer writes a
+# *Deny SetValue* rule on UserChoice so no application can quietly take an
+# extension over, and `DeleteSubKeyTree` opens the key itself for writing before
+# deleting it, so it fails against the rule — and .NET reads that failure as the
+# key being missing and returns quietly. Deleting the name from the parent needs
+# DELETE on the child and nothing else, which the rule beside the deny allows.
+function Remove-Subkey {
+    param([string] $Parent, [string] $Name)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Parent, $true)
+    if (-not $key) { return }
+    try { $key.DeleteSubKey($Name, $false) } finally { $key.Close() }
+    if (Test-OurKey "$Parent\$Name") {
+        throw "uninstall.ps1: HKCU\$Parent\$Name is still there after being deleted"
+    }
+}
+
+# A value removed only if it holds what install.ps1 wrote, so that another
+# application's registration on the same extension is not touched.
+function Remove-OurValue {
+    param([string] $Path, [string] $Name, [string] $Ours)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $true)
+    if (-not $key) { return }
     try {
-        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
-    } catch {
-        Write-Verbose "nothing at $Path"
+        $held = $key.GetValue($Name, $null)
+        if ($null -ne $held -and ($Ours -eq '' -or $held -eq $Ours)) {
+            $key.DeleteValue($Name, $false)
+        }
+    } finally {
+        $key.Close()
     }
 }
 
@@ -45,7 +86,12 @@ $classes = 'Software\Classes'
 
 foreach ($type in $Types) {
     Remove-Key "$classes\$($type.ProgId)"
-    Remove-Key "$classes\$($type.Extension)"
+    # The extension's own values rather than the whole key. `OpenWithProgids`
+    # belongs to the extension and to every application that has ever offered to
+    # open one, so removing the tree takes somebody else's offer with it.
+    Remove-OurValue "$classes\$($type.Extension)\OpenWithProgids" $type.ProgId ''
+    Remove-OurValue "$classes\$($type.Extension)" '' $type.ProgId
+    Remove-OurValue "$classes\$($type.Extension)" 'Content Type' $type.ContentType
     Remove-Key "$classes\MIME\Database\Content Type\$($type.ContentType)"
 
     # The one that is easy to miss. Choosing "always open with" writes a
@@ -56,7 +102,18 @@ foreach ($type in $Types) {
     # back to the machine-wide one. Measured on slipcase-desktop, where
     # `README.md` beside this file records what each stale shape does to a
     # double-click.
-    Remove-Key "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$($type.Extension)"
+    #
+    # The UserChoice key by name through `Remove-Subkey`, and not the FileExts
+    # tree above it: that tree holds other applications' entries, and the deny
+    # rule on UserChoice defeats a tree delete silently. Removed only when it
+    # names this application.
+    $exts = "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$($type.Extension)"
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("$exts\UserChoice", $false)
+    if ($key) {
+        $chosen = $key.GetValue('ProgId', $null)
+        $key.Close()
+        if ($chosen -eq $type.ProgId) { Remove-Subkey $exts 'UserChoice' }
+    }
 }
 
 Remove-Key "$classes\Applications\$exeName"
