@@ -233,6 +233,11 @@ Start-Sleep -Seconds 1
 $window = $Process[0]
 
 $verb = $Launch[0]
+# Set by the exe branch only: the shell and a package hand the work to a
+# launcher that exits at once, and its exit code says nothing about the
+# application.
+$started = $null
+$launched = $null
 $rest = @()
 if ($Launch.Count -gt 1) { $rest = $Launch[1..($Launch.Count - 1)] }
 
@@ -246,10 +251,17 @@ switch ($verb) {
         if ($rest.Count -lt 1) { Refuse '-Launch exe wants an executable' }
         if (-not (Test-Path -LiteralPath $rest[0])) { Refuse "no executable at $($rest[0])" }
         $exe = (Resolve-Path -LiteralPath $rest[0]).Path
-        if ($rest.Count -gt 1) {
-            Start-Process $exe -ArgumentList $rest[1..($rest.Count - 1)]
+        # Kept, and its output with it. An executable that starts and stops
+        # leaves nothing behind otherwise, and the wait below then spends its
+        # whole minute on a process that was gone in the first second.
+        # `Start-Process` discards both streams unless asked.
+        $launched = Join-Path ([System.IO.Path]::GetTempPath()) "screenshot-launch-$PID"
+        $started = if ($rest.Count -gt 1) {
+            Start-Process $exe -ArgumentList $rest[1..($rest.Count - 1)] -PassThru `
+                -RedirectStandardError "$launched.err" -RedirectStandardOutput "$launched.out"
         } else {
-            Start-Process $exe
+            Start-Process $exe -PassThru `
+                -RedirectStandardError "$launched.err" -RedirectStandardOutput "$launched.out"
         }
     }
     'package' {
@@ -287,10 +299,30 @@ function Get-Window {
     return $h
 }
 
+# What a launched executable left behind when it did not stay. Said in full:
+# an exit code alone rarely names the reason and the streams usually do.
+function SaidOnTheWayOut {
+    $said = @()
+    foreach ($stream in 'err', 'out') {
+        $file = "$launched.$stream"
+        if (Test-Path -LiteralPath $file) {
+            $text = (Get-Content -LiteralPath $file -Raw -ErrorAction SilentlyContinue)
+            if ($text) { $said += $text.Trim() }
+        }
+    }
+    if ($said.Count -eq 0) { return 'and said nothing on either stream' }
+    return "and said: $($said -join ' / ')"
+}
+
 $handle = [IntPtr]::Zero
 $seen = [IntPtr]::Zero
 $waited = 0
 while ($waited -lt $Appear) {
+    # An executable that has exited will not grow a window, so the wait ends
+    # here rather than a minute later with nothing to show for it.
+    if ($null -ne $started -and $started.HasExited) {
+        Refuse "$($Launch[1]) exited $($started.ExitCode) after $waited second(s) without opening a window, $(SaidOnTheWayOut)"
+    }
     $now = Get-Window
     if ($now -ne [IntPtr]::Zero -and $now -eq $seen) { $handle = $now; break }
     $seen = $now
