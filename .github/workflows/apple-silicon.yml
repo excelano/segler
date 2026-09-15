@@ -80,12 +80,14 @@ jobs:
       # run is reproducible.
       #
       # SPEC-PIN: 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
-      - name: The conformance corpus, every file
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
+      - name: The specification checkout
         run: |
           git clone --quiet https://github.com/doclang-project/doclang.git "${RUNNER_TEMP}/doclang"
           git -C "${RUNNER_TEMP}/doclang" checkout --quiet --detach 6d3b3d3c195d1f63333c5c5fcba8da17937a33bd
-          cargo run -p segler -- corpus "${RUNNER_TEMP}/doclang"
+
+      - name: The conformance corpus, every file
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
+        run: cargo run -p segler -- corpus "${RUNNER_TEMP}/doclang"
 
       # The bundle is the unit: a bare executable has no bundle identifier and
       # Launch Services files it as a nameless foreground process, so nothing
