@@ -2,8 +2,8 @@
 # Photograph the application's own window at a size App Store Connect accepts.
 #
 # The counterpart of `packaging/windows/screenshot.ps1`, and written for the
-# same reason: the release record filed screenshots under *by hand, because no script
-# can*, which was an assumption. What a script cannot do is decide which
+# same reason. Screenshots were taken by hand on the assumption that no script
+# could. What a script cannot do is decide which
 # document to open or whether the result is a good advertisement. What it can
 # do is every mechanical part — size the window, front it, drive it into the
 # state the shot is of, move the pointer out of the frame, capture, and refuse

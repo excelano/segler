@@ -59,7 +59,7 @@ $ErrorActionPreference = 'Stop'
 #
 # **This is a record of what is known, not a claim that it is acceptable.**
 # Whether to submit with `Blocked executables` failing is a decision, it is
-# David's, and the release record carries it. Recording a finding here does not take
+# David's. Recording a finding here does not take
 # it.
 #
 # One entry, from the first kit run, 2026-09-04, against
@@ -93,7 +93,7 @@ $ErrorActionPreference = 'Stop'
 #                           `.text`, and twice inside the embedded font data.
 #                           A displacement moves when any code above it moves,
 #                           so a new coincidental match is expected rather than
-#                           alarming. The release record carries the trace.
+#                           alarming.
 #
 #                           Note what this list does and does not gate. The
 #                           comparison below is on a test's name and verdict;
@@ -352,7 +352,7 @@ Copy-Item $Binary (Join-Path $stage 'segler-desktop.exe')
 # application's executables live under `WindowsApps` behind an app-execution
 # alias, declaring one is a manifest extension nobody has asked for, and a
 # command-line tool a person cannot type the name of is worse than one they
-# install another way. The release record says the CLI ships through cargo-dist.
+# install another way. The CLI ships through cargo-dist.
 $assets = Join-Path $here 'assets'
 Copy-Item (Join-Path $assets '*.png') (Join-Path $stage 'Assets')
 # The whole directory is copied and then the six the manifest names are

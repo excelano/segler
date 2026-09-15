@@ -15,8 +15,8 @@
 //! route needs no compiler.
 //!
 //! **A second use for this file is a decision, not a precedent.** The one
-//! opened here is narrow on purpose. The release record names it as the one build
-//! script the tree may carry.
+//! opened here is narrow on purpose: this is the one build script the tree
+//! carries.
 //!
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)

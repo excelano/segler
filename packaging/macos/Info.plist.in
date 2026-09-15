@@ -27,8 +27,7 @@
 
   Two types with two icons, because a file type draws its own icon by its own
   mechanism and `.dclx` and `.dclg` should tell apart in Finder the way they
-  do in a Linux file manager. The release record records the morning the Windows
-  lane spent learning that.
+  do in a Linux file manager. Three icon directories is what that costs.
 
   `LSApplicationCategoryType` is required by App Store Connect and refused at
   upload without one. Productivity is what `segler-desktop.desktop` says with
