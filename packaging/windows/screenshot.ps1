@@ -298,10 +298,33 @@ while ($waited -lt $Appear) {
     $waited += 0.7
 }
 if ($handle -eq [IntPtr]::Zero) {
-    if ($verb -eq 'shell') {
-        Refuse "no $window window after $Appear seconds - did the shell open $($rest[0]) with something else? The association is what decides."
+    # Which of the three things went wrong, said rather than left to be
+    # guessed: nothing started, something started and stopped, or it is running
+    # and has no window this script will accept.
+    $running = @(Get-Process $window -ErrorAction SilentlyContinue)
+    if ($running.Count -eq 0) {
+        $others = @(Get-Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
+            ForEach-Object { $_.ProcessName } | Sort-Object -Unique)
+        $seenNames = if ($others) { $others -join ', ' } else { 'none' }
+        if ($verb -eq 'shell') {
+            Refuse "no $window process after $Appear seconds - the shell opened $($rest[0]) with something else, or with nothing. Windows on screen belong to: $seenNames"
+        }
+        Refuse "no $window process after $Appear seconds - it started and stopped, or never started. Windows on screen belong to: $seenNames"
     }
-    Refuse "no $window window after $Appear seconds"
+    $p = $running[0]
+    $p.Refresh()
+    $h = $p.MainWindowHandle
+    $what = if ($h -eq [IntPtr]::Zero) {
+        'it reports no main window'
+    } elseif (-not [Shot.Win]::IsWindowVisible($h)) {
+        'its window is not visible'
+    } elseif ([Shot.Win]::TitleOf($h) -eq '') {
+        'its window has no title'
+    } else {
+        'its window never stopped changing'
+    }
+    Refuse "$window is running after $Appear seconds but $what, so there is nothing to photograph"
 }
 Write-Host "  $window had a window after $waited second(s): $([Shot.Win]::TitleOf($handle))"
 
