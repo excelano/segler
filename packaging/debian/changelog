@@ -1,3 +1,40 @@
+segler (0.1.4) unstable; urgency=medium
+
+  * The notes are 0.1.4's, and the Store is still on 0.1.2
+  * What 0.1.3 tells the stores it changed
+  * What a release tells the stores, in both languages
+  * The reference frame is taken in the state the set is measured in
+  * An executable that starts and stops says its exit code and what it printed
+  * ship sync: a missing window says which of three things happened
+  * The runner takes the store screenshots, and the step is the org's
+  * The packaging scripts parse, and the step is the org's
+  * ship sync: the zoom pair, by name
+  * The first handle a process reports is not always its window
+  * Taking a set is generated too, and a refusal names what took the foreground
+  * The driver is ship's now, and the four recipes have their coordinates
+  * The runner can take the screenshots, and the reference frame with them
+  * The Windows shots are recipes too, and the packaging scripts parse
+  * The uninstall reads back what it deleted, and leaves the neighbours alone
+  * The install check is excelano/.github's
+  * The screenshot recipes are a script, and taking them is opt-in
+  * The release binary is built here and signed on the Mac
+  * The runner builds the Store binary; the Mac only signs it
+  * The Store packaging comes from excelano/.github
+  * The publisher is a secret, so the log does not carry it
+  * The identity splits on what is actually an account's
+  * Say what is true rather than pointing at a deleted document
+  * Clone the specification before the step that opens one of its documents
+  * Prose to present tense; the checklist goes
+  * The profile is targets and names
+  * Dependabot: monthly, grouped, merged when every run on the commit is green
+  * Run the corpus per push on Linux alone; weekly and on release elsewhere
+  * Attach the Store package to the release
+  * Assemble the Store package on the runner
+  * Delete the changelog and the preflight script: ship does both
+  * Delete the release document: ship is the procedure
+
+ -- David M. Anderson <david.anderson@excelano.com>  Tue, 15 Sep 2026 22:16:30 -0500
+
 segler (0.1.3) unstable; urgency=medium
 
   * The macOS bundle says Segler is offered in German. The German itself
