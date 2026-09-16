@@ -1,0 +1,24 @@
+# What this release tells the stores it changed, in every language the
+# listing is in. One file, both languages, because a translation is reviewed
+# beside its source.
+#
+# The version is checked against the release being cut: notes left from last
+# time stop the release rather than reaching a listing. A language the listing
+# has and this file does not is also a refusal - a German listing saying
+# something nobody wrote is worse than a release that stops.
+#
+# Nothing else reads this. The GitHub release, the Debian changelog and the
+# AppStream entry take commit subjects.
+
+version = "0.1.2"
+
+[locales."de-de"]
+whats-new = """
+
+"""
+
+[locales."en-us"]
+whats-new = """
+
+"""
+
