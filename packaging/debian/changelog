@@ -1,3 +1,10 @@
+segler (0.1.5) unstable; urgency=medium
+
+  * What 0.1.5 tells the stores, written from what they carry
+  * Take the binary the runner built, and count certificates not lines
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 16 Sep 2026 10:40:07 -0500
+
 segler (0.1.4) unstable; urgency=medium
 
   * The notes are 0.1.4's, and the Store is still on 0.1.2
