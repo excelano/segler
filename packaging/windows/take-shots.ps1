@@ -16,7 +16,8 @@
 #     }
 #
 #     Take-Shots -Launch @('shell', $DOCUMENT) -Process 'thing-desktop' `
-#         -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Reference:$Reference
+#         -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Reference:$Reference `
+#         -EveryShot $ZOOM
 #
 # `Get-Shots` describes the set rather than taking it, so the whole set is read
 # before any of it runs. `screenshot.ps1` is the driver under all of it and
@@ -61,8 +62,13 @@ function Take-Shots {
         [Parameter(Mandatory = $true)][int] $Width,
         [Parameter(Mandatory = $true)][int] $Height,
         [Parameter(Mandatory = $true)][string] $OutDir,
-        # One plain capture and nothing else, which is what a coordinate gets
-        # measured off.
+        # What every shot begins with, and what the reference frame is taken
+        # after. A zoom belongs here: it moves every control on the window, so
+        # a coordinate read off a frame taken without it is a coordinate for a
+        # window nobody photographs.
+        [string[]] $EveryShot = @(),
+        # One capture of the state the set is measured in - the window as
+        # `-EveryShot` leaves it, and nothing a recipe does after that.
         [switch] $Reference,
         # Seconds to wait after the window is sized before capturing. A large
         # document wants more than the driver's default.
@@ -99,7 +105,7 @@ function Take-Shots {
         $out = Join-Path $OutDir 'reference.png'
         Write-Host 'shots.ps1: reference'
         $common = Arguments $null
-        & $driver @common -Out $out
+        & $driver @common -Out $out -Do $EveryShot
         Write-Host "shots.ps1: read the coordinates off $out and fill them in at the top of shots.ps1"
         return
     }
@@ -131,7 +137,7 @@ function Take-Shots {
         Write-Host "shots.ps1: $($shot.Name)"
         if ($shot.Before) { & $shot.Before }
         $common = Arguments $shot
-        & $driver @common -Out $out -Do $shot.Actions
+        & $driver @common -Out $out -Do (@($EveryShot) + @($shot.Actions))
         $taken++
     }
 
