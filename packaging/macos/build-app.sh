@@ -165,11 +165,13 @@ target_dir=$(cd "$root" && cargo metadata --format-version 1 --no-deps |
 # target explicitly writes to `<triple>/release/`, so the two slices are built
 # separately and joined here. `lipo` is the only step: nothing is compiled
 # twice by this script and nothing is compiled at all.
-if [ "$universal" = yes ]; then
-    [ -z "$binary" ] || {
-        echo "build-app.sh: --universal builds its own binary; drop --binary" >&2
-        exit 2
-    }
+# Only when nothing was handed over. `--binary` takes an executable built
+# elsewhere and already joined - the Apple silicon runner attaches a universal
+# one to the release, and that is the file this is given for a Store build, so
+# there is nothing here to compile or to join. The architecture check below is
+# what holds in either case, and it is asked of whatever is about to be
+# packaged rather than only of what `lipo` wrote.
+if [ "$universal" = yes ] && [ -z "$binary" ]; then
     slices=""
     for triple in x86_64-apple-darwin aarch64-apple-darwin; do
         slice="${target_dir}/${triple}/release/segler-desktop"
@@ -399,16 +401,25 @@ if [ -n "$store_profile" ]; then
     # in one keychain is an ordinary state, an expiring one beside its
     # replacement, and picking whichever `grep` found first is how a package
     # gets signed with the wrong one.
+    #
+    # Counted by the certificate and not by the line. One certificate in two
+    # keychains is listed once for each, and on a machine whose search list
+    # has two it is listed once per pair - the same certificate four times,
+    # which is not four certificates. `find-identity` prints the SHA-1 first
+    # and that is the certificate, so two of a kind are still caught and two
+    # sightings of one are not.
     find_identity() {
         matches=$(security find-identity -v 2>/dev/null |
-            grep "$1: .*(${store_team})" | sed 's/.*"\(.*\)"/\1/')
+            grep "$1: .*(${store_team})" |
+            sed 's/^ *[0-9]*) *\([0-9A-Fa-f]*\) *"\(.*\)"$/\1 \2/' |
+            sort -u)
         count=$(printf '%s' "$matches" | grep -c . || true)
         [ "$count" = 1 ] || {
-            echo "build-app.sh: expected one \"$1\" identity for team ${store_team}, found ${count}" >&2
+            echo "build-app.sh: expected one \"$1\" certificate for team ${store_team}, found ${count}" >&2
             [ "$count" = 0 ] || echo "$matches" | sed 's/^/  /' >&2
             return 1
         }
-        printf '%s' "$matches"
+        printf '%s' "$matches" | sed 's/^[0-9A-Fa-f]* //'
     }
     app_identity=$(find_identity "Apple Distribution") || exit 1
     # Apple's portal calls this Mac Installer Distribution; the certificate
