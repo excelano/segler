@@ -10,15 +10,23 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.1.2"
+version = "0.1.3"
 
 [locales."de-de"]
 whats-new = """
+Das Symbol der Anwendung ist jetzt ein randloses Quadrat. Zuvor war es ein
+Boot in einem blauen Kreis, und da jeder Store ein Symbol quadratisch rahmt
+und die Ecken selbst abrundet, wirkte der Kreis wie ein Aufkleber auf einer
+Kachel.
 
+Am Editor hat sich seit 0.1.2 nichts geändert.
 """
 
 [locales."en-us"]
 whats-new = """
+The application icon is a full-bleed square. It was a boat in a blue roundel,
+and because every store frames an icon in a square and rounds the corners
+itself, the disc read as a sticker stuck on a tile.
 
+Nothing in the editor has changed since 0.1.2.
 """
-
