@@ -10,23 +10,46 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.1.4"
+version = "0.1.5"
 
 [locales."de-de"]
 whats-new = """
-Das Symbol der Anwendung ist jetzt ein randloses Quadrat. Zuvor war es ein
-Boot in einem blauen Kreis, und da jeder Store ein Symbol quadratisch rahmt
-und die Ecken selbst abrundet, wirkte der Kreis wie ein Aufkleber auf einer
-Kachel.
+Segler startet auf einem Mac mit deutscher Systemsprache auf Deutsch: die \
+Werkzeugleiste, beide Bereiche, die Dialoge und die Statuszeile. Was im \
+Dokument steht, bleibt so, wie es dort steht. Der Name eines Elements, der \
+Name eines Attributs und die Werte, die Sie aus einer Liste wählen, sind die \
+Worte der Datei selbst und werden nie übersetzt.
 
-Am Editor hat sich seit 0.1.2 nichts geändert.
+Das Auswählen einer Überschrift ändert sie nicht mehr. Bei einer Überschrift, \
+deren Ebene der Elementbereich nicht darstellen konnte, etwa als Null \
+geschrieben oder tiefer als der Wertebereich des Feldes, wurde die Ebene im \
+Moment der Auswahl auf den nächstliegenden darstellbaren Wert umgeschrieben. \
+Das Dokument galt damit als geändert, und ein Speichern hätte diese Ersetzung \
+in die Datei geschrieben. Eine Auswahl ist keine Bearbeitung, und der \
+Wertebereich des Feldes ist jetzt der des Schemas.
+
+Das Symbol der Anwendung ist jetzt ein randloses Quadrat. Zuvor war es ein \
+Boot in einem blauen Kreis, und da jeder Store ein Symbol quadratisch rahmt \
+und die Ecken selbst abrundet, wirkte der Kreis wie ein Aufkleber auf einer \
+Kachel. Die beiden Dokumentsymbole behalten die Seitenform.
 """
 
 [locales."en-us"]
 whats-new = """
-The application icon is a full-bleed square. It was a boat in a blue roundel,
-and because every store frames an icon in a square and rounds the corners
-itself, the disc read as a sticker stuck on a tile.
+Segler comes up in German on a Mac set to German: the toolbar, both panes, \
+the dialogs and the status line. What the document says stays as the document \
+says it. An element's name, an attribute's name and the values you choose \
+from a list are the file's own words, and are never translated.
 
-Nothing in the editor has changed since 0.1.2.
+Selecting a heading no longer changes it. A heading whose level the element \
+pane could not show, one the document spelled as zero or one deeper than the \
+field's range, was rewritten to the nearest level the field could show the \
+moment you selected it. The document was marked modified, and a save would \
+have written that substitution to the file. Selecting an element is not an \
+edit, and the field's range is the schema's now.
+
+The application icon is a full-bleed square. It was a boat in a blue roundel, \
+and because every store frames an icon in a square and rounds the corners \
+itself, the disc read as a sticker stuck on a tile. The two document icons \
+keep the page shape.
 """
