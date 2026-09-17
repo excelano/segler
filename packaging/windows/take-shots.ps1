@@ -72,8 +72,20 @@ function Take-Shots {
         [switch] $Reference,
         # Seconds to wait after the window is sized before capturing. A large
         # document wants more than the driver's default.
-        [int] $Settle = 0
+        [int] $Settle = 0,
+        # The language the set is taken in, and the subdirectory it lands in.
+        # Empty photographs whatever the machine is set to, which is what every
+        # set did before a listing had two languages.
+        [string] $Lang = ''
     )
+    if ($Lang) {
+        $locale = switch -Regex ($Lang) {
+            '^en' { 'en-US' }
+            '^de' { 'de-DE' }
+            default { throw "take-shots.ps1: no locale is known for $Lang" }
+        }
+        $OutDir = Join-Path $OutDir $locale
+    }
 
     $driver = Join-Path $PSScriptRoot 'screenshot.ps1'
     if (-not (Test-Path $driver)) { Refuse "no screenshot.ps1 beside $PSScriptRoot" }
@@ -89,6 +101,7 @@ function Take-Shots {
             Launch = $Launch; Process = $Process
             Width  = $Width; Height = $Height
         }
+        if ($Lang) { $a['Lang'] = $Lang }
         if ($Settle -gt 0) { $a['Settle'] = $Settle }
         if ($null -ne $shot) {
             if ($shot.Launch) { $a['Launch'] = $shot.Launch }

@@ -127,7 +127,22 @@ param(
     [int] $Settle = 3,
     # What to do to the window before the shutter, in the order given. The
     # header lists the four verbs.
-    [string[]] $Do = @()
+    [string[]] $Do = @(),
+    # Photograph the window in this language. A listing in two languages needs
+    # a set in each, and a German listing showing an English window is a German
+    # listing of somebody else's application.
+    #
+    # It is set as POTEXT_LANG, which every application in this fleet reads
+    # before it asks the platform, and `Start-Process` hands this process's
+    # environment to what it starts.
+    #
+    # **The packaged launch is not known to carry it.** `-Launch package` goes
+    # through the shell's activation manager rather than starting a child here,
+    # and whether the variable survives that has not been measured. Until it
+    # has, a set in a second language is taken of the release build, which is
+    # what these frames are of anyway because a Store package cannot be
+    # launched off the Store.
+    [string] $Lang = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -231,6 +246,11 @@ Start-Sleep -Seconds 1
 # The window belongs to the first named process; the rest are stopped because
 # they would hold the document open or claim the window.
 $window = $Process[0]
+
+if ($Lang) {
+    $env:POTEXT_LANG = $Lang
+    Write-Host "  language $Lang"
+}
 
 $verb = $Launch[0]
 # Set by the exe branch only: the shell and a package hand the work to a
