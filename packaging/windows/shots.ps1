@@ -33,7 +33,7 @@
 # registered for `.dclx` on this machine. With the MSIX installed that is the
 # packaged build, which is what a person gets. With `install.ps1` run against a
 # release binary it is that binary, which is what CI has. Both are this commit's
-# application; say which one in `packaging/store-listing.md`.
+# application; say which one in `packaging/submission-notes.md`.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

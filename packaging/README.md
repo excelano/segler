@@ -4,7 +4,9 @@
 distributed, and three files shared by all of them: `version.sh`, which is the
 only thing that reads the version out of `Cargo.toml`; `ship`, which
 asks everything that must be true before a release at once; and
-`store-listing.md`, the text both stores are given.
+`store-listing.toml`, the text both stores are given, which `ship` pushes to
+both on every release; and `submission-notes.md`, what a submission needs from
+a person that no file supplies.
 
 The shape is `excelano/slipcase-desktop`'s, and where a file here says
 something was measured, it was measured there first unless the file says

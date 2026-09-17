@@ -1,135 +1,13 @@
-# Store listing text
+# Submission notes
 
-One draft, used twice. Both stores want the same things at different lengths,
-so everything here is written to the shorter limit. Nothing here is submitted
-yet; the Windows and Mac lanes copy from this file into their forms and record
-in their `SUBMITTING.local.md` what the form did with it.
+What a store submission needs from a person and no file supplies: the notes an
+App Review or certification reader is handed, the answers a form asks that no
+build can give, and the reasoning behind the screenshots.
 
-This is written from the release notes, not beside it. Every claim below appears
-there first, checked against the built application. If the two disagree, the
-changelog is right and this is stale.
-
-Limits, so a later edit does not overrun them:
-
-| Field | Microsoft Store | Mac App Store |
-| --- | --- | --- |
-| App name | unmeasured | 30 |
-| Description | 10,000 | 4,000 |
-| Short description | 500 | — |
-| Subtitle | — | 30 |
-| Promotional text | — | 170 |
-| Keywords | 7 terms | 100 characters |
-
-**The API's limit is not the form's, and the API's is the one that binds.**
-Partner Center's form takes 1,000 characters of short description, which is
-what this table said until 2026-09-10. The submission API refuses anything over
-500 - *The length of ShortDescription must be 500 or less* - and it refuses it
-while copying the **published** listing into the new draft, so a listing that
-went up through the form over 500 blocks the next upload before the new text is
-ever sent. Measured 2026-09-09 on Duckling's first API submission, and the
-number above is the API's. Nothing of Segler's has been submitted yet, so
-writing to 500 from the start is what keeps that wall from ever being built
-here.
-
-## App name
-
-    Microsoft Store   Segler
-    Mac App Store     Segler
-
-Both reservations took the bare name, on 2026-09-04, so the five places that
-carry it agree: Partner Center, App Store Connect,
-`Package/Properties/DisplayName`, `CFBundleDisplayName`, and the product page
-when there is one. The name is German for sailor. The DocLang logo is a
-stylised document and not a sail; the two marks are meant to look unrelated.
-
-## Subtitle (Mac App Store, 30)
-
-Edit DocLang documents
-
-## Promotional text (Mac App Store, 170)
-
-Open a DocLang document, read it as a reader would, correct it where you read it, and save the same file with your edits and nothing else changed.
-
-## Short description (Microsoft Store, 500)
-
-DocLang is the open markup format for documents that language models read and write. Most of it is a model's reading of a PDF or a scan, and sometimes wrong.
-
-Segler shows such a document as a reader would see it and lets you correct it there: a misread line, a heading's level, a table cell. When the archive carries page images, open them beside the document to check a doubtful line against the scan.
-
-Save writes the file you opened with your edits and nothing else changed.
-
-## App features (Microsoft Store, up to 20 bullets of 200 characters)
-
-    The document as a reader sees it: headings, paragraphs, lists, tables and pictures in reading order.
-    Edit text where you read it: a paragraph, a list item, or a table cell where it sits.
-    Bold and italic are shown as tags while you type, so a correction keeps them and formatting can be added.
-    The element tree beside the document, and the selected element's properties in reach: kind, class, level, label, layer, bounding box, and a table cell's kind.
-    Page images beside the document when the archive carries them, with the located boxes drawn over them.
-    Undo and redo for every edit.
-    Validation against the DocLang specification, with each finding a click from its element.
-    Saves the file you opened with your edits and nothing else changed. Markup you did not touch is written back byte for byte.
-    No network connection of any kind. No account, no telemetry, nothing sent anywhere.
-    Open source, and so is the format it edits.
-
-## Description (both, written to 4,000)
-
-DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file, from the LF AI & Data Foundation. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong: a misread line, a heading taken for a paragraph, a table cell in the wrong column.
-
-Segler is an editor for those documents.
-
-WHAT YOU SEE
-
-The document as a reader would see it: headings, paragraphs, lists, tables and pictures in reading order. The element tree beside it, so the structure the model found is visible next to the text it found. The selected element's properties: its kind, its level, its label, its layer, its bounding box on the page. And when the archive carries the page images the model read, those images beside the document with the located boxes drawn over them, so a doubtful line can be checked against the page.
-
-WHAT YOU CAN DO
-
-Retype a line where you read it - a paragraph, a list item, a table cell. Where a line carries bold or italic, its tags are shown in the field so a correction keeps them, and so formatting can be added. Change a heading's level, or a list's or picture's class. Change a cell's kind from body to header. Correct or clear a bounding box. Change an element's label or its layer. Remove an element that should not be there. Every edit can be undone.
-
-Segler checks the document against the DocLang specification as you work and lists what it finds, each finding a click from its element.
-
-WHAT A SAVE DOES
-
-Save writes the file you opened with your edits applied and nothing else changed. Markup you did not touch is written back byte for byte, including comments and whitespace. An archive's page images and assets are carried across untouched. A document you did not change is not rewritten at all.
-
-WHAT IT DOES NOT DO
-
-No network connection of any kind. No account. No telemetry, no analytics, no crash reporting. Nothing about you or your documents is sent anywhere, because there is nowhere for it to be sent.
-
-It does not convert. Segler edits DocLang that already exists; producing DocLang from a PDF is a converter's job.
-
-OPEN SOURCE
-
-Segler is open source under the same licence as DocLang itself, and the library underneath it is a separate crate anyone can build on: github.com/excelano/segler.
-
-## URLs
-
-Both forms ask for the same three, and both lanes take them from here:
-
-| Field | URL |
-| --- | --- |
-| Privacy policy | https://excelano.com/legal/#segler |
-| Support | https://excelano.com/segler/#support |
-| Marketing / website | https://excelano.com/segler/ |
-
-The page at `excelano.com/segler/` is the support and marketing URL both, the
-way slipcase-desktop's is. It went live on 2026-09-06 saying the release is on
-its way; the store badges and the apt install block appear on it as each lands,
-by switches at the top of its source. The reviewer's document is a release
-asset on GitHub, not a page; `packaging/review/README.md` has the URL shape.
-
-## Release notes
-
-*What's new in this version* on the Microsoft Store and *What's New* on the Mac
-App Store, one version's text each, written from the release notes the way
-everything else here is and kept latest first. Only the version being submitted
-needs a subsection, and 0.1.0 through 0.1.2 have none because neither store has
-ever served Segler: there is nobody upgrading from them to tell. The first submission
-says so and the ones after it say what changed. Neither field's limit has been
-measured, and the text below is short enough that it has not had to be.
-
-### 0.1.3
-
-First release.
+The listing text itself is not here. It is `store-listing.toml` beside this,
+which `ship` checks before the tag and pushes to both stores on every release,
+and what a release tells them changed is `release-notes.toml`. A field edited
+in this file would reach nobody.
 
 ## App Review notes
 
@@ -144,16 +22,6 @@ The application declares the DocLang document and archive types and claims both 
 The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files, which is the grant a person gives by choosing a document in the open panel. There is no network entitlement, no temporary exception, and the application makes no network request. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume, because that grant does not allow a temporary file beside the document.
 
 The full privacy statement is at https://excelano.com/legal/#segler and the complete source is at https://github.com/excelano/segler.
-
-## Keywords
-
-**Mac App Store** (100 characters, comma-separated, no spaces after commas):
-
-    doclang,dclx,dclg,document,editor,markup,xml,docling,layout,review
-
-**Microsoft Store** (seven terms):
-
-    doclang, dclx, document editor, markup, XML, docling, layout
 
 ## Screenshots
 

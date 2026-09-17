@@ -24,7 +24,7 @@ pinned to the version the screenshots were taken from:
 
     https://github.com/excelano/segler/releases/download/vX.Y.Z/sailing-directions.dclx
 
-That URL goes in both stores' review notes and in `store-listing.md`'s
+That URL goes in both stores' review notes and in `submission-notes.md`'s
 screenshot section as the document used. Nothing is copied to a website:
 a file for two reviewers and the odd visitor has no need of one, and a copy
 somewhere else is a second thing to keep in step.

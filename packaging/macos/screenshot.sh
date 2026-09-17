@@ -63,7 +63,7 @@
 # the Store package cannot be launched at all off the Store — the kernel
 # refuses it — so no screenshot can ever be of the exact artefact
 # that gets uploaded. Build the bundle from the commit being released and say so
-# in `packaging/store-listing.md`.
+# in `packaging/submission-notes.md`.
 #
 # Needs Accessibility permission for whatever runs it, because sizing another
 # application's window goes through System Events. System Settings → Privacy &

@@ -1,0 +1,178 @@
+# The copy both store listings are filled in from.
+#
+# Every line of this is a claim about the code, and a claim like that goes
+# stale silently in a web form nobody diffs. So it lives here, is reviewed and
+# committed like anything else, and `ship` pushes it to both stores on every
+# release. Edit here; do not edit a listing in a browser.
+#
+# The fields both stores take sit at the top of a language. The rest sit under
+# the store that takes them, because the two do not take the same fields and do
+# not count them the same way. The name is under each store because the two can
+# disagree about it.
+#
+# Limits, which ship checks before the tag and counts in characters rather than
+# bytes: apple.name and apple.subtitle 30, apple.promotional-text 170,
+# apple.keywords 100 including the commas, description 4,000 - the Microsoft
+# Store allows 10,000 and this is written to Apple's - microsoft.short-description
+# 500, microsoft.features 20 of 200, microsoft.keywords 7 of 30.
+#
+# What is *not* here is what changed in this release. That is
+# release-notes.toml, which is rewritten every time; this changes when the
+# product does.
+#
+# No URLs reach the Microsoft Store from here. Its submission document has no
+# field for them: Partner Center keeps the website, the privacy policy and the
+# support contact against the product. Measured 2026-09-16.
+#
+# THE GERMAN HALF
+#
+# Terminology is the application's own, out of the catalogue at
+# `crates/segler-desktop/po/de.po`. A listing that calls a thing something the
+# window does not teaches a reader a word the product has no use for, so where
+# the catalogue has a term it wins.
+#
+# German runs longer than English, which is what the limits above are for:
+# `ship` counts every field before the tag, in characters rather than bytes,
+# and a release stops rather than a submission failing.
+
+[locales."de-de"]
+website = "https://excelano.com/segler/"
+support = "https://excelano.com/segler/#support"
+privacy = "https://excelano.com/legal/#segler"
+description = """
+DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben: der Aufbau, der Text, das Layout und die Lesereihenfolge eines Dokuments in einer Datei, von der LF AI & Data Foundation. Das meiste DocLang stammt von einem Modell aus einem PDF oder einem Scan, und ein Modell irrt sich mitunter: eine falsch gelesene Zeile, eine Überschrift, die für einen Absatz gehalten wurde, eine Tabellenzelle in der falschen Spalte.
+
+Segler ist ein Editor für solche Dokumente.
+
+WAS SIE SEHEN
+
+Das Dokument, wie ein Leser es sähe: Überschriften, Absätze, Listen, Tabellen und Bilder in der Lesereihenfolge. Daneben die Struktur, damit der Aufbau, den das Modell gefunden hat, neben dem Text steht, den es gefunden hat. Die Eigenschaften des gewählten Elements: seine Art, seine Ebene, seine Beschriftung, seine Lage, sein Rahmen auf der Seite. Und wenn das Archiv die Seitenbilder trägt, die das Modell gelesen hat, diese Bilder neben dem Dokument, mit den verorteten Rahmen darüber gezeichnet, sodass sich eine zweifelhafte Zeile an der Seite prüfen lässt.
+
+WAS SIE TUN KÖNNEN
+
+Eine Zeile dort neu tippen, wo Sie sie lesen — einen Absatz, einen Listeneintrag, eine Tabellenzelle. Trägt eine Zeile Fett oder Kursiv, stehen ihre Auszeichnungen im Feld, damit eine Korrektur sie behält und damit Formatierung hinzukommen kann. Die Ebene einer Überschrift ändern, oder die Klasse einer Liste oder eines Bildes. Die Art einer Zelle von Zelle auf Spaltenkopf ändern. Einen Rahmen berichtigen oder löschen. Die Beschriftung oder die Lage eines Elements ändern. Ein Element entfernen, das dort nicht hingehört. Jede Änderung lässt sich rückgängig machen.
+
+Segler prüft das Dokument während der Arbeit gegen die DocLang-Spezifikation und listet auf, was es findet; jedes Problem ist einen Klick von seinem Element entfernt.
+
+WAS EIN SPEICHERN TUT
+
+Speichern schreibt die geöffnete Datei mit Ihren Änderungen und sonst nichts anderem. Auszeichnung, die Sie nicht angefasst haben, wird Byte für Byte zurückgeschrieben, samt Kommentaren und Leerraum. Die Seitenbilder eines Archivs und alles Übrige darin werden unangetastet übernommen. Ein Dokument, das Sie nicht geändert haben, wird gar nicht erst neu geschrieben.
+
+WAS ES NICHT TUT
+
+Keinerlei Netzwerkverbindung. Kein Konto. Keine Telemetrie, keine Analyse, keine Absturzberichte. Nichts über Sie oder Ihre Dokumente wird irgendwohin gesendet, weil es nirgendwohin zu senden gibt.
+
+Es wandelt nicht um. Segler bearbeitet DocLang, das es bereits gibt; DocLang aus einem PDF herzustellen ist die Aufgabe eines Konverters.
+
+OPEN SOURCE
+
+Segler ist Open Source unter derselben Lizenz wie DocLang selbst, und die Bibliothek darunter ist eine eigene Crate, auf der jeder aufbauen kann: github.com/excelano/segler.
+"""
+
+[locales."de-de".apple]
+name = "Segler"
+subtitle = "DocLang-Dokumente bearbeiten"
+promotional-text = "Ein DocLang-Dokument öffnen, es lesen, wie ein Leser es läse, es an Ort und Stelle verbessern und dieselbe Datei mit Ihren Änderungen speichern, sonst unverändert."
+keywords = "DocLang,dclx,dclg,Dokument,Editor,Auszeichnung,XML,docling,Layout,Korrektur"
+
+[locales."de-de".microsoft]
+name = "Segler"
+short-description = """
+DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben. Das meiste ist die Lesart eines Modells von einem PDF oder Scan, mitunter falsch.
+
+Segler zeigt ein Dokument, wie ein Leser es sähe, und lässt Sie es dort verbessern: eine falsch gelesene Zeile, die Ebene einer Überschrift, eine Zelle. Trägt das Archiv Seitenbilder, prüfen Sie daran eine zweifelhafte Zeile.
+
+Speichern schreibt die geöffnete Datei mit Ihren Änderungen und sonst nichts.
+"""
+features = [
+  "Das Dokument, wie ein Leser es sieht: Überschriften, Absätze, Listen, Tabellen und Bilder in der Lesereihenfolge.",
+  "Text dort bearbeiten, wo Sie ihn lesen: einen Absatz, einen Listeneintrag oder eine Zelle an ihrem Platz.",
+  "Fett und Kursiv stehen beim Tippen als Auszeichnungen da, damit eine Korrektur sie behält und Formatierung hinzukommen kann.",
+  "Die Struktur neben dem Dokument, und die Eigenschaften des gewählten Elements in Reichweite: Art, Klasse, Ebene, Beschriftung, Lage, Rahmen und die Art einer Tabellenzelle.",
+  "Seitenbilder neben dem Dokument, wenn das Archiv sie trägt, mit den verorteten Rahmen darüber gezeichnet.",
+  "Rückgängig und Wiederholen für jede Änderung.",
+  "Prüfung gegen die DocLang-Spezifikation, jedes Problem einen Klick von seinem Element entfernt.",
+  "Speichert die geöffnete Datei mit Ihren Änderungen, sonst unverändert. Auszeichnung, die Sie nicht angefasst haben, wird Byte für Byte zurückgeschrieben.",
+  "Keinerlei Netzwerkverbindung. Kein Konto, keine Telemetrie, nichts wird irgendwohin gesendet.",
+  "Open Source, und ebenso das Format, das es bearbeitet.",
+]
+keywords = [
+  "DocLang",
+  "dclx",
+  "Dokumenteditor",
+  "Auszeichnung",
+  "XML",
+  "docling",
+  "Layout",
+]
+
+[locales."en-us"]
+website = "https://excelano.com/segler/"
+support = "https://excelano.com/segler/#support"
+privacy = "https://excelano.com/legal/#segler"
+description = """
+DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file, from the LF AI & Data Foundation. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong: a misread line, a heading taken for a paragraph, a table cell in the wrong column.
+
+Segler is an editor for those documents.
+
+WHAT YOU SEE
+
+The document as a reader would see it: headings, paragraphs, lists, tables and pictures in reading order. The element tree beside it, so the structure the model found is visible next to the text it found. The selected element's properties: its kind, its level, its label, its layer, its bounding box on the page. And when the archive carries the page images the model read, those images beside the document with the located boxes drawn over them, so a doubtful line can be checked against the page.
+
+WHAT YOU CAN DO
+
+Retype a line where you read it - a paragraph, a list item, a table cell. Where a line carries bold or italic, its tags are shown in the field so a correction keeps them, and so formatting can be added. Change a heading's level, or a list's or picture's class. Change a cell's kind from body to header. Correct or clear a bounding box. Change an element's label or its layer. Remove an element that should not be there. Every edit can be undone.
+
+Segler checks the document against the DocLang specification as you work and lists what it finds, each finding a click from its element.
+
+WHAT A SAVE DOES
+
+Save writes the file you opened with your edits applied and nothing else changed. Markup you did not touch is written back byte for byte, including comments and whitespace. An archive's page images and assets are carried across untouched. A document you did not change is not rewritten at all.
+
+WHAT IT DOES NOT DO
+
+No network connection of any kind. No account. No telemetry, no analytics, no crash reporting. Nothing about you or your documents is sent anywhere, because there is nowhere for it to be sent.
+
+It does not convert. Segler edits DocLang that already exists; producing DocLang from a PDF is a converter's job.
+
+OPEN SOURCE
+
+Segler is open source under the same licence as DocLang itself, and the library underneath it is a separate crate anyone can build on: github.com/excelano/segler.
+"""
+
+[locales."en-us".apple]
+name = "Segler"
+subtitle = "Edit DocLang documents"
+promotional-text = "Open a DocLang document, read it as a reader would, correct it where you read it, and save the same file with your edits and nothing else changed."
+keywords = "doclang,dclx,dclg,document,editor,markup,xml,docling,layout,review"
+
+[locales."en-us".microsoft]
+name = "Segler"
+short-description = """
+DocLang is the open markup format for documents that language models read and write. Most of it is a model's reading of a PDF or a scan, and sometimes wrong.
+
+Segler shows such a document as a reader would see it and lets you correct it there: a misread line, a heading's level, a table cell. When the archive carries page images, open them beside the document to check a doubtful line against the scan.
+
+Save writes the file you opened with your edits and nothing else changed.
+"""
+features = [
+  "The document as a reader sees it: headings, paragraphs, lists, tables and pictures in reading order.",
+  "Edit text where you read it: a paragraph, a list item, or a table cell where it sits.",
+  "Bold and italic are shown as tags while you type, so a correction keeps them and formatting can be added.",
+  "The element tree beside the document, and the selected element's properties in reach: kind, class, level, label, layer, bounding box, and a table cell's kind.",
+  "Page images beside the document when the archive carries them, with the located boxes drawn over them.",
+  "Undo and redo for every edit.",
+  "Validation against the DocLang specification, with each finding a click from its element.",
+  "Saves the file you opened with your edits and nothing else changed. Markup you did not touch is written back byte for byte.",
+  "No network connection of any kind. No account, no telemetry, nothing sent anywhere.",
+  "Open source, and so is the format it edits.",
+]
+keywords = [
+  "doclang",
+  "dclx",
+  "document editor",
+  "markup",
+  "XML",
+  "docling",
+  "layout",
+]
