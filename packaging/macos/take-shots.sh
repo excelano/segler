@@ -17,10 +17,17 @@
 #
 #   WIDTH, HEIGHT    the frame size every coordinate in the recipes is
 #                    measured from
-#   for_language     given a language tag, sets `document` to the file to open
-#                    and may set `staged_name` and whatever text the recipes
-#                    type; refuses a language it has no set for
+#   for_language     given a language tag, sets `document` to the file or the
+#                    folder to open and may set `staged_name` and whatever text
+#                    the recipes type; refuses a language it has no set for
 #   shots            the recipes, each line `shot NAME <actions>`
+#
+# and optionally:
+#
+#   AS_ARGS          `yes` where the application takes what it opens as an
+#                    argument rather than declaring the type
+#   EVERY_SHOT       actions run before every shutter, the reference frame
+#                    included, for state every coordinate is measured against
 #
 # and then, at the end:
 #
@@ -59,7 +66,7 @@ take_shots() {
             --lang) lang="${2:?--lang needs a language tag}"; shift 2 ;;
             --outdir) OUTDIR="${2:?--outdir needs a directory}"; shift 2 ;;
             --reference) reference=yes; shift ;;
-            -h|--help) sed -n '2,60p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            -h|--help) sed -n '2,70p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
             *) echo "shots.sh: unknown argument $1" >&2; exit 2 ;;
         esac
     done
@@ -81,19 +88,10 @@ take_shots() {
     staged_name=""
     for_language "$lang"
     [ -n "${document:-}" ] || { echo "shots.sh: for_language set no document for ${lang}" >&2; exit 1; }
-    [ -f "$document" ] || { echo "shots.sh: no document at ${document}" >&2; exit 1; }
+    [ -f "$document" ] || [ -d "$document" ] ||
+        { echo "shots.sh: no document at ${document}" >&2; exit 1; }
 
-    # Somewhere that reads like a person's machine rather than like a build.
-    # The path is in the frame, in the window's title or toolbar, so what is
-    # photographed is what the listing advertises: photographing the checkout
-    # put a /private/tmp workspace in the picture, and a runner would put its
-    # own there.
-    if [ -n "$staged_name" ]; then
-        staged="${HOME}/Documents"
-        mkdir -p "$staged"
-        cp "$document" "${staged}/${staged_name}"
-        document="${staged}/${staged_name}"
-    fi
+    source_document=$document
 
     OUTDIR="${OUTDIR:-$(CDPATH= cd -- "${here}/../.." && pwd)/dist/screenshots}/${locale}"
     mkdir -p "$OUTDIR"
@@ -113,6 +111,27 @@ take_shots() {
     echo "shots.sh: ${taken} shot(s) in ${OUTDIR}"
 }
 
+# stage copies what the shot opens somewhere that reads like a person's machine
+# rather than like a build: the path is in the frame, and photographing the
+# checkout put a /private/tmp workspace in the picture.
+#
+# Before every shot rather than once, because an application that writes beside
+# what it opens leaves its output in that folder, and the next shot then
+# photographs the one before it.
+stage() {
+    [ -n "$staged_name" ] || return 0
+    staged="${HOME}/Documents"
+    mkdir -p "$staged"
+    rm -rf "${staged:?}/${staged_name}"
+    if [ -d "$source_document" ]; then
+        mkdir -p "${staged}/${staged_name}"
+        cp "$source_document"/* "${staged}/${staged_name}/"
+    else
+        cp "$source_document" "${staged}/${staged_name}"
+    fi
+    document="${staged}/${staged_name}"
+}
+
 # shot takes one frame: a name, then the actions that put the window into the
 # state being photographed, in the order they are given.
 #
@@ -124,12 +143,16 @@ shot() {
     shot_name=$1
     shift
     echo "shots.sh: ${locale} ${shot_name}"
+    stage
+    as_args=""
+    [ "${AS_ARGS:-no}" = yes ] && as_args=--args
+    # shellcheck disable=SC2086
     "${here}/screenshot.sh" \
         --app "$app" \
-        --document "$document" \
+        --document "$document" ${as_args} \
         --width "$WIDTH" --height "$HEIGHT" \
         --lang "$lang" \
         --out "${OUTDIR}/${shot_name}.png" \
-        "$@"
+        ${EVERY_SHOT:-} "$@"
     taken=$((taken + 1))
 }

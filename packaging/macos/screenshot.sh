@@ -18,6 +18,11 @@
 #       --document dist/archive-demo.dclx --out shots/01-window.png
 #   ./packaging/macos/screenshot.sh --app "dist-dev/Tommy Flyleaf.app" \
 #       --document ~/Documents/job-ticket.toml --out shots/01.png --lang de
+#   ./packaging/macos/screenshot.sh --app "dist/Duckling.app" \
+#       --document packaging/demo/documents --args --out shots/01.png
+#
+# `--args` is for an application that declares no document types: Launch
+# Services has nowhere to route a file to, so it arrives as argv or not at all.
 #
 # `--lang` photographs the window in that language. A listing in two languages
 # wants a set in each, and a German listing showing an English window is the
@@ -32,7 +37,9 @@
 # `--click X,Y` presses a control. `--double X,Y` presses it twice inside the
 # double-click interval, which is how a block in the document pane opens for
 # typing. `--type TEXT` types. `--key NAME` sends one key, optionally with
-# modifiers: `--key cmd+a`, `--key return`. X and Y are measured from the
+# modifiers: `--key cmd+a`, `--key return`. `--settle SECONDS` waits, for work
+# the window starts and does not finish in the second every action already
+# takes. X and Y are measured from the
 # frame's top-left corner on a shot of the same size, so a coordinate read off
 # an earlier shot is the coordinate to give.
 #
@@ -83,6 +90,7 @@ lang=""
 owner=""
 process=""
 document=""
+as_args=no
 out=""
 # 1440x900 is one of the four sizes App Store Connect accepts for macOS, and the
 # largest reachable without a Retina display. The other two — 2560x1600 and
@@ -95,7 +103,7 @@ x=100
 y=80
 
 usage() {
-    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -112,12 +120,14 @@ actions="$work/actions"
 while [ $# -gt 0 ]; do
     case "$1" in
         --app) app="${2:?--app needs a bundle}"; shift 2 ;;
-        --document) document="${2:?--document needs a file}"; shift 2 ;;
+        --document) document="${2:?--document needs a file or a folder}"; shift 2 ;;
+        --args) as_args=yes; shift ;;
         --out) out="${2:?--out needs a path}"; shift 2 ;;
         --click) echo "click ${2:?--click needs X,Y}" >> "$actions"; shift 2 ;;
         --double) echo "double ${2:?--double needs X,Y}" >> "$actions"; shift 2 ;;
         --type) echo "type ${2?--type needs text}" >> "$actions"; shift 2 ;;
         --key) echo "key ${2:?--key needs a name}" >> "$actions"; shift 2 ;;
+        --settle) echo "settle ${2:?--settle needs seconds}" >> "$actions"; shift 2 ;;
         --lang) lang="${2:?--lang needs a language tag}"; shift 2 ;;
         --process) process="${2:?--process needs a name}"; shift 2 ;;
         --owner) owner="${2:?--owner needs a name}"; shift 2 ;;
@@ -134,7 +144,7 @@ done
 [ -n "$document" ] || refuse "no --document given"
 [ -n "$out" ] || refuse "no --out given"
 [ -d "$app" ] || refuse "no bundle at $app"
-[ -f "$document" ] || refuse "no document at $document"
+[ -f "$document" ] || [ -d "$document" ] || refuse "no document at $document"
 
 case "$app" in
     *.app) ;;
@@ -145,7 +155,11 @@ esac
 # answers "Unable to find application named 'dist-dev/Whatever.app'" — which
 # reads like the bundle is missing when it is sitting right there.
 app=$(cd "$(dirname "$app")" && pwd)/$(basename "$app")
-document=$(cd "$(dirname "$document")" && pwd)/$(basename "$document")
+if [ -d "$document" ]; then
+    document=$(cd "$document" && pwd)
+else
+    document=$(cd "$(dirname "$document")" && pwd)/$(basename "$document")
+fi
 
 # Read from the bundle rather than guessed from its file name: an application
 # whose display name is not its executable's name is the ordinary case, not the
@@ -244,7 +258,7 @@ if args.contains("--key") {
     let codes: [String: CGKeyCode] = [
         "a": 0, "s": 1, "z": 6, "g": 5, "return": 36, "escape": 53, "tab": 48,
         "delete": 51, "left": 123, "right": 124, "down": 125, "up": 126,
-        "home": 115, "end": 119,
+        "home": 115, "end": 119, "plus": 24, "equal": 24, "minus": 27, "0": 29,
     ]
     var flags: CGEventFlags = []
     var name = ""
@@ -312,11 +326,10 @@ swiftc -O -o "$helper" "$source" || refuse "the helper did not compile"
 pkill -f "$(basename "$app")/Contents/MacOS/" 2>/dev/null || true
 sleep 1
 
-if [ -n "$lang" ]; then
-    open -a "$app" --env "POTEXT_LANG=${lang}" "$document"
-else
-    open -a "$app" "$document"
-fi
+set -- -a "$app"
+[ -n "$lang" ] && set -- "$@" --env "POTEXT_LANG=${lang}"
+[ "$as_args" = yes ] && set -- "$@" --args
+open "$@" "$document"
 sleep 5
 
 # The refusal carries what osascript said rather than naming a cause. It used
@@ -434,6 +447,7 @@ while IFS= read -r action <&3; do
             ;;
         type) "$helper" --type "$rest" </dev/null ;;
         key) "$helper" --key "$rest" </dev/null ;;
+        settle) sleep "$rest" ;;
         *) refuse "unknown action $verb" ;;
     esac
     sleep 1
