@@ -26,15 +26,22 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      # Optional, because a screenshots run has no tag to give. With one the
+      # binary the Mac signs is built and attached to that release; without one
+      # this is the suite, the window and whatever screenshots were asked for.
       tag:
         description: 'Tag to build the universal binary for (e.g. v0.1.4)'
-        required: true
-        type: string
-      screenshots:
-        description: 'Also take the Store screenshots'
         required: false
-        default: false
-        type: boolean
+        type: string
+      # A choice rather than a boolean, because there is a third thing to ask
+      # for: `reference` takes the one plain frame a coordinate gets measured
+      # off, and `full` takes the set.
+      screenshots:
+        description: 'Store screenshots'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'reference', 'full']
 
 permissions:
   contents: write
@@ -201,7 +208,7 @@ jobs:
       # cycle happen before anybody is waiting. The steps are excelano/.github's,
       # because every repository with this target needs the same ones.
       - name: The binary the Store package is built from
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
         uses: excelano/.github/.github/actions/mac-release-binary@main
         with:
           binary: segler-desktop
@@ -212,22 +219,17 @@ jobs:
       # Off unless asked for. A bug fix should not pay for a set of Store
       # screenshots, and a set nobody asked for is a set nobody looks at.
       # `shots.sh` carries the recipes and is the same command that retakes
-      # them by hand on the Mac; `screenshot.sh` beside it is the driver and
-      # knows nothing about Segler.
+      # them by hand on the Mac; everything around it is the org's, because
+      # four repositories need the same steps and this one had them written
+      # inline while the other three had nothing.
       #
-      # Driving another application's window goes through System Events and
-      # CGEventPost, both gated by TCC Accessibility. A hosted runner is
-      # trusted for it — asked rather than assumed, because a refused click is
-      # dropped rather than reported and the capture then succeeds, so the
-      # failure would be a correctly sized photograph of the wrong thing.
+      # English only. The listing is in two languages and there is no German
+      # document to photograph yet, and `shots.sh` refuses rather than
+      # photographing an English document with a German window.
       - name: The Store screenshots
-        if: inputs.screenshots
-        run: ./packaging/macos/shots.sh --app dist/Segler.app
-
-      - name: Keep them
-        if: inputs.screenshots
-        uses: actions/upload-artifact@v7
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        uses: excelano/.github/.github/actions/mac-store-screenshots@main
         with:
-          name: store-screenshots
-          path: dist/screenshots/*.png
-          if-no-files-found: error
+          app: dist/Segler.app
+          mode: ${{ inputs.screenshots }}
+          languages: en
