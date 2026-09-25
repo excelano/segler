@@ -265,7 +265,7 @@ private_symbols() {
         [ -d "$dir" ] || continue
         awk -v f="$framework" '$1 == f { print $2 }' "${scratch}/pairs" |
             sort -u > "${scratch}/wanted"
-        find "$dir" -name '*.h' -print0 2>/dev/null |
+        find -L "$dir" -name '*.h' -print0 2>/dev/null |
             xargs -0 grep -hoFw -f "${scratch}/wanted" 2>/dev/null |
             sort -u > "${scratch}/declared"
         comm -23 "${scratch}/wanted" "${scratch}/declared" |
