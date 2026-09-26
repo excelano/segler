@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.7">
+  <head>
+    <default_resolution width="1000" height="1400"/>
+  </head>
+  <heading level="1"><location value="80"/><location value="90"/><location value="920"/><location value="140"/>Segelanweisungen für die westlichen Zufahrten</heading>
+  <text><location value="80"/><location value="170"/><location value="920"/><location value="260"/>Die <bold>westlichen Zufahrten</bold> sind die Gewässer westlich des Kanals;
+    dieses Kapitel beschreibt sie in der Reihenfolge, in der ein Fahrzeug ihnen
+    begegnet: zuerst die Gezeiten, dann die <italic>Gefahrenstellen</italic>,
+    dann die Zufluchtshäfen.</text>
+  <heading level="2"><location value="80"/><location value="300"/><location value="600"/><location value="340"/>Gezeiten</heading>
+  <text><location value="80"/><location value="360"/><location value="920"/><location value="420"/>Springtiden laufen entlang der gesamten Küste stark auf. Die folgende
+    Tabelle gibt den Tidenhub an vier Häfen in Metern sowie die Stunde des
+    Hochwassers nach dem Bezugshafen an.</text>
+  <table>
+    <location value="80"/><location value="450"/><location value="920"/><location value="640"/>
+    <caption>Tidenhub und Hochwasser an vier Häfen</caption>
+    <ched/>Hafen<ched/>Springtide<ched/>Nipptide<ched/>HW<nl/>
+    <fcel/>Falmouth<fcel/>5.3<fcel/>2.4<fcel/>-0:10<nl/>
+    <fcel/>Newlyn<fcel/>5.6<fcel/>2.6<fcel/>-0:35<nl/>
+    <fcel/>Padstow<fcel/>7.3<fcel/>3.4<fcel/>-0:48<nl/>
+    <fcel/>Milford<fcel/>7.0<fcel/>3.2<fcel/>+0:05<nl/>
+  </table>
+  <heading level="2"><location value="80"/><location value="680"/><location value="600"/><location value="720"/>Gefahrenstellen</heading>
+  <list class="ordered">
+    <location value="80"/><location value="740"/><location value="920"/><location value="880"/>
+    <ldiv/>Der Runnel Stone, der bei jeder Dünung aus West bricht.
+    <ldiv/>Die Kabbelung vor dem Lizard, am stärksten bei ablaufendem Wasser gegen westlichen Wind.
+    <ldiv/>Die Barre vor Padstow, die bei ablaufendem Wasser nicht befahren werden sollte.
+  </list>
+  <page_break/>
+  <heading level="2"><location value="80"/><location value="90"/><location value="600"/><location value="130"/>Zufluchtshäfen</heading>
+  <text><location value="80"/><location value="160"/><location value="920"/><location value="240"/>Drei Häfen können bei jedem Tidenstand und in jedem Wetter angelaufen
+    werden, bei dem ein kleines Fahrzeug überhaupt unterwegs sein sollte. Sie
+    sind hier von Ost nach West aufgeführt, mit der Wassertiefe über der
+    Schwelle.</text>
+  <list class="unordered">
+    <location value="80"/><location value="270"/><location value="920"/><location value="380"/>
+    <ldiv/>Falmouth, der tiefste Naturhafen an dieser Küste.
+    <ldiv/>Newlyn, das im inneren Becken trockenfällt, jedoch nicht an der Kaimauer.
+    <ldiv/>Milford Haven, bei jedem Wind und jeder Tide anzulaufen.
+  </list>
+  <picture class="chart">
+    <location value="120"/><location value="420"/><location value="880"/><location value="760"/>
+    <caption>Gezeitenhöhe in Falmouth über einen Tag mit Springtide</caption>
+    <src uri="assets/figure.png"/>
+    <text><location value="180"/><location value="440"/><location value="700"/><location value="470"/>Gezeitenhöhe in Falmouth, Meter</text>
+    <text><location value="140"/><location value="470"/><location value="170"/><location value="740"/>4</text>
+    <text><location value="140"/><location value="540"/><location value="170"/><location value="560"/>3</text>
+    <text><location value="140"/><location value="610"/><location value="170"/><location value="630"/>2</text>
+    <text><location value="140"/><location value="680"/><location value="170"/><location value="700"/>1</text>
+    <text><location value="180"/><location value="740"/><location value="220"/><location value="760"/>0h</text>
+    <text><location value="480"/><location value="740"/><location value="530"/><location value="760"/>12h</text>
+    <text><location value="820"/><location value="740"/><location value="870"/><location value="760"/>24h</text>
+  </picture>
+  <text><location value="80"/><location value="800"/><location value="920"/><location value="860"/>Ein Fahrzeug, das keinen dieser drei Häfen erreichen kann, sollte auf
+    Abstand zur Küste bleiben und die Tide abwarten, statt sich bei schlechter
+    Sicht dem Land zu nähern.</text>
+</doclang>

@@ -1,4 +1,4 @@
-# Draw the figure the document's <picture> points at, `assets/figure.png`.
+﻿# Draw the figure the document's <picture> points at, `assets/figure.png`.
 #
 # A tide curve, chosen because it has a shape recognisable at any zoom: the
 # picture pane scales an asset to the box the <location> elements give it, and
@@ -11,13 +11,24 @@
 # `make-pages.ps1` about why the output is committed rather than regenerated.
 #
 #   powershell -ExecutionPolicy Bypass -File packaging\review\source\make-figure.ps1
+#   powershell -ExecutionPolicy Bypass -File packaging\review\source\make-figure.ps1 -Lang de
+#
+# `-Lang de` draws the axis label the document's German inner <text> repeats
+# in German too, so the two read the same language stacked over each other.
+# The hour marks stay 0h/12h/24h either language: they are notation, not
+# prose.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
+param(
+    [ValidateSet('en', 'de')][string] $Lang = 'en'
+)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'assets'
 New-Item -ItemType Directory -Force -Path $out | Out-Null
+$suffix = if ($Lang -eq 'de') { '.de' } else { '' }
+$axisLabel = if ($Lang -eq 'de') { 'Gezeitenhöhe in Falmouth, Meter' } else { 'Tidal height at Falmouth, metres' }
 
 $W = 620; $H = 360
 $bmp = New-Object System.Drawing.Bitmap($W, $H)
@@ -54,14 +65,14 @@ for ($x = 0; $x -le 100; $x++) {
 }
 $g.DrawCurve($curve, $pts.ToArray())
 
-$g.DrawString('Tidal height at Falmouth, metres', $font, $ink, $L, 12)
+$g.DrawString($axisLabel, $font, $ink, $L, 12)
 $g.DrawString('0h', $small, $ink, $L, ($B + 8))
 $g.DrawString('12h', $small, $ink, ($L + ($R - $L) / 2 - 10), ($B + 8))
 $g.DrawString('24h', $small, $ink, ($R - 20), ($B + 8))
 
 $axis.Dispose(); $grid.Dispose(); $curve.Dispose(); $ink.Dispose()
 $font.Dispose(); $small.Dispose(); $g.Dispose()
-$path = Join-Path $out 'figure.png'
+$path = Join-Path $out "figure$suffix.png"
 $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Dispose()
 Write-Host "wrote $path"

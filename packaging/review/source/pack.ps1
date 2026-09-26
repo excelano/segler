@@ -14,14 +14,17 @@
 #   powershell -ExecutionPolicy Bypass -File packaging\review\source\pack.ps1
 #   powershell -ExecutionPolicy Bypass -File packaging\review\source\pack.ps1 -Out C:\tmp\check.dclx
 #
-# The default writes over `packaging/review/sailing-directions.dclx`. Deflate
-# is not reproducible across implementations, so the committed archive and a
-# fresh pack of the same sources are equal member by member and not byte for
-# byte; `-Out` is there to compare without overwriting.
+# The default writes over `packaging/review/sailing-directions.dclx`. `-Lang de`
+# packs the German sources into `sailing-directions.de.dclx` instead - its own
+# document, its own two pages, its own figure, and none of the English three.
+# Deflate is not reproducible across implementations, so the committed archive
+# and a fresh pack of the same sources are equal member by member and not byte
+# for byte; `-Out` is there to compare without overwriting.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
 param(
+    [ValidateSet('en', 'de')][string] $Lang = 'en',
     [string]$Out
 )
 $ErrorActionPreference = 'Stop'
@@ -29,7 +32,8 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-if (-not $Out) { $Out = Join-Path (Split-Path -Parent $here) 'sailing-directions.dclx' }
+$suffix = if ($Lang -eq 'de') { '.de' } else { '' }
+if (-not $Out) { $Out = Join-Path (Split-Path -Parent $here) "sailing-directions$suffix.dclx" }
 
 $types = @'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -58,10 +62,10 @@ function Get-PartBytes {
 $parts = [ordered]@{
     '[Content_Types].xml' = Get-PartBytes $types
     '_rels/.rels'         = Get-PartBytes $rels
-    'document.xml'        = [System.IO.File]::ReadAllBytes((Join-Path $here 'sailing-directions.dclg'))
-    'pages/1.png'         = [System.IO.File]::ReadAllBytes((Join-Path $here 'pages\1.png'))
-    'pages/2.png'         = [System.IO.File]::ReadAllBytes((Join-Path $here 'pages\2.png'))
-    'assets/figure.png'   = [System.IO.File]::ReadAllBytes((Join-Path $here 'assets\figure.png'))
+    'document.xml'        = [System.IO.File]::ReadAllBytes((Join-Path $here "sailing-directions$suffix.dclg"))
+    'pages/1.png'         = [System.IO.File]::ReadAllBytes((Join-Path $here "pages\1$suffix.png"))
+    'pages/2.png'         = [System.IO.File]::ReadAllBytes((Join-Path $here "pages\2$suffix.png"))
+    'assets/figure.png'   = [System.IO.File]::ReadAllBytes((Join-Path $here "assets\figure$suffix.png"))
 }
 
 if (Test-Path $Out) { Remove-Item $Out }

@@ -45,25 +45,27 @@ and it can be made again:
 
 | | |
 | --- | --- |
-| `sailing-directions.dclg` | The document, which is `document.xml` in the archive |
-| `pages/1.png`, `pages/2.png` | The two page images, 1000x1400, the `default_resolution` the document declares |
-| `assets/figure.png` | The tide curve the `<picture>` points at |
-| `make-pages.ps1`, `make-figure.ps1` | What drew those three, with `System.Drawing` |
-| `pack.ps1` | What packs the six parts into the `.dclx` |
+| `sailing-directions.dclg`, `sailing-directions.de.dclg` | The document, which is `document.xml` in the archive - one file per language |
+| `pages/1.png`, `pages/2.png` and their `.de` counterparts | The two page images, 1000x1400, the `default_resolution` the document declares |
+| `assets/figure.png` and `figure.de.png` | The tide curve the `<picture>` points at, its axis label in the document's language |
+| `make-pages.ps1`, `make-figure.ps1` | What drew those, with `System.Drawing`; `-Lang de` draws the German set |
+| `pack.ps1` | What packs six parts into a `.dclx`; `-Lang de` packs the German six into `sailing-directions.de.dclx` |
 
-`pack.ps1` alone rebuilds the archive from what is committed. The two drawing
-scripts need Windows and the Georgia font, and GDI+ text metrics are not
-identical from machine to machine, which is why their output is committed
-rather than left to be regenerated: the images in the archive are the ones
+`pack.ps1` alone rebuilds either archive from what is committed. The two
+drawing scripts need Windows and the Georgia font, and GDI+ text metrics are
+not identical from machine to machine, which is why their output is committed
+rather than left to be regenerated: the images in each archive are the ones
 the screenshots were taken against. On the machine that drew them a rerun is
 byte-identical, which is what says the scripts and the images are the same
-three pictures and not two versions of them.
+pictures and not two versions of them. Inside either archive the parts keep
+the plain names (`document.xml`, `pages/1.png`, `assets/figure.png`, ...) -
+the `.de` suffix is only how the two languages' sources tell each other apart
+on disk before packing.
 
 Deflate is not reproducible across implementations, so a fresh pack is equal
-to the committed archive member by member and not byte for byte. That was
-checked when these landed - six members, same names, same order, same bytes -
-and `pack.ps1 -Out somewhere-else.dclx` is how to check it again without
-overwriting anything.
+to the committed archive member by member and not byte for byte.
+`pack.ps1 -Out somewhere-else.dclx` (or `-Lang de -Out ...`) is how to check
+that without overwriting anything.
 
 Author: David M. Anderson
 Built with AI assistance (Claude, Anthropic)

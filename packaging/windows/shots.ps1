@@ -44,7 +44,14 @@ param(
     # the coordinates below get measured: take it, open it, read the pixel of
     # each control off it, and fill the constants in.
     [switch] $Reference,
-    [string] $OutDir
+    [string] $OutDir,
+    # Which language's set to take. The listing is in two, and a German
+    # listing showing an English document is a German listing of somebody
+    # else's application. It is also the subdirectory the set lands in:
+    # `Take-Shots` turns it into `en-US` or `de-DE`, and the Store files a
+    # frame by the locale in its path.
+    [ValidateSet('en', 'de')]
+    [string] $Lang = 'en'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,8 +67,15 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $WIDTH = 1366
 $HEIGHT = 768
 
-# The document the review notes point at, which rides every release.
-$DOCUMENT = Join-Path $root 'packaging\review\sailing-directions.dclx'
+# The document the review notes point at, which rides every release. One per
+# language: the document is most of what this frame shows, so a German
+# listing opening the English archive would be mostly English pixels whatever
+# language the window chrome is in.
+$DOCUMENT = if ($Lang -eq 'de') {
+    Join-Path $root 'packaging\review\sailing-directions.de.dclx'
+} else {
+    Join-Path $root 'packaging\review\sailing-directions.dclx'
+}
 
 # The process the window belongs to, which the driver stops first so the frame
 # holds this run's window and not a previous one's.
@@ -79,6 +93,17 @@ if (-not $OutDir) { $OutDir = Join-Path $root 'dist\screenshots' }
 #
 #     powershell -ExecutionPolicy Bypass -File packaging\windows\shots.ps1 -Reference
 #
+# `$PAGE_IMAGE_PANEL` and `$NEXT_PAGE` sit in the toolbar row, to the right of
+# `Open…`, `Save`, `Undo` and `Redo`, all four of them translated text and not
+# icons - `toolbar()` in `crates/segler-desktop/src/main.rs` runs each through
+# `t()`. A German label is not the same width as its English one, which moves
+# every control to its right, the same way duckling's German toolbar wraps to
+# a second row on macOS. Nobody has measured a German frame of this window on
+# Windows yet, so `-Lang de` refuses below rather than clicking wherever these
+# two English coordinates happen to land.
+if ($Lang -eq 'de') {
+    Write-Error 'shots.ps1: no German toolbar coordinates are measured yet for Windows - take a reference frame of a German build and fill in $PAGE_IMAGE_PANEL and $NEXT_PAGE for -Lang de before this recipe can run'
+}
 $PAGE_IMAGE_PANEL = '423,40'   # the toolbar toggle for the page images
 $NEXT_PAGE = '353,40'          # the toolbar's forward arrow
 $THE_PICTURE = '620,440'       # the picture on page two, on the page itself
@@ -131,4 +156,4 @@ function Get-Shots {
 }
 
 Take-Shots -Launch @('shell', $DOCUMENT) -Process $PROCESS `
-    -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Reference:$Reference
+    -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Lang $Lang -Reference:$Reference
