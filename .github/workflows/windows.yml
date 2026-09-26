@@ -1,13 +1,8 @@
-# The Windows checks a machine can run: that the tree builds and passes here,
-# that the shipped binary imports nothing Windows does not have, that the
-# committed icons still match the drawings they were generated from, and, on a
-# release, the unsigned Store package. The suite is repeated from the fleet's
-# `ci.yml` because that runs on Linux and three things here are compiled only
-# for this target — `build.rs`'s manifest arm, the `ico` dependency, and the
-# window icon `include_bytes!` reaches. Out of reach: the window, the installer
-# scripts, a file association, the certification kit, and the icon as a person
-# sees it. The conformance corpus needs a checkout of `doclang-project/doclang`
-# and is a command, never a test.
+# Run the suite on Windows, check the things only a Windows machine can say,
+# and assemble the Store package, attaching it to a published release. The
+# checks themselves live in excelano/.github so every desktop-app repo in the
+# fleet runs the same ones and a correction reaches all of them at once; what
+# stays here is this product's own names, paths and screenshot recipe.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -32,10 +27,6 @@ on:
         description: 'Tag to package for (e.g. v0.1.4)'
         required: false
         type: string
-      # A choice rather than the boolean `apple-silicon.yml` has, because this
-      # lane has a third thing to ask for. Three of the controls the recipes
-      # name have never been measured on this platform, so `reference` takes
-      # the one plain frame they get measured off and `full` takes the set.
       screenshots:
         description: 'Store screenshots'
         required: false
@@ -46,141 +37,22 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  # Keyed by the tag when this is releasing, and by the event and the ref when
-  # it is not. `github.ref` is refs/heads/main for a workflow_dispatch as much
-  # as for a push, so keying on it alone lets a push to main cancel a dispatched
-  # run - and a dispatch asking only for screenshots has no tag to key on.
-  group: windows-${{ github.event.release.tag_name || inputs.tag || format('{0}-{1}', github.event_name, github.ref) }}
-  # A superseded check is worth cancelling; a half-built release is not.
-  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
-
 jobs:
   windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
-
-      # The packaging scripts are the only code here that nothing else compiles
-      # or runs, and there is no PowerShell on the Linux lane. The step is
-      # excelano/.github's because it is the same one in every repository that
-      # has them.
-      - name: The packaging scripts parse
-        uses: excelano/.github/.github/actions/powershell-parses@main
-
-      - name: Install Rust
-        run: rustup toolchain install stable --profile minimal
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: What is installed
-        run: rustc -V; cargo -V
-
-      - name: Build
-        run: cargo build --workspace --all-targets
-
-      - name: Test
-        run: cargo test --workspace
-
-      # `CLAUDE.md` says clippy must be silent, so a warning is an error here.
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      # The check Slipcase 0.1.1 needed and did not have. It was packaged,
-      # certified by the Windows App Certification Kit, submitted, and failed
-      # Store policy 10.2.4.1 because it imported VCRUNTIME140.dll from the
-      # Visual C++ Redistributable - so on the tester's clean machine it
-      # installed and then would not start. Nothing else in this file could
-      # catch it: a GitHub runner has Visual Studio, exactly like every machine
-      # this project has ever built on.
-      #
-      # `.cargo/config.toml` is the fix and this is the guard on it. A
-      # dependency added on any of the three platforms can pull in a DLL that is
-      # not part of Windows without anybody here noticing, and the day that
-      # happens is the day this step has to be the thing that says so.
-      #
-      # The release binary rather than the debug one, because the release binary
-      # is what ships and is the only one whose import table is the artefact's.
-      - name: Every DLL the shipped binary imports comes with Windows
-        run: |
-          cargo build --release -p segler-desktop
-          powershell -ExecutionPolicy Bypass -File packaging/windows/check-imports.ps1
-
-      # The release binary is also the only place two other properties exist. The
-      # GUI subsystem comes from an attribute that is off under
-      # `debug_assertions`, and a console-subsystem build puts a console window
-      # behind the application when a file manager launches it. The DPI
-      # declaration comes from `build.rs` handing the linker a manifest, and the
-      # certification kit reads it out of the binary rather than out of the
-      # running process. `build-msix.ps1` refuses on the first and the kit
-      # reports the second, and neither of those runs here - so both are read
-      # straight out of the artefact instead.
-      - name: The shipped binary is a GUI subsystem one and declares its DPI awareness
-        shell: pwsh
-        run: |
-          $meta = cargo metadata --format-version 1 --no-deps | ConvertFrom-Json
-          $exe = Join-Path $meta.target_directory 'release\segler-desktop.exe'
-          $bytes = [System.IO.File]::ReadAllBytes($exe)
-          $pe = [BitConverter]::ToInt32($bytes, 0x3C)
-          $subsystem = [BitConverter]::ToUInt16($bytes, $pe + 92)
-          if ($subsystem -ne 2) {
-            throw "subsystem $subsystem, and a shipped build must be 2 (Windows GUI)"
-          }
-          $text = [System.Text.Encoding]::UTF8.GetString($bytes)
-          if (-not $text.Contains('PerMonitorV2')) {
-            throw 'no PerMonitorV2 in the binary - build.rs did not embed the application manifest'
-          }
-          Write-Host 'subsystem 2, and the application manifest is embedded'
-
-      # The install scripts against the registry, read back. The steps are
-      # excelano/.github's: it was the same script in three repositories and
-      # absent from three more, and the absent ones included the repository
-      # whose uninstall reported success while leaving the association dead.
-      - name: The integration goes on and comes off cleanly
-        uses: excelano/.github/.github/actions/windows-install-check@main
-        with:
-          associations: '[{"extension": ".dclx", "progId": "Excelano.Segler.Archive", "contentType": "application/vnd.doclang.archive+zip"}, {"extension": ".dclg", "progId": "Excelano.Segler.Document", "contentType": "application/vnd.doclang.document+xml"}]'
-          owns-extension: 'true'
-          install-args: '-NoBinary'
-
-      # The Store takes the package unsigned, and the runner assembles the one that
-      # is uploaded. The steps are excelano/.github's, because they were the same in
-      # every repository that has this target; the publisher is the organisation
-      # secret, being the one value in the identity that is an account's rather than
-      # this product's.
-      - name: The Store package
-        uses: excelano/.github/.github/actions/store-package@main
-        with:
-          publisher: ${{ secrets.STORE_PUBLISHER }}
-          tag: ${{ github.event.release.tag_name || inputs.tag }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-      # Off unless asked for. A bug fix should not pay for a set of Store
-      # screenshots, and a set nobody asked for is a set nobody looks at.
-      # `shots.ps1` carries the recipes and is the same command that retakes
-      # them by hand on the Windows machine; `screenshot.ps1` beside it is the
-      # driver and knows nothing about Segler.
-      #
+    uses: excelano/.github/.github/workflows/windows-desktop-ci.yml@main
+    with:
+      tag: ${{ inputs.tag }}
+      binary-names: segler-desktop
+      workspace: true
+      gui-subsystem-check: true
+      icon-check: true
+      icon-check-paths: 'packaging/windows/segler.ico packaging/windows/dclx.ico packaging/windows/dclg.ico packaging/windows/assets packaging/windows/listing'
+      install-check-associations: '[{"extension": ".dclx", "progId": "Excelano.Segler.Archive", "contentType": "application/vnd.doclang.archive+zip"}, {"extension": ".dclg", "progId": "Excelano.Segler.Document", "contentType": "application/vnd.doclang.document+xml"}]'
+      install-check-owns-extension: 'true'
+      screenshots: ${{ inputs.screenshots }}
       # The document is opened through the shell, so the association has to
       # exist: `install.ps1` puts the release binary behind `.dclx` the way it
       # does on a person's machine. The install check above runs `-NoBinary`
       # and takes its registration off again, so this is a second, real one.
-      - name: Install the association
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        run: powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
-
-      - name: The Store screenshots
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        uses: excelano/.github/.github/actions/store-screenshots@main
-        with:
-          mode: ${{ inputs.screenshots }}
-          languages: en de
-
-      - name: The committed icons and Store assets still match their generator
-        run: |
-          cd packaging/windows/make-ico
-          cargo run --release
-          cd ../../..
-          git diff --exit-code -- packaging/windows/segler.ico packaging/windows/dclx.ico packaging/windows/dclg.ico packaging/windows/assets packaging/windows/listing
+      pre-screenshot-script: powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
+    secrets: inherit
