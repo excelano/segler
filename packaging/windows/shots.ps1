@@ -94,18 +94,16 @@ if (-not $OutDir) { $OutDir = Join-Path $root 'dist\screenshots' }
 #     powershell -ExecutionPolicy Bypass -File packaging\windows\shots.ps1 -Reference
 #
 # `$PAGE_IMAGE_PANEL` and `$NEXT_PAGE` sit in the toolbar row, to the right of
-# `Open…`, `Save`, `Undo` and `Redo`, all four of them translated text and not
-# icons - `toolbar()` in `crates/segler-desktop/src/main.rs` runs each through
-# `t()`. A German label is not the same width as its English one, which moves
-# every control to its right, the same way duckling's German toolbar wraps to
-# a second row on macOS. Nobody has measured a German frame of this window on
-# Windows yet, so `-Lang de` refuses below rather than clicking wherever these
-# two English coordinates happen to land.
-if ($Lang -eq 'de') {
-    Write-Error 'shots.ps1: no German toolbar coordinates are measured yet for Windows - take a reference frame of a German build and fill in $PAGE_IMAGE_PANEL and $NEXT_PAGE for -Lang de before this recipe can run'
-}
-$PAGE_IMAGE_PANEL = '423,40'   # the toolbar toggle for the page images
-$NEXT_PAGE = '353,40'          # the toolbar's forward arrow
+# `Open…`/`Save`/`Undo`/`Redo` or their German counterparts, all four of them
+# translated text and not icons - `toolbar()` in
+# `crates/segler-desktop/src/main.rs` runs each through `t()`. A German label
+# is not the same width as its English one, which moves every control to its
+# right by about 130 pixels, the same way duckling's German toolbar wraps to a
+# second row on macOS. Both pairs were read off a reference frame of each
+# language on Windows - the content-pane coordinates below them are not
+# toolbar-relative and hold across both.
+$PAGE_IMAGE_PANEL = if ($Lang -eq 'de') { '550,40' } else { '423,40' }   # the toolbar toggle for the page images
+$NEXT_PAGE = if ($Lang -eq 'de') { '483,40' } else { '353,40' }          # the toolbar's forward arrow
 $THE_PICTURE = '620,440'       # the picture on page two, on the page itself
 $A_TABLE_CELL = '956,385'      # Newlyn's high water, in the HW column
 $A_PARAGRAPH = '600,139'       # the opening line under the title

@@ -176,9 +176,7 @@ jobs:
         uses: excelano/.github/.github/actions/store-screenshots@main
         with:
           mode: ${{ inputs.screenshots }}
-          # German is not here yet: shots.ps1 refuses -Lang de until a real
-          # German build's toolbar coordinates are measured on Windows.
-          languages: en
+          languages: en de
 
       - name: The committed icons and Store assets still match their generator
         run: |
