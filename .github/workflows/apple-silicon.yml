@@ -214,4 +214,4 @@ jobs:
         with:
           app: dist/Segler.app
           mode: ${{ inputs.screenshots }}
-          languages: en
+          languages: en de
