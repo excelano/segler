@@ -27,6 +27,17 @@
 # declared here. Change the size and they all move; that is why the size is a
 # constant beside them rather than an argument with a default.
 #
+# LIGHT AND DARK
+#
+# All four earn a second slot. None of them is the frame the 2.3.3 rejection
+# was about — every one already shows a selection or an edit in progress — so
+# repeating the same four actions in dark carries the "app in use" property
+# into the dark set rather than risking it. Four frames plus their dark
+# repeats is eight, still under Apple's ten and the Microsoft Store's own ten.
+# Light leads, numbered 01-04; the dark repeats are 05-08, so the file names
+# alone keep light first without depending on where `shots()` calls
+# `appearance`.
+#
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
 
@@ -57,6 +68,8 @@ OUTDIR="${root}/dist/screenshots"
 #   --type TEXT    type
 #   --key NAME     one key, optionally with modifiers: cmd+a, return
 shots() {
+    appearance light
+
     # Correcting a table cell in place: the cell open with the new value being
     # typed, the table selected, and the pane showing row, column and kind.
     shot 01-correcting-a-cell \
@@ -78,6 +91,20 @@ shots() {
     # Page two: the picture selected, its class, its caption, its box on the
     # scan, and its markup.
     shot 04-a-picture-on-page-two \
+        --click 422,39 --click 352,39 --click 70,153
+
+    appearance dark
+
+    shot 05-correcting-a-cell-dark \
+        --double 1020,384 --key cmd+a --type "-0:38"
+
+    shot 06-the-page-beside-the-document-dark \
+        --click 422,39 --click 520,300
+
+    shot 07-the-correction-committed-dark \
+        --double 1020,384 --key cmd+a --type "-0:38" --click 352,500
+
+    shot 08-a-picture-on-page-two-dark \
         --click 422,39 --click 352,39 --click 70,153
 }
 
