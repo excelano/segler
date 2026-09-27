@@ -66,5 +66,3 @@ Deflate is not reproducible across implementations, so a fresh pack is equal
 to the committed archive member by member and not byte for byte.
 `pack.ps1 -Out somewhere-else.dclx` (or `-Lang de -Out ...`) is how to check
 that without overwriting anything.
-
-Author: David M. Anderson
