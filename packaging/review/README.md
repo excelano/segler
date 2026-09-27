@@ -68,4 +68,3 @@ to the committed archive member by member and not byte for byte.
 that without overwriting anything.
 
 Author: David M. Anderson
-Built with AI assistance (Claude, Anthropic)

@@ -67,5 +67,3 @@ specification disagree, the specification is right and this is a bug.
 
 Apache-2.0, the same as DocLang, so that any part of this can go where the
 format lives.
-
-Built with the assistance of Claude (Anthropic).
