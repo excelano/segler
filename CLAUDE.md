@@ -43,6 +43,4 @@ translated and the model is not: an element's name and every attribute value a p
 from a list stay English, because a translated one would be a different document.
 `segler-core` is `forbid(unsafe_code)`; `segler-desktop` is `deny`, lifted for
 `opened_document.rs` alone, where a macOS Apple Event needs an Objective-C method. A second
-`allow` is David's decision. Every source file header carries `Author: David M. Anderson`
-and `Built with AI assistance (Claude, Anthropic)`; commits carry a `Co-Authored-By` for the
-model and a `Signed-off-by` for David (DCO), and no session URL.
+`allow` is David's decision.
