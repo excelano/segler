@@ -112,36 +112,14 @@ jobs:
       # Everything `root/root` and nothing carrying a mode a package should not
       # ship; `md5sums` present, which is what `dpkg -V` reads; and every
       # recorded hash agreeing with the file it names.
-      - name: The package holds up
-        run: |
-          deb=$(ls dist/*.deb)
-          echo "checking ${deb}"
-
-          strange=$(dpkg-deb --contents "$deb" | awk '$2 != "root/root"')
-          [ -z "$strange" ] || { echo "not root/root:"; echo "$strange"; exit 1; }
-
-          strange=$(dpkg-deb --contents "$deb" |
-              awk '$1 !~ /^drwxr-xr-x/ && $1 !~ /^-rw-r--r--/ && $1 !~ /^-rwxr-xr-x/')
-          [ -z "$strange" ] || { echo "unexpected modes:"; echo "$strange"; exit 1; }
-
-          dpkg-deb --ctrl-tarfile "$deb" | tar t | grep -qx './md5sums' ||
-              { echo "the package ships no md5sums" >&2; exit 1; }
-
-          tree="${RUNNER_TEMP}/tree"
-          dpkg-deb -x "$deb" "$tree"
-          dpkg-deb -e "$deb" "${tree}/DEBIAN"
-          ( cd "$tree" && md5sum -c DEBIAN/md5sums --quiet )
+      - uses: excelano/.github/.github/actions/linux-package-integrity-check@main
 
       # `error,warning`, and no overrides. The first local run produced three
       # tags about the copyright file, all because Apache-2.0 is a common
       # licence Debian wants referred to rather than copied; the package now
       # ships a DEP-5 copyright file and the tags are gone. `info` and
       # `pedantic` are Debian's suggestions rather than its rules.
-      - name: What lintian says
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq lintian
-          lintian --info --tag-display-limit 0 --fail-on error,warning dist/*.deb
+      - uses: excelano/.github/.github/actions/linux-lintian-check@main
 
       # The only step that asks the platform anything. Through `gio` rather
       # than `xdg-mime`: with no desktop session `xdg-mime` falls back to
@@ -219,18 +197,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: excelano/.github/.github/actions/linux-attach-release-packages@main
         with:
-          path: packages
-          merge-multiple: true
-
-      - name: Attach the packages to the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -eu
-          ls -l packages
-          gh release upload \
-            "${{ github.event.release.tag_name || inputs.tag }}" \
-            packages/*.deb --clobber
+          tag: ${{ github.event.release.tag_name || inputs.tag }}
