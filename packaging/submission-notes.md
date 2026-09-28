@@ -15,6 +15,21 @@ Both point at `sailing-directions.dclx` under a specific tag (`v0.1.3`);
 update the tag in `store-listing.toml` when it stops being the release these
 screenshots and this document match.
 
+## Capability justification
+
+The package declares `runFullTrust`, and Partner Center's justification field
+for it is asked once when the capability is first declared on the product
+rather than on every resubmission - it is not part of the submission document
+`ship` reads and writes, and this repo's own resubmissions have gone to
+certification since without one being sent. 500-character limit, which counts
+newlines.
+
+> Segler is a full-trust Win32 desktop application packaged as MSIX. It needs
+> this capability to run at all. It opens the DocLang document it was
+> launched with, or one chosen through Open, and writes only where a save
+> dialog points. It makes no network connection of any kind, needs no broad
+> filesystem access, and uses no device.
+
 ## Screenshots
 
 Each lane takes its own with its platform's script, against the packaged
