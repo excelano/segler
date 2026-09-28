@@ -1,27 +1,20 @@
 # Submission notes
 
-What a store submission needs from a person and no file supplies: the notes an
-App Review or certification reader is handed, the answers a form asks that no
-build can give, and the reasoning behind the screenshots.
+What a store submission needs from a person and no file supplies: the notes a
+certification reader is handed, the answers a form asks that no build can
+give, and the reasoning behind the screenshots.
 
 The listing text itself is not here. It is `store-listing.toml` beside this,
 which `ship` checks before the tag and pushes to both stores on every release,
 and what a release tells them changed is `release-notes.toml`. A field edited
-in this file would reach nobody.
+in this file would reach nobody. Apple's Notes for Review are there too, as
+`apple-review-notes`, which `ship` pushes to `appStoreReviewDetail` on every
+Mac App Store submission - Microsoft's Notes for certification below have no
+such field and are still typed in by hand.
 
-## App Review notes
-
-Segler is an editor for DocLang documents. DocLang is the open markup format for documents that language models read and write, from the LF AI & Data Foundation. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
-
-**Open a document first — with nothing open, the window is empty and there is nothing to try.** One is at https://github.com/excelano/segler/releases/download/v0.1.3/sailing-directions.dclx — *Sailing directions for the western approaches*, a two-page archive written for this purpose and carrying every feature the listing claims: a heading hierarchy, running text, a four-column table with a caption, ordered and unordered lists, a picture, and the two page images the document was read from. It is the same document the screenshots show. Download it and open it, or launch the application and use Open. Nothing in it is anybody else's copyright.
-
-What to look at once it is open: the document rendered in reading order in the main pane, the element tree beside it, and the selected element's properties below that. Click a line of text and edit it where you read it. With the page images present, the located boxes are drawn over the page so a doubtful line can be checked against the scan. Save writes the same file back with the edit and nothing else changed.
-
-The application declares the DocLang document and archive types and claims both at rank Default, not Owner, with a role of Editor. It is one editor for a format other applications also open, and Save writes the document back, which is what Editor rather than Viewer says.
-
-The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files, which is the grant a person gives by choosing a document in the open panel. There is no network entitlement, no temporary exception, and the application makes no network request. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume, because that grant does not allow a temporary file beside the document.
-
-The full privacy statement is at https://excelano.com/legal/#segler and the complete source is at https://github.com/excelano/segler.
+Apple's notes point at `sailing-directions.dclx` under a specific tag
+(`v0.1.3`); update the tag in `store-listing.toml` when it stops being the
+release these screenshots and this document match.
 
 ## Screenshots
 
