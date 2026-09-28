@@ -15,7 +15,7 @@
 # apple.keywords 100 including the commas, description 4,000 - the Microsoft
 # Store allows 10,000 and this is written to Apple's - microsoft.short-description
 # 500, microsoft.features 20 of 200, microsoft.keywords 7 of 30, apple-review-notes
-# 4,000.
+# and microsoft-review-notes 4,000 each.
 #
 # What is *not* here is what changed in this release. That is
 # release-notes.toml, which is rewritten every time; this changes when the
@@ -48,6 +48,15 @@ The application declares the DocLang document and archive types and claims both 
 The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files, which is the grant a person gives by choosing a document in the open panel. There is no network entitlement, no temporary exception, and the application makes no network request. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume, because that grant does not allow a temporary file beside the document.
 
 The full privacy statement is at https://excelano.com/legal/#segler and the complete source is at https://github.com/excelano/segler.
+"""
+microsoft-review-notes = """
+Segler is an editor for DocLang documents (.dclx archives and .dclg markup). It needs a document to open; one is attached to this release: https://github.com/excelano/segler/releases/download/v0.1.3/sailing-directions.dclx — a two-page archive written for this purpose, carrying a heading hierarchy, running text, a table, lists, a picture, and the two page images the document was read from. Download it, then double-click it, or right-click it and choose Segler under Open With.
+
+What to look at once it is open: the document rendered in reading order in the main pane, the element tree beside it, and the selected element's properties below that. Click a line of text and edit it where you read it; with the page images present, the located boxes are drawn over the page so a doubtful line can be checked against the scan. Ctrl+S saves the same file back with the edit and nothing else changed.
+
+The package declares runFullTrust and no other capability. It opens the file it was launched with or one chosen through Open, and writes only where a person points a save dialog; it asks for no broad filesystem access and no device. It makes no network connection of any kind and its import table names no networking library.
+
+The .dclx and .dclg file type associations are registered so a downloaded document opens with a double-click, and neither is claimed as anything but this application's own format.
 """
 
 [locales."de-de"]

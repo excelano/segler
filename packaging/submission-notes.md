@@ -1,20 +1,19 @@
 # Submission notes
 
-What a store submission needs from a person and no file supplies: the notes a
-certification reader is handed, the answers a form asks that no build can
-give, and the reasoning behind the screenshots.
+What a store submission needs from a person and no file supplies: the answers
+a form asks that no build can give, and the reasoning behind the screenshots.
 
 The listing text itself is not here. It is `store-listing.toml` beside this,
 which `ship` checks before the tag and pushes to both stores on every release,
 and what a release tells them changed is `release-notes.toml`. A field edited
-in this file would reach nobody. Apple's Notes for Review are there too, as
-`apple-review-notes`, which `ship` pushes to `appStoreReviewDetail` on every
-Mac App Store submission - Microsoft's Notes for certification below have no
-such field and are still typed in by hand.
+in this file would reach nobody. Apple's Notes for Review and Microsoft's
+Notes for certification are there too, as `apple-review-notes` and
+`microsoft-review-notes`, which `ship` pushes to `appStoreReviewDetail` and
+`NotesForCertification` on every submission.
 
-Apple's notes point at `sailing-directions.dclx` under a specific tag
-(`v0.1.3`); update the tag in `store-listing.toml` when it stops being the
-release these screenshots and this document match.
+Both point at `sailing-directions.dclx` under a specific tag (`v0.1.3`);
+update the tag in `store-listing.toml` when it stops being the release these
+screenshots and this document match.
 
 ## Screenshots
 
