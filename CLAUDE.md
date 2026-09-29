@@ -26,7 +26,7 @@ client window with `xwininfo -root -tree | grep '"segler-desktop"'`, then `xwd -
 convert xwd:- shot.png`. Drive it with `xdotool`, whose synthetic typing needs `--delay 100`
 or more. A one-frame defect is invisible to a single capture: take a burst and compare mean
 brightness across frames. Run at `WINIT_X11_SCALE_FACTOR=1.25` as well as 1x, since David's
-desktop is at a fractional scale. Releases: run `ship segler`. There is no release document.
+desktop is at a fractional scale. Releases: the apps in excelano/shipping, run from this directory. There is no release document.
 
 ## Rules
 
