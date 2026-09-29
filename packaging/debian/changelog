@@ -1,3 +1,35 @@
+segler (0.1.6) unstable; urgency=medium
+
+  * Release notes for 0.1.6
+  * Retire the release workflows
+  * Write down the runFullTrust capability justification
+  * Move Microsoft's Notes for certification into the field ship pushes
+  * Move Apple's Notes for Review into the field ship pushes
+  * Remove author and AI-assistance attribution; it belongs in source file headers
+  * Drop commit trailer and file header rules; the global CLAUDE.md states them
+  * Drop AI-assistance disclosure sentence from README/SECURITY footer
+  * The Mac App Store set is taken in German too
+  * The Mac App Store set doubles into light and dark, light leading
+  * The Linux lane uses the fleet's composite actions for the checks it shares
+  * The arch check and screenshot use the fleet's composite actions
+  * The Windows lane calls the fleet's reusable workflow
+  * apt_repo, not apt_package
+  * The German toolbar coordinates, measured on winwork
+  * The review document gets a German counterpart
+  * ship sync: appearance() polls the readback instead of checking once
+  * Follow symlinked SDK headers when checking private ColorSync symbols
+  * The screenshot harness takes an appearance, and says which template wrote it
+  * Package versions stop coming from Dependabot
+  * Dependabot merges move to the organisation's sweep
+  * Take the generated screenshot files ship rewrote
+  * The driver sizes the window it photographs, and knows Cmd-Shift-G
+  * Take the generated screenshot files ship rewrote
+  * The macOS screenshot set is taken the way the Windows one is
+  * The listing copy is a file both lanes push
+  * Take the macOS screenshot driver from ship
+
+ -- David M. Anderson <david.anderson@excelano.com>  Tue, 29 Sep 2026 10:31:42 -0500
+
 segler (0.1.5) unstable; urgency=medium
 
   * What 0.1.5 tells the stores, written from what they carry
