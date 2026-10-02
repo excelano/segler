@@ -2,10 +2,10 @@
 
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
 distributed, and three files shared by all of them: `version.sh`, which is the
-only thing that reads the version out of `Cargo.toml`; `ship`, which
-asks everything that must be true before a release at once; and
-`store-listing.toml`, the text both stores are given, which `ship` pushes to
-both on every release; and `submission-notes.md`, what a submission needs from
+only thing that reads the version out of `Cargo.toml`; `store-listing.toml`,
+the text both stores are given, which the release apps push to both on every
+release; `release-notes.toml`, what the release being cut changed, in both
+languages; and `submission-notes.md`, what a submission needs from
 a person that no file supplies.
 
 The shape is `excelano/slipcase-desktop`'s, and where a file here says
@@ -77,7 +77,7 @@ without a `postinst` asking for it.
 `copyright` is a DEP-5 file rather than a copy of `LICENSE`. Apache-2.0 is one
 of Debian's common licences and policy wants it referred to at
 `/usr/share/common-licenses` rather than copied; lintian makes the copy an
-error. `.github/workflows/linux.yml` runs lintian on every push.
+error; lintian runs on the built package.
 
 ## The icons
 
@@ -165,6 +165,5 @@ that cost the save path a macOS arm.
 `check-libraries.sh` as well as the packager: it refuses a binary importing
 a symbol no public framework header declares, which is what App Store review
 refuses as Guideline 2.5.1. `check-install.sh` asks an installed bundle what
-it is on the machine it is on, and `window-probe.swift` is what
-`.github/workflows/apple-silicon.yml` uses to ask whether the arm64 build
-drew a window for a document opened through Launch Services.
+it is on the machine it is on, and `window-probe.swift` asks
+whether a build drew a window for a document opened through Launch Services.
