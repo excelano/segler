@@ -1,7 +1,7 @@
 # Packaging
 
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
-distributed, and three files shared by all of them: `version.sh`, which is the
+distributed, and the files shared by all of them: `version.sh`, which is the
 only thing that reads the version out of `Cargo.toml`; `store-listing.toml`,
 the text both stores are given, which the release apps push to both on every
 release; `release-notes.toml`, what the release being cut changed, in both
@@ -94,10 +94,8 @@ apart in a listing while both saying Segler. The palette is
 slipcase-desktop's, so the two Excelano applications look like siblings on a
 launcher.
 
-David chose it from a sheet of five on 2026-09-04; the file's own comment
-records what the other four cost. All three were checked at 16, 24, 32, 48 and
-128 pixels on light and dark grounds before committing, and any change should
-be. The SVGs are the source for every platform: macOS wants `.icns` and Windows
+Any change to them is checked at 16, 24, 32, 48 and 128 pixels on light and
+dark grounds. The SVGs are the source for every platform: macOS wants `.icns` and Windows
 wants `.ico`, both converted from them, and `windows/make-ico` is the converter
 for the second.
 
@@ -144,10 +142,7 @@ certification baseline.
 
 `check-imports.ps1` is the Windows counterpart of `check-libraries.sh`: it walks
 the shipped binary's PE import table and refuses any DLL not known to ship with
-Windows. Unlike the Linux one it needs no display, so `windows.yml` runs it on
-every push. That check exists because Slipcase 0.1.1 passed everything else and
-still failed Store certification, on a clean machine that had no Visual C++
-Redistributable.
+Windows. Unlike the Linux one it needs no display.
 
 ## macos
 

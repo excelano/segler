@@ -33,10 +33,7 @@ desktop is at a fractional scale. Releases: the apps in excelano/shipping, run f
 The document model is lossless: every element, attribute and text run in a file survives a
 parse and a serialize, and a model that cannot represent something the spec allows is the
 thing that is wrong. docling.rs is an import engine behind a feature flag and never touches
-the model. Nothing compiles C — the check is the artefact, so `find target -name '*.o' -o
--name '*.a'` is empty; `cargo tree -i cc` is not and never will be, because
-`wayland-backend` declares `cc` for a feature nothing here enables
-(`~/notes/pure_rust_preference.md`). The UI is a renderer: selection, edits, undo,
+the model. Nothing compiles C; DESIGN.md §2 says what the check is. The UI is a renderer: selection, edits, undo,
 validation and save live in the core behind the view-model and command boundary, and logic
 in `segler-desktop` that another front end would need is in the wrong crate. The window is
 translated and the model is not: an element's name and every attribute value a person picks

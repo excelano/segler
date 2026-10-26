@@ -1,6 +1,6 @@
 # Segler — Design Document
 
-**Implements:** DocLang 0.7, from `spec.md` in `doclang-project/doclang`.
+**Implements:** the DocLang version `SPEC_VERSION` in `crates/segler-core/src/lib.rs` names, from `spec.md` in `doclang-project/doclang`.
 **Section references:** a bare `§4` is this document. `spec §Tables` is the specification. `slipcase-desktop §2` is that repository's design document, which this one borrows from and names when it does.
 
 ---
@@ -29,9 +29,9 @@ Pages are `page_break` elements. There is no page element. A document with two b
 
 An archive is an OPC package. `.dclx` is a ZIP with `[Content_Types].xml`, `_rels/.rels`, `document.xml`, optional `pages/N.png` counted from one, and optional `assets/`. OPC only stores or deflates, which is why `§5` takes `zip` with deflate alone.
 
-Version 0.x breaks on every minor. A 0.7 document is incompatible with a 0.8 schema by the spec's own rule. Segler targets one version at a time and says which; it does not pretend to read a version it was not built against.
+Version 0.x breaks on every minor: a document is incompatible with the next minor's schema by the spec's own rule. Segler targets one version at a time and says which; it does not pretend to read a version it was not built against.
 
-Validation is an XSD and a Schematron. The XSD is structural. The Schematron is thirteen patterns, eighteen assertions, in XPath 3.1 with `queryBinding="xslt3"`, which no Rust engine runs. `§6` says what that costs.
+Validation is an XSD and a Schematron. The XSD is structural. The Schematron is a set of patterns and assertions in XPath 3.1 with `queryBinding="xslt3"`, which no Rust engine runs. `§6` says what that costs.
 
 ---
 
@@ -73,7 +73,7 @@ Three crates in one workspace, and one boundary between them that is the design.
 
 The rule is slipcase-desktop's, borrowed whole: nothing compiles C. A crate that links a system library is fine; one that builds C is not. Across the fleet this is a preference rather than a rule, held in `~/notes/pure_rust_preference.md` together with what taking C costs; this repository keeps it as a rule for itself, as slipcase-desktop does. The measurement is the artefact rather than the manifest, because the manifest lies in one direction: `cargo tree -i cc` names `wayland-backend`, which declares `cc` as a build dependency and uses it only under its `client_system` feature, and nothing here enables that. No `.o` or `.a` anywhere under the build directories, and `cargo tree -i cmake` and `-i bindgen` coming back empty, is what the rule means. A build needs a Rust toolchain and nothing else, on all three platforms.
 
-The framework is egui, through eframe. It was chosen over Tauri for pipeline reasons rather than performance: slipcase-desktop is an egui application already through Microsoft Store certification with a three-platform packaging tree, and none of that would transfer to a web-view application. It also keeps both of David's desktop applications on one open-source framework, so a problem found in one is fixable for both. What egui does natively covers most of `§7`: images are textures, boxes are painter calls, the tree is collapsing headers, the table grid is `egui_extras`. Its weak surface is free-form text editing, which `§7` confines. Tauri is the fallback if that surface proves inadequate, and the boundary in `§4` is what makes the fallback cheap.
+The framework is egui, through eframe, the same framework as slipcase-desktop, so a problem found in one is fixable for both and the packaging tree transfers. What egui does natively covers most of `§7`: images are textures, boxes are painter calls, the tree is collapsing headers, the table grid is `egui_extras`. Its weak surface is free-form text editing, which `§7` confines. The boundary in `§4` is what keeps that surface replaceable.
 
 Reading XML is `xmlparser`, the tokenizer under `roxmltree`, taken directly. A DOM has already decoded entities, merged text runs and dropped the spelling of each start tag, which is the information a lossless tree needs; the tokenizer hands back raw spans and the tree keeps them. Writing XML is this crate's own, for the same reason: the writer's job is to reproduce those spans and regenerate only what changed, and no library does that. Document type declarations are refused on parse, as the reference toolkit refuses them, since DocLang has nothing for one to declare and it is how entity expansion arrives.
 
@@ -93,7 +93,7 @@ Two layers, and neither is the reference toolkit called out of process. Segler r
 
 The XSD is ported into the model. A typed model that can only represent valid structure catches most of what the schema catches at parse time, and what remains, cardinalities and attribute value sets, is a pass over the model. The port is per spec version, and a spec bump is a regeneration, which is why the model's shape follows the schema's rather than any convenience of the editor's.
 
-The Schematron is ported by hand. Thirteen patterns holding eighteen assertions is a size a person can carry, and each becomes a Rust check with the pattern's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
+The Schematron is ported by hand, a size a person can carry, and each pattern becomes a Rust check with the pattern's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
 
 **Where the port and the reference toolkit disagree, the corpus decides.** The toolkit transpiles the Schematron to XSLT itself and prefixes every rule context with `//`, which in XPath binds only to the first alternative of a union, so most of `element-head-placement`'s contexts are evaluated against the document node and match nothing. The port scopes that rule to a list's or table's own head and implements every other pattern as written, which means it reports things the toolkit misses — a head element after text in a `heading` among them. Those are defects in the document, not disagreements to paper over, and the transpiler is a finding to take upstream.
 
@@ -113,7 +113,7 @@ A block's frame registers its click sense before its children draw, over last fr
 
 **The structure pane** is the tree of the document's semantic elements in document order, with an excerpt each: select a row and the document pane and element pane follow, and a selection made elsewhere scrolls the tree to it. A picture's inner text rows fold under the picture by default, with a disclosure triangle, and a picture opens itself when the selection lands inside it — the image already shows those words, and forty one-word rows push the page's paragraphs out of sight.
 
-**The element pane** shows the selected element in full, with its controls and its markup. It is where the properties that have no visual form in the rendering are edited — label, layer and bounds — and where a structural change is made deliberately rather than by typing. `thread`, the cross-reference, renaming, `Move` and `Insert` are commands in the core and in the CLI and are not in the window yet; none is decided against.
+**The element pane** shows the selected element in full, with its controls and its markup. It is where the properties that have no visual form in the rendering are edited — label, layer and bounds — and where a structural change is made deliberately rather than by typing. `thread`, the cross-reference, renaming, `Move` and `Insert` are commands in the core and in the CLI, not in the window.
 
 **The reference pane** shows the page scan for the current page with a rectangle over every located element, linked to the selection both ways, zoomable. It opens on request, beside the document pane, only for an archive that carries scans, and a bare document has no such pane. It claims its own width, or the scroll area and the fitted image shrink each other a little every frame. The page opens fitted to the pane rather than at the image's size, since a page image is wider than the pane on any screen, and a slider, a Fit button and a 100% button sit in the toolbar while the pane is open and nowhere at all while it is shut, because they drive the pane and nothing else.
 
@@ -127,7 +127,7 @@ What is not here: no rendering of PDF or of any format other than DocLang, and n
 
 ## 8. Packaging
 
-Cloned from slipcase-desktop, one directory per platform under `packaging/`, with that repository's store listing and submission notes as the template. What was measured there is taken as measured here: the Visual C++ runtime linked in with `+crt-static` and the import table checked before packaging; the Linux `Depends` checked against `/proc/PID/maps` on both Wayland and X11; the Mac bundle with the App Sandbox; `CFBundleVersion` from the first-parent commit count. A Store build needs slipcase-desktop's pinned `[patch.crates-io]` on `excelano/winit` until a winit release ships the upstream fix behind its `private-apple-apis` feature, because `winit` 0.30 declares a private CoreGraphics symbol whether or not it is called and the Mac App Store refuses it under Guideline 2.5.1. `build-app.sh` refuses any binary importing a symbol no public framework header declares.
+Cloned from slipcase-desktop, one directory per platform under `packaging/`, with that repository's store listing and submission notes as the template. What was measured there is taken as measured here: the Visual C++ runtime linked in with `+crt-static` and the import table checked before packaging; the Linux `Depends` checked against `/proc/PID/maps` on both Wayland and X11; the Mac bundle with the App Sandbox; `CFBundleVersion` from the first-parent commit count. A Store build needs the `[patch.crates-io]` on `excelano/winit` that `Cargo.toml` carries, whose comment says what it fixes and when it can go. `build-app.sh` refuses any binary importing a symbol no public framework header declares.
 
 Both stores carry the name **Segler**. The App ID is `com.excelano.segler-desktop` and the App Store Connect Apple ID is 6808761705.
 
@@ -143,9 +143,9 @@ Two things the sandbox forces. macOS delivers a double-clicked document as an Ap
 
 eframe substitutes its own icon for a viewport that names none and hands it to `setApplicationIconImage:`, which outranks the bundle, so the macOS arm passes an empty `IconData` and declines the icon rather than replacing it. Finder and Launch Services draw the bundle's icon either way; only the Dock shows the difference.
 
-`.github/workflows/apple-silicon.yml` runs the suite, clippy's macOS arms, the corpus and a Launch Services open on arm64 on every push, which is the only arm64 execution before TestFlight, since the Mac lane is an Intel machine.
+Releases are built by `build-release` in excelano/shipping on each platform's own machine; CI (`ci.yml`) is `workflow_dispatch`, run by hand.
 
-crates.io carries all three crates: `publish-crate.yml` publishes from the version tag, `segler-core` first, so the library, the CLI and the application are each a `cargo install` away on any platform with a toolchain.
+crates.io carries the crates: `ship-crates` in excelano/shipping publishes them in dependency order, so the library, the CLI and the application are each a `cargo install` away on any platform with a toolchain.
 
 ---
 
@@ -167,8 +167,8 @@ it; this section is what the rest of this repository may assume.
 The catalogues live in `crates/segler-desktop/po/`, inside the crate that reads
 them rather than beside the workspace, because `include_str!` reaching above a
 crate's own directory compiles here and fails in `cargo package`: the tarball
-carries only what is under the crate root, and `publish-crate.yml` publishes
-all three crates.
+carries only what is under the crate root, and `ship-crates` publishes every
+crate.
 
 **A message is looked up by its English text, never by a key.** So a call site
 reads as the sentence a person sees, and a message with no translation is the

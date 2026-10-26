@@ -28,6 +28,10 @@
 
 .PARAMETER Binary
     The executable to read. Defaults to the release build of segler-desktop.
+
+.NOTES
+    Author: David M. Anderson
+    Built with AI assistance (Claude, Anthropic)
 #>
 [CmdletBinding()]
 param(

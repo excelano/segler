@@ -30,15 +30,16 @@ named in full so it never collides with the command-line tool on `PATH`.
 
 ## Install
 
-On Debian and Ubuntu, amd64, from the Excelano apt repository:
+On Debian and Ubuntu (amd64 and arm64), from the Excelano apt repository:
 
 ```
 curl -fsSL https://excelano.com/apt/setup.sh | sudo sh && sudo apt install segler
 ```
 
 That installs the application, the `segler` command-line tool, and the desktop
-integration that opens a `.dclx` or `.dclg` on a double-click. Windows and
-macOS builds are on their way to the Microsoft Store and the Mac App Store.
+integration that opens a `.dclx` or `.dclg` on a double-click. The Windows
+build is on the Microsoft Store and the macOS build on the Mac App Store, both
+listed as Segler.
 
 From crates.io, on any platform with a Rust toolchain, `cargo install segler`
 installs the command-line tool alone and `cargo install segler-desktop` the
