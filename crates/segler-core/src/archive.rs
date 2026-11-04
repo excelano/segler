@@ -96,7 +96,10 @@ pub fn load_bytes(bytes: &[u8]) -> Result<Loaded, Error> {
 
 fn load_archive(bytes: &[u8]) -> Result<Loaded, Error> {
     let mut zip = ZipArchive::new(Cursor::new(bytes))?;
-    let names: Vec<String> = zip.file_names().map(str::to_owned).collect();
+    let names: Vec<String> = zip
+        .file_names()
+        .map(|n| n.map(|n| n.into_owned()))
+        .collect::<Result<_, _>>()?;
 
     let markup = match zip.by_name(DOCUMENT_PART) {
         Ok(mut part) => {
@@ -153,7 +156,7 @@ pub fn repack(original: &[u8], markup: &str) -> Result<Vec<u8>, Error> {
     let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
     for i in 0..zip.len() {
         let part = zip.by_index_raw(i)?;
-        if part.name() == DOCUMENT_PART {
+        if part.name()? == DOCUMENT_PART {
             continue;
         }
         out.raw_copy_file(part)?;

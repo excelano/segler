@@ -10,16 +10,18 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.1.6"
+version = "0.1.7"
 
 [locales."de-de"]
 whats-new = """
-Wartungsversion: aktualisierte Abhängigkeiten. Keine Änderung an dem, was \
-Segler tut.
+Sicherheitsversion: Die ZIP-Bibliothek, mit der Segler DocLang-Archive \
+öffnet, ist auf 9.1 aktualisiert und schließt damit eine kritische und \
+mehrere schwere Lücken beim Lesen von Archiven.
 """
 
 [locales."en-us"]
 whats-new = """
-Maintenance release: updated dependencies. Nothing about what Segler does has \
-changed.
+Security release: the ZIP library Segler opens DocLang archives with moves \
+to 9.1, closing a critical and several high-severity flaws in archive \
+reading.
 """
