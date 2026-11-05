@@ -1,3 +1,15 @@
+segler (0.2.0) unstable; urgency=medium
+
+  * The segler-core requirement names the workspace version, so a release bump rewrites it
+  * Release notes for 0.2.0
+  * Version findings name their case, missing or other; the review sample declares DocLang 0.9
+  * Read whitespace as DocLang 0.9 defines it
+  * Validate against DocLang 0.9
+  * Store listing: the Microsoft Store's support info is the account's contact details
+  * Store listing: the support URL is excelano.com/support with the app and store filled in
+
+ -- David M. Anderson <david.anderson@excelano.com>  Thu, 05 Nov 2026 13:24:50 -0600
+
 segler (0.1.7) unstable; urgency=medium
 
   * zip 9.1: fixes GHSA-m665-v7pm-7grj (critical) and four high/medium advisories in archive reading
