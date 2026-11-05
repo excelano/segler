@@ -51,7 +51,8 @@ impl fmt::Display for Layer {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Finding {
     pub layer: Layer,
-    /// The Schematron pattern id, or `xsd` for the schema layer.
+    /// The Schematron pattern id, `xsd` for the schema layer, or `missing`
+    /// or `other` for the version.
     pub rule: &'static str,
     /// The element the problem is on.
     pub element: ElementId,
@@ -87,20 +88,26 @@ fn version_check(doc: &Document, out: &mut Vec<Finding>) {
     if kind(&doc.root) != Some(Kind::Doclang) {
         return;
     }
-    let message = match doclang::version(doc) {
+    let (rule, message) = match doclang::version(doc) {
         Some(crate::SPEC_VERSION) => return,
-        Some(v) => format!(
-            "the document declares DocLang {v}; it was checked as DocLang {}",
-            crate::SPEC_VERSION
+        Some(v) => (
+            "other",
+            format!(
+                "the document declares DocLang {v}; it was checked as DocLang {}",
+                crate::SPEC_VERSION
+            ),
         ),
-        None => format!(
-            "the document declares no DocLang version; it was checked as DocLang {}",
-            crate::SPEC_VERSION
+        None => (
+            "missing",
+            format!(
+                "the document declares no DocLang version; it was checked as DocLang {}",
+                crate::SPEC_VERSION
+            ),
         ),
     };
     out.push(Finding {
         layer: Layer::Version,
-        rule: "version",
+        rule,
         element: doc.root.id(),
         path: format!("/{}", doc.root.name()),
         message,
