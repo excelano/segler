@@ -269,12 +269,12 @@ pub fn block_of(el: &Element) -> Block {
         Kind::Code => Block::Code {
             id,
             language: head.label.map(str::to_owned),
-            text: raw_text(body),
+            text: read_text(body),
             plain: is_plain(body),
         },
         Kind::Formula => Block::Formula {
             id,
-            text: raw_text(body),
+            text: read_text(body),
             plain: is_plain(body),
         },
         Kind::Group | Kind::FieldRegion | Kind::FieldItem => Block::Container {
@@ -299,15 +299,37 @@ pub fn is_plain(nodes: &[Node]) -> bool {
         .all(|n| matches!(n, Node::Text(_) | Node::CData(_)))
 }
 
-/// Inline runs from a sequence of nodes, plus any block-level elements
-/// found among them, which a paragraph renders after its runs.
+/// Inline runs from a sequence of nodes that make one text block, plus any
+/// block-level elements found among them, which a paragraph renders after
+/// its runs.
 pub fn runs_of(nodes: &[Node], style: Style) -> (Vec<Run>, Vec<Block>) {
     let mut runs: Vec<Run> = Vec::new();
     let mut blocks = Vec::new();
+    collect_runs(nodes, style, &mut runs, &mut blocks);
+    // The spec's rule 2: whitespace at either end of a text block is not
+    // read, outside `content`. Once, here, and not in `collect_runs`, whose
+    // recursion into a formatting element is the middle of the block.
+    if let Some(first) = runs.first_mut() {
+        if !first.style.preformatted {
+            first.text = first.text.trim_start_matches(is_space).to_owned();
+        }
+    }
+    if let Some(last) = runs.last_mut() {
+        if !last.style.preformatted {
+            last.text = last.text.trim_end_matches(is_space).to_owned();
+        }
+    }
+    runs.retain(|r| !r.text.is_empty());
+    (runs, blocks)
+}
+
+/// The runs and blocks of `nodes`, appended, with no trimming: a formatting
+/// element's children are the middle of the text block they sit in.
+fn collect_runs(nodes: &[Node], style: Style, runs: &mut Vec<Run>, blocks: &mut Vec<Block>) {
     for node in nodes {
         match node {
-            Node::Text(t) => push_run(&mut runs, t.value(), style),
-            Node::CData(s) => push_run(&mut runs, s, style),
+            Node::Text(t) => push_run(runs, t.value(), style),
+            Node::CData(s) => push_run(runs, s, style),
             Node::Comment(_) | Node::Pi { .. } => {}
             Node::Element(el) => match doclang::kind(el) {
                 Some(k) if k.category() == doclang::Category::Formatting => {
@@ -323,9 +345,7 @@ pub fn runs_of(nodes: &[Node], style: Style) -> (Vec<Run>, Vec<Block>) {
                         Kind::Rtl => inner.rtl = true,
                         _ => {}
                     }
-                    let (r, b) = runs_of(el.children(), inner);
-                    runs.extend(r);
-                    blocks.extend(b);
+                    collect_runs(el.children(), inner, runs, blocks);
                 }
                 Some(Kind::Content) => {
                     let mut inner = style;
@@ -341,36 +361,34 @@ pub fn runs_of(nodes: &[Node], style: Style) -> (Vec<Run>, Vec<Block>) {
                     } else {
                         "☐ "
                     };
-                    push_run(&mut runs, mark, style);
+                    push_run(runs, mark, style);
                 }
                 Some(Kind::Marker) | Some(Kind::Hint) => {
-                    let (r, _) = runs_of(el.children(), style);
-                    runs.extend(r);
+                    collect_runs(el.children(), style, runs, &mut Vec::new());
                 }
                 Some(k) if k.is_property() => {}
                 Some(_) | None => blocks.push(block_of(el)),
             },
         }
     }
-    // Trim the whitespace pretty-printing leaves at either end.
-    if let Some(first) = runs.first_mut() {
-        if !first.style.preformatted {
-            first.text = first.text.trim_start().to_owned();
-        }
-    }
-    if let Some(last) = runs.last_mut() {
-        if !last.style.preformatted {
-            last.text = last.text.trim_end().to_owned();
-        }
-    }
-    runs.retain(|r| !r.text.is_empty());
-    (runs, blocks)
 }
 
-/// Append text to the runs, collapsing whitespace as XML does by default
-/// and merging with the previous run when the style is the same.
+/// Append text to the runs, reading its whitespace as the spec's
+/// whitespace rules do, and merging with the previous run when the style is
+/// the same.
+///
+/// Rules 3 and 4: whitespace separated only by tags is one sequence, read
+/// as one space and kept by the run where it began, so a sequence that
+/// continues one the previous run ended with is dropped here. A `content`
+/// run is literal and ends no sequence.
 fn push_run(runs: &mut Vec<Run>, text: &str, style: Style) {
-    let collapsed = collapse(text);
+    let mut collapsed = collapse(text);
+    let continues = runs
+        .last()
+        .is_some_and(|r| !r.style.preformatted && r.text.ends_with(' '));
+    if continues && collapsed.starts_with(' ') {
+        collapsed.remove(0);
+    }
     if collapsed.is_empty() {
         return;
     }
@@ -383,13 +401,19 @@ fn push_run(runs: &mut Vec<Run>, text: &str, style: Style) {
     }
 }
 
+/// The four characters the spec counts as whitespace. A no-break space or
+/// an em space is text.
+fn is_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\r' | '\n')
+}
+
 /// Runs of whitespace become one space; a run that is only whitespace
 /// becomes one space so words on either side stay apart.
 fn collapse(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut in_space = false;
     for c in text.chars() {
-        if c.is_whitespace() {
+        if is_space(c) {
             if !in_space {
                 out.push(' ');
                 in_space = true;
@@ -402,20 +426,15 @@ fn collapse(text: &str) -> String {
     out
 }
 
-/// Text as written, for code and formulas, with the framing whitespace of
-/// a pretty-printed body removed.
-fn raw_text(nodes: &[Node]) -> String {
-    let mut out = String::new();
-    for n in nodes {
-        match n {
-            Node::Text(t) => out.push_str(t.value()),
-            Node::CData(s) => out.push_str(s),
-            Node::Element(e) => out.push_str(&e.text()),
-            _ => {}
-        }
-    }
-    out.trim_matches(|c: char| c == '\n' || c == '\r')
-        .to_owned()
+/// The text of a code or formula body as the whitespace rules read it:
+/// literal inside `content`, which is where a code block's line breaks and
+/// indentation are kept, and collapsed outside it.
+fn read_text(nodes: &[Node]) -> String {
+    runs_of(nodes, Style::default())
+        .0
+        .iter()
+        .map(|r| r.text.as_str())
+        .collect()
 }
 
 /// Where each list item's content sits among `list`'s children.
@@ -476,7 +495,7 @@ fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
             let marker = ldiv
                 .child_elements()
                 .find(|c| doclang::kind(c) == Some(Kind::Marker))
-                .map(|m| collapse(&m.text()).trim().to_owned())
+                .map(|m| collapse(&m.text()).trim_matches(is_space).to_owned())
                 .filter(|m| !m.is_empty());
             let nodes = &children[body.clone()];
             let (runs, blocks) = runs_of(nodes, Style::default());
@@ -523,6 +542,56 @@ mod tests {
                 (" and more", false, false)
             ]
         );
+    }
+
+    /// The example in the spec's section on whitespace handling, with the
+    /// reading it gives.
+    #[test]
+    fn whitespace_reads_as_the_spec_example_says() {
+        let b = first("<text>\n  Water (H<subscript>2</subscript>O) is <bold>clear </bold>\n  <italic> and odorless</italic>.\n  This keeps <content>two  spaces</content> as written.\n</text>");
+        let Block::Paragraph { runs, .. } = b else {
+            panic!("{b:?}")
+        };
+        let text: String = runs.iter().map(|r| r.text.as_str()).collect();
+        assert_eq!(
+            text,
+            "Water (H2O) is clear and odorless. This keeps two  spaces as written."
+        );
+        let bold = runs.iter().find(|r| r.style.bold).unwrap();
+        assert_eq!(bold.text, "clear ");
+    }
+
+    /// A formatting element is the middle of its text block, so a space at
+    /// its edge is read, not trimmed.
+    #[test]
+    fn spaces_at_the_edges_of_formatting_are_kept() {
+        let b = first("<text>a <bold>x </bold><italic> y</italic></text>");
+        let Block::Paragraph { runs, .. } = b else {
+            panic!("{b:?}")
+        };
+        let text: String = runs.iter().map(|r| r.text.as_str()).collect();
+        assert_eq!(text, "a x y");
+    }
+
+    #[test]
+    fn only_the_four_xml_characters_are_whitespace() {
+        let b = first("<text>a\u{a0}\u{a0}b \u{2003} c</text>");
+        let Block::Paragraph { runs, .. } = b else {
+            panic!("{b:?}")
+        };
+        assert_eq!(runs[0].text, "a\u{a0}\u{a0}b \u{2003} c");
+    }
+
+    #[test]
+    fn code_keeps_lines_only_inside_content() {
+        let kept = first("<code><content>fn main() {\n    run();\n}</content></code>");
+        let collapsed = first("<code>\nfn main() {\n    run();\n}\n</code>");
+        let text = |b: Block| match b {
+            Block::Code { text, .. } => text,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(text(kept), "fn main() {\n    run();\n}");
+        assert_eq!(text(collapsed), "fn main() { run(); }");
     }
 
     #[test]
