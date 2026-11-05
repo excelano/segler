@@ -591,7 +591,7 @@ impl Session {
             text: el.text(),
             body_text: whitespace::read(&el.children()[head.body.clone()]),
             editable_text: doclang::kind(el).is_some_and(carries_text),
-            plain_text: blocks::is_plain(&el.children()[head.body.clone()]),
+            plain_text: is_plain_or_content(&el.children()[head.body.clone()]),
             markup,
             parent: parent.map(Element::id),
             index,
@@ -1194,7 +1194,7 @@ fn rewrite(
         return Ok((splice(before, range, with_frame(old, inner)), true));
     }
 
-    if blocks::is_plain(old) || is_plain_or_content(old) {
+    if is_plain_or_content(old) {
         let encoded = whitespace::encode(text, whole);
         if blocks::is_plain(old) && matches!(encoded[..], [Node::Text(_)]) {
             return Ok((retext(before, range, text), true));
