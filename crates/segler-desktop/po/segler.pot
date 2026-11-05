@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: segler\n"
 "Report-Msgid-Bugs-To: https://github.com/excelano/segler/issues\n"
-"POT-Creation-Date: 2026-11-05 12:27-0600\n"
+"POT-Creation-Date: 2026-11-05 14:21-0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,43 +17,57 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: crates/segler-desktop/src/document.rs:306
+#: crates/segler-desktop/src/document.rs:312
+#: crates/segler-desktop/src/document.rs:807
 msgid "picture: {src}"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:307
+#: crates/segler-desktop/src/document.rs:313
 msgid "picture"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:425
+#: crates/segler-desktop/src/document.rs:392
+msgid "recording: {name}"
+msgstr ""
+
+#: crates/segler-desktop/src/document.rs:446
+#: crates/segler-desktop/src/document.rs:776
 msgid "(empty)"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:544
+#: crates/segler-desktop/src/document.rs:539
 msgid "(empty table)"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:828
+#: crates/segler-desktop/src/document.rs:705
+msgid "audio clip: {src}"
+msgstr ""
+
+#: crates/segler-desktop/src/document.rs:717
+msgid "(no name)"
+msgstr ""
+
+#: crates/segler-desktop/src/document.rs:955
 msgid "cell"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:829
+#: crates/segler-desktop/src/document.rs:956
 msgid "empty"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:830
+#: crates/segler-desktop/src/document.rs:957
 msgid "column header"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:831
+#: crates/segler-desktop/src/document.rs:958
 msgid "row header"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:832
+#: crates/segler-desktop/src/document.rs:959
 msgid "corner"
 msgstr ""
 
-#: crates/segler-desktop/src/document.rs:833
+#: crates/segler-desktop/src/document.rs:960
 msgid "section row"
 msgstr ""
 
@@ -348,15 +362,19 @@ msgstr ""
 msgid "Element removed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:923
+#: crates/segler-desktop/src/main.rs:922
+msgid "Transcript changed"
+msgstr ""
+
+#: crates/segler-desktop/src/main.rs:924
 msgid "List item {number} changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:927
+#: crates/segler-desktop/src/main.rs:928
 msgid "Cell row {row}, column {column} changed"
 msgstr ""
 
-#: crates/segler-desktop/src/main.rs:934
+#: crates/segler-desktop/src/main.rs:935
 msgid "Cell row {row}, column {column} is now {kind}"
 msgstr ""
 

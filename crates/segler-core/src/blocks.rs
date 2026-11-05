@@ -11,7 +11,7 @@ use std::ops::Range;
 use crate::doclang::{self, Kind};
 use crate::otsl::{self, CellKind, Grid};
 use crate::tree::{Element, ElementId, Node};
-use crate::whitespace::{collapse, is_space};
+use crate::whitespace::{self, collapse, is_space};
 
 /// Inline styling accumulated from the formatting elements around a run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
@@ -61,6 +61,23 @@ pub struct CellBlock {
     pub blocks: Vec<Block>,
     /// Whether the cell's body is plain text, so a retype loses nothing.
     pub plain: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Cue {
+    pub bdiv: ElementId,
+    pub start: String,
+    pub end: Option<String>,
+    pub chapter: Option<(ElementId, Vec<Run>)>,
+    pub frame: Option<String>,
+    pub audio: Option<String>,
+    pub turns: Vec<Turn>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Turn {
+    pub speaker: Option<(ElementId, Vec<Run>)>,
+    pub runs: Vec<Run>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,6 +137,11 @@ pub enum Block {
         kind: Kind,
         blocks: Vec<Block>,
     },
+    Track {
+        id: ElementId,
+        cover: Option<String>,
+        cues: Vec<Cue>,
+    },
     PageBreak,
     /// A DocLang element this renderer has no shape for, or a custom
     /// element: shown by name with its text.
@@ -141,6 +163,7 @@ impl Block {
             | Block::Code { id, .. }
             | Block::Formula { id, .. }
             | Block::Container { id, .. }
+            | Block::Track { id, .. }
             | Block::Other { id, .. } => Some(*id),
             Block::PageBreak => None,
         }
@@ -283,6 +306,7 @@ pub fn block_of(el: &Element) -> Block {
             kind,
             blocks: blocks_of(body),
         },
+        Kind::Track => track_block(el),
         Kind::PageBreak => Block::PageBreak,
         _ => Block::Other {
             id,
@@ -459,6 +483,187 @@ pub fn item_bodies(list: &Element, body_start: usize) -> Vec<(ElementId, Range<u
         .collect()
 }
 
+pub struct CueParts {
+    pub bdiv: usize,
+    pub times: Vec<usize>,
+    pub chapter: Option<usize>,
+    pub frame: Option<usize>,
+    pub audio: Option<usize>,
+    pub transcript: Range<usize>,
+}
+
+pub fn cue_parts(track: &Element) -> Vec<CueParts> {
+    let children = track.children();
+    let kind_at = |i: usize| match &children[i] {
+        Node::Element(e) => doclang::kind(e),
+        _ => None,
+    };
+    let bdivs: Vec<usize> = (0..children.len())
+        .filter(|&i| kind_at(i) == Some(Kind::Bdiv))
+        .collect();
+    bdivs
+        .iter()
+        .enumerate()
+        .map(|(n, &bdiv)| {
+            let end = bdivs.get(n + 1).copied().unwrap_or(children.len());
+            let mut parts = CueParts {
+                bdiv,
+                times: Vec::new(),
+                chapter: None,
+                frame: None,
+                audio: None,
+                transcript: end..end,
+            };
+            let mut i = bdiv + 1;
+            let mut body_start = i;
+            while i < end {
+                match &children[i] {
+                    Node::Text(t) if t.value().trim_matches(whitespace::is_space).is_empty() => {}
+                    Node::Comment(_) | Node::Pi { .. } => {}
+                    Node::Element(e) => match doclang::kind(e) {
+                        Some(Kind::Hours | Kind::Minutes | Kind::Seconds | Kind::Msecs) => {
+                            parts.times.push(i)
+                        }
+                        Some(Kind::Chapter) if parts.chapter.is_none() => parts.chapter = Some(i),
+                        Some(Kind::Frame) if parts.frame.is_none() => parts.frame = Some(i),
+                        Some(Kind::Audio) if parts.audio.is_none() => parts.audio = Some(i),
+                        _ => break,
+                    },
+                    _ => break,
+                }
+                i += 1;
+                body_start = i;
+            }
+            parts.transcript = body_start..end;
+            parts
+        })
+        .collect()
+}
+
+pub fn turn_ranges(
+    track: &Element,
+    transcript: Range<usize>,
+) -> Vec<(Option<usize>, Range<usize>)> {
+    let children = track.children();
+    let voices: Vec<usize> = transcript
+        .clone()
+        .filter(
+            |&i| matches!(&children[i], Node::Element(e) if doclang::kind(e) == Some(Kind::Voice)),
+        )
+        .collect();
+    let mut turns = Vec::new();
+    let first_end = voices.first().copied().unwrap_or(transcript.end);
+    let lead = transcript.start..first_end;
+    if voices.is_empty() || !whitespace::read(&children[lead.clone()]).is_empty() {
+        turns.push((None, lead));
+    }
+    for (n, &voice) in voices.iter().enumerate() {
+        let end = voices.get(n + 1).copied().unwrap_or(transcript.end);
+        turns.push((Some(voice), voice + 1..end));
+    }
+    turns
+}
+
+fn timestamp(track: &Element, times: &[usize]) -> (String, Option<String>) {
+    let children = track.children();
+    let mut runs: Vec<[Option<u64>; 4]> = Vec::new();
+    let mut current = [None; 4];
+    for &i in times {
+        let Node::Element(e) = &children[i] else {
+            continue;
+        };
+        let slot = match doclang::kind(e) {
+            Some(Kind::Hours) => 0,
+            Some(Kind::Minutes) => 1,
+            Some(Kind::Seconds) => 2,
+            _ => 3,
+        };
+        if current[slot..].iter().any(Option::is_some) {
+            runs.push(current);
+            current = [None; 4];
+        }
+        current[slot] = e.attr("value").and_then(|v| v.trim().parse().ok());
+    }
+    runs.push(current);
+    let show = |[h, m, s, ms]: [Option<u64>; 4]| {
+        let (h, m, s) = (h.unwrap_or(0), m.unwrap_or(0), s.unwrap_or(0));
+        let mut out = if h > 0 {
+            format!("{h}:{m:02}:{s:02}")
+        } else {
+            format!("{m}:{s:02}")
+        };
+        if let Some(ms) = ms.filter(|ms| *ms > 0) {
+            out.push_str(&format!(".{ms:03}"));
+        }
+        out
+    };
+    let start = runs.first().copied().map(show).unwrap_or_default();
+    (start, runs.get(1).copied().map(show))
+}
+
+fn src_of(el: &Element) -> Option<String> {
+    el.child_elements()
+        .find(|c| doclang::kind(c) == Some(Kind::Src))
+        .and_then(|s| s.attr("uri"))
+        .map(str::to_owned)
+}
+
+fn element_at(track: &Element, i: usize) -> Option<&Element> {
+    match &track.children()[i] {
+        Node::Element(e) => Some(e),
+        _ => None,
+    }
+}
+
+fn track_block(track: &Element) -> Block {
+    let body_start = doclang::head(track).body.start;
+    let cover = track.children()[body_start..].iter().find_map(|n| match n {
+        Node::Element(e) if doclang::kind(e) == Some(Kind::Cover) => src_of(e),
+        _ => None,
+    });
+    let runs_in = |e: &Element| runs_of(&e.children()[doclang::head(e).body], Style::default()).0;
+    let cues = cue_parts(track)
+        .into_iter()
+        .map(|parts| {
+            let (start, end) = timestamp(track, &parts.times);
+            let turns = turn_ranges(track, parts.transcript.clone())
+                .into_iter()
+                .map(|(voice, range)| Turn {
+                    speaker: voice
+                        .and_then(|v| element_at(track, v))
+                        .map(|v| (v.id(), runs_in(v))),
+                    runs: runs_of(&track.children()[range], Style::default()).0,
+                })
+                .collect();
+            Cue {
+                bdiv: element_at(track, parts.bdiv)
+                    .map(Element::id)
+                    .expect("a bdiv is an element"),
+                start,
+                end,
+                chapter: parts
+                    .chapter
+                    .and_then(|c| element_at(track, c))
+                    .map(|c| (c.id(), runs_in(c))),
+                frame: parts
+                    .frame
+                    .and_then(|f| element_at(track, f))
+                    .and_then(src_of),
+                audio: parts
+                    .audio
+                    .and_then(|a| element_at(track, a))
+                    .and_then(src_of),
+                turns,
+            }
+        })
+        .collect();
+    Block::Track {
+        id: track.id(),
+        cover,
+        cues,
+    }
+}
+
 fn list_items(list: &Element, body_start: usize) -> Vec<ListItem> {
     let children = list.children();
     item_bodies(list, body_start)
@@ -522,6 +727,35 @@ mod tests {
 
     /// The example in the spec's section on whitespace handling, with the
     /// reading it gives.
+    #[test]
+    fn a_track_reads_as_cue_blocks_with_times_chapters_and_turns() {
+        let b = first("<track><cover><src uri=\"c.png\"/></cover><bdiv/><minutes value=\"1\"/><seconds value=\"4\"/><minutes value=\"1\"/><seconds value=\"9\"/><msecs value=\"500\"/><chapter>Intro</chapter><frame><src uri=\"f.png\"/></frame>Before. <voice>Ann</voice> Hello <bold>all</bold>.<bdiv/><hours value=\"1\"/><seconds value=\"0\"/>Late.</track>");
+        let Block::Track { cover, cues, .. } = b else {
+            panic!("{b:?}")
+        };
+        assert_eq!(cover.as_deref(), Some("c.png"));
+        assert_eq!(
+            (cues[0].start.as_str(), cues[0].end.as_deref()),
+            ("1:04", Some("1:09.500"))
+        );
+        assert_eq!(cues[0].chapter.as_ref().unwrap().1[0].text, "Intro");
+        assert_eq!(cues[0].frame.as_deref(), Some("f.png"));
+        let turns = &cues[0].turns;
+        assert_eq!(turns.len(), 2);
+        assert!(turns[0].speaker.is_none());
+        assert_eq!(turns[0].runs[0].text, "Before.");
+        assert_eq!(turns[1].speaker.as_ref().unwrap().1[0].text, "Ann");
+        assert_eq!(
+            turns[1]
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "Hello all."
+        );
+        assert_eq!(cues[1].start, "1:00:00");
+    }
+
     #[test]
     fn whitespace_reads_as_the_spec_example_says() {
         let b = first("<text>\n  Water (H<subscript>2</subscript>O) is <bold>clear </bold>\n  <italic> and odorless</italic>.\n  This keeps <content>two  spaces</content> as written.\n</text>");

@@ -235,6 +235,7 @@ pub fn color_for(kind: Kind) -> Color32 {
         Kind::Picture => Color32::from_rgb(0x14, 0xb8, 0xa6),
         Kind::List | Kind::Marker => Color32::from_rgb(0xec, 0x48, 0x99),
         Kind::PageHeader | Kind::PageFooter | Kind::Footnote => Color32::from_rgb(0x64, 0x74, 0x8b),
+        Kind::Track => Color32::from_rgb(0x22, 0xc5, 0x5e),
         _ => Color32::from_rgb(0x3b, 0x82, 0xf6),
     }
 }

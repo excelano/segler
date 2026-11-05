@@ -99,6 +99,12 @@ pub enum Command {
         item: usize,
         text: String,
     },
+    SetTurnText {
+        id: ElementId,
+        cue: usize,
+        turn: usize,
+        text: String,
+    },
     /// Change what a table cell is: its token.
     SetCellKind {
         id: ElementId,
@@ -126,6 +132,8 @@ pub enum CommandError {
     NoSuchCell(String, usize, usize),
     #[error("<{0}> has no item {1}")]
     NoSuchListItem(String, usize),
+    #[error("<{0}> has no turn {2} in cue block {1}")]
+    NoSuchTurn(String, usize, usize),
     /// The field showed tags and what came back is not markup. Refused rather
     /// than fallen back on, because falling back would read a missing `>` as
     /// an instruction to delete every tag in the line.
@@ -151,6 +159,11 @@ pub enum TextTarget {
     },
     /// A list item: [`Command::SetListItemText`].
     Item { id: ElementId, item: usize },
+    Turn {
+        id: ElementId,
+        cue: usize,
+        turn: usize,
+    },
 }
 
 /// What a command did, returned from `apply` and `redo`.
@@ -368,6 +381,21 @@ impl Session {
         &self.recordings
     }
 
+    pub fn recordings_of(&self, track: ElementId) -> Vec<&archive::Recording> {
+        let Some(position) = self
+            .doc
+            .elements()
+            .filter(|e| doclang::kind(e) == Some(Kind::Track))
+            .position(|e| e.id() == track)
+        else {
+            return Vec::new();
+        };
+        self.recordings
+            .iter()
+            .filter(|r| r.track as usize == position + 1)
+            .collect()
+    }
+
     /// A part of the archive, for a front-end that wants a page image.
     pub fn part(&self, name: &str) -> Result<Option<Vec<u8>>, Error> {
         match &self.archive {
@@ -568,6 +596,10 @@ impl Session {
                     .nth(item)
                     .map(|(_, range)| range)?;
                 Some((el, range))
+            }
+            TextTarget::Turn { id, cue, turn } => {
+                let el = self.doc.find(id)?;
+                Some((el, turn_range(el, cue, turn)?))
             }
         }
     }
@@ -905,6 +937,32 @@ impl Session {
                     },
                 ))
             }
+            Command::SetTurnText {
+                id,
+                cue,
+                turn,
+                text,
+            } => {
+                if let Some(c) = text.chars().find(|c| !tree::is_xml_char(*c)) {
+                    return Err(CommandError::NotXmlText(c as u32));
+                }
+                let el = self
+                    .doc
+                    .find_mut(*id)
+                    .ok_or(CommandError::NoSuchElement(*id))?;
+                let range = turn_range(el, *cue, *turn)
+                    .ok_or_else(|| CommandError::NoSuchTurn(el.name().to_owned(), *cue, *turn))?;
+                let before = el.children().to_vec();
+                let (nodes, _) = rewrite(&before, range, text, false)?;
+                el.replace_children(nodes);
+                Ok((
+                    *id,
+                    Restore::Children {
+                        id: *id,
+                        nodes: before,
+                    },
+                ))
+            }
             Command::SetCellKind { id, row, col, kind } => {
                 let el = self
                     .doc
@@ -1144,7 +1202,20 @@ fn carries_text(k: Kind) -> bool {
             | Kind::Summary
             | Kind::FieldHeading
             | Kind::Content
+            | Kind::Voice
+            | Kind::Chapter
     )
+}
+
+fn turn_range(track: &Element, cue: usize, turn: usize) -> Option<std::ops::Range<usize>> {
+    if doclang::kind(track) != Some(Kind::Track) {
+        return None;
+    }
+    let parts = blocks::cue_parts(track).into_iter().nth(cue)?;
+    blocks::turn_ranges(track, parts.transcript)
+        .into_iter()
+        .nth(turn)
+        .map(|(_, range)| range)
 }
 
 /// `before` with the nodes in `range` replaced by one run of `text`. A
@@ -2301,5 +2372,47 @@ mod tests {
             "<doclang><code><content>fn a() {\n    b();\n}</content></code></doclang>"
         );
         assert_eq!(read, "fn a() {\n    b();\n}");
+    }
+
+    #[test]
+    fn a_turn_edits_between_its_speaker_and_the_next() {
+        let src = "<doclang><track><bdiv/><seconds value=\"2\"/><voice>John</voice> Hi Mary! <voice>Mary</voice> Hello John!</track></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let track = id_at(&s, "/doclang/track[1]");
+        assert_eq!(
+            s.field_text(TextTarget::Turn {
+                id: track,
+                cue: 0,
+                turn: 1
+            })
+            .as_deref(),
+            Some("Hello John!")
+        );
+        s.apply(Command::SetTurnText {
+            id: track,
+            cue: 0,
+            turn: 0,
+            text: "Hi there, Mary!".into(),
+        })
+        .unwrap();
+        assert_eq!(
+            s.markup(),
+            "<doclang><track><bdiv/><seconds value=\"2\"/><voice>John</voice> Hi there, Mary! <voice>Mary</voice> Hello John!</track></doclang>"
+        );
+        assert!(s
+            .apply(Command::SetTurnText {
+                id: track,
+                cue: 0,
+                turn: 2,
+                text: "x".into(),
+            })
+            .is_err());
+        let voice = id_at(&s, "/doclang/track[1]/voice[2]");
+        s.apply(Command::SetText {
+            id: voice,
+            text: "Maria".into(),
+        })
+        .unwrap();
+        assert!(s.markup().contains("<voice>Maria</voice>"));
     }
 }

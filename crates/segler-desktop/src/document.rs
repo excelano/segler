@@ -20,7 +20,7 @@ use eframe::egui::{
     TextureOptions, Vec2,
 };
 use potext::fill;
-use segler_core::blocks::{Block, CellBlock, Run, Style};
+use segler_core::blocks::{Block, CellBlock, Cue, Run, Style};
 use segler_core::doclang::Kind;
 use segler_core::otsl::CellKind;
 use segler_core::session::{Command, Session, TextTarget};
@@ -67,6 +67,7 @@ enum Target {
     /// after it, so there is no element to name here - the same reason
     /// `Cell` carries a row and a column.
     Item(ElementId, usize),
+    Turn(ElementId, usize, usize),
 }
 
 #[derive(Default)]
@@ -384,6 +385,21 @@ impl Cx<'_> {
                 });
                 self.select_on_click(ui, &response, *id);
             }
+            Block::Track { id, cover, cues } => {
+                let selected = self.selection.element == Some(*id);
+                let (response, _) = framed(ui, *id, selected, color_for(Kind::Track), |ui| {
+                    for recording in self.session.recordings_of(*id) {
+                        ui.weak(fill(t("recording: {name}"), &[("name", &recording.name)]));
+                    }
+                    if let Some(src) = cover {
+                        self.thumbnail(ui, src);
+                    }
+                    for (n, cue) in cues.iter().enumerate() {
+                        self.cue(ui, *id, n, cue);
+                    }
+                });
+                self.select_on_click(ui, &response, *id);
+            }
             Block::PageBreak => {
                 ui.separator();
             }
@@ -655,6 +671,142 @@ impl Cx<'_> {
             });
         });
         ui.add_space(pad);
+    }
+
+    fn cue(&mut self, ui: &mut egui::Ui, track: ElementId, n: usize, cue: &Cue) {
+        if let Some((chapter, runs)) = &cue.chapter {
+            ui.add_space(6.0);
+            let chapter = *chapter;
+            self.editable_runs(
+                ui,
+                Target::Element(chapter),
+                TextTarget::Body(chapter),
+                chapter,
+                runs,
+                FontId::proportional(17.0),
+                Style::default(),
+                move |text| Command::SetText { id: chapter, text },
+            );
+        }
+        ui.horizontal_top(|ui| {
+            let time = match &cue.end {
+                Some(end) => format!("{} – {end}", cue.start),
+                None => cue.start.clone(),
+            };
+            ui.add_sized(
+                [110.0, 18.0],
+                egui::Label::new(egui::RichText::new(time).monospace().weak()),
+            );
+            ui.vertical(|ui| {
+                if let Some(src) = &cue.frame {
+                    self.thumbnail(ui, src);
+                }
+                if let Some(src) = &cue.audio {
+                    ui.weak(fill(t("audio clip: {src}"), &[("src", src)]));
+                }
+                for (k, turn) in cue.turns.iter().enumerate() {
+                    ui.horizontal_top(|ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        if let Some((voice, runs)) = &turn.speaker {
+                            let voice = *voice;
+                            let bold = Style {
+                                bold: true,
+                                ..Style::default()
+                            };
+                            if runs.is_empty() {
+                                ui.weak(t("(no name)"));
+                            } else {
+                                self.editable_runs(
+                                    ui,
+                                    Target::Element(voice),
+                                    TextTarget::Body(voice),
+                                    voice,
+                                    runs,
+                                    FontId::proportional(15.0),
+                                    bold,
+                                    move |text| Command::SetText { id: voice, text },
+                                );
+                            }
+                            ui.label(": ");
+                        }
+                        ui.vertical(|ui| {
+                            self.editable_runs(
+                                ui,
+                                Target::Turn(track, n, k),
+                                TextTarget::Turn {
+                                    id: track,
+                                    cue: n,
+                                    turn: k,
+                                },
+                                cue.bdiv,
+                                &turn.runs,
+                                FontId::proportional(15.0),
+                                Style::default(),
+                                move |text| Command::SetTurnText {
+                                    id: track,
+                                    cue: n,
+                                    turn: k,
+                                    text,
+                                },
+                            );
+                        });
+                    });
+                }
+            });
+        });
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn editable_runs(
+        &mut self,
+        ui: &mut egui::Ui,
+        target: Target,
+        text_target: TextTarget,
+        select: ElementId,
+        runs: &[Run],
+        font: FontId,
+        base: Style,
+        make: impl FnOnce(String) -> Command,
+    ) {
+        if self.editing.as_ref().is_some_and(|e| e.target == target) {
+            self.editor(ui, font, make);
+            return;
+        }
+        let text = if runs.is_empty() {
+            egui::WidgetText::from(egui::RichText::new(t("(empty)")).weak().italics())
+        } else {
+            layout(
+                runs,
+                font,
+                base,
+                ui.visuals().text_color(),
+                ui.available_width(),
+            )
+            .into()
+        };
+        let label = ui.add(egui::Label::new(text).wrap().sense(Sense::click()));
+        if label.clicked() {
+            self.actions.select = Some(Some(select));
+            self.actions.select_cell = None;
+        }
+        if label.double_clicked() {
+            let buffer = self.buffer_for(text_target, || runs_text(runs));
+            *self.editing = Some(Editing::new(target, buffer));
+        }
+    }
+
+    fn thumbnail(&mut self, ui: &mut egui::Ui, src: &str) {
+        match self.picture(ui.ctx(), src) {
+            Some(tex) => {
+                let [w, h] = tex.size();
+                let width = (w as f32).min(160.0);
+                let size = Vec2::new(width, width * h as f32 / w.max(1) as f32);
+                ui.add(egui::Image::from_texture((tex.id(), size)));
+            }
+            None => {
+                ui.weak(fill(t("picture: {src}"), &[("src", src)]));
+            }
+        }
     }
 
     fn select_on_click(&mut self, ui: &egui::Ui, response: &egui::Response, id: ElementId) {

@@ -386,6 +386,37 @@ fn print_blocks(blocks: &[Block], depth: usize) {
                 );
                 print_blocks(blocks, depth + 1);
             }
+            Block::Track { cover, cues, .. } => {
+                println!("{pad}[track]");
+                if let Some(c) = cover {
+                    println!("{pad}  cover {c}");
+                }
+                for cue in cues {
+                    if let Some((_, chapter)) = &cue.chapter {
+                        println!("{pad}  ## {}", runs_text(chapter));
+                    }
+                    let time = match &cue.end {
+                        Some(end) => format!("{}–{end}", cue.start),
+                        None => cue.start.clone(),
+                    };
+                    let mut extras = String::new();
+                    if let Some(f) = &cue.frame {
+                        extras.push_str(&format!(" [frame {f}]"));
+                    }
+                    if let Some(a) = &cue.audio {
+                        extras.push_str(&format!(" [audio {a}]"));
+                    }
+                    println!("{pad}  {time}{extras}");
+                    for turn in &cue.turns {
+                        match &turn.speaker {
+                            Some((_, s)) => {
+                                println!("{pad}    {}: {}", runs_text(s), runs_text(&turn.runs))
+                            }
+                            None => println!("{pad}    {}", runs_text(&turn.runs)),
+                        }
+                    }
+                }
+            }
             Block::Code { language, text, .. } => {
                 println!("{pad}```{}", language.as_deref().unwrap_or(""));
                 for line in text.lines() {
