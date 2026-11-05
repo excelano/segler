@@ -61,7 +61,7 @@ The .dclx and .dclg file type associations are registered so a downloaded docume
 
 [locales."de-de"]
 website = "https://excelano.com/segler/"
-support = "https://excelano.com/segler/#support"
+support = "https://excelano.com/support/?app=Segler&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#segler"
 description = """
 DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben: der Aufbau, der Text, das Layout und die Lesereihenfolge eines Dokuments in einer Datei, von der LF AI & Data Foundation. Das meiste DocLang stammt von einem Modell aus einem PDF oder einem Scan, und ein Modell irrt sich mitunter: eine falsch gelesene Zeile, eine Überschrift, die für einen Absatz gehalten wurde, eine Tabellenzelle in der falschen Spalte.
@@ -132,7 +132,7 @@ keywords = [
 
 [locales."en-us"]
 website = "https://excelano.com/segler/"
-support = "https://excelano.com/segler/#support"
+support = "https://excelano.com/support/?app=Segler&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#segler"
 description = """
 DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file, from the LF AI & Data Foundation. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong: a misread line, a heading taken for a paragraph, a table cell in the wrong column.
