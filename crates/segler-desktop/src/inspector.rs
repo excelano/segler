@@ -208,8 +208,8 @@ impl Editor {
         // tags, so this box and the document pane's in-place field hold the
         // same string and mean the same thing by it.
         self.text = session
-            .inline_text(TextTarget::Body(view.id))
-            .unwrap_or_else(|| view.body_text.trim().to_owned());
+            .field_text(TextTarget::Body(view.id))
+            .unwrap_or_else(|| view.body_text.clone());
         self.label = view.label.clone().unwrap_or_default();
         self.bounds = view.bounds.unwrap_or([0, 0, 0, 0]);
     }
@@ -423,15 +423,15 @@ impl Editor {
                         }
                     }
                     let started_from = session
-                        .inline_text(TextTarget::Body(id))
-                        .unwrap_or_else(|| view.body_text.trim().to_owned());
+                        .field_text(TextTarget::Body(id))
+                        .unwrap_or_else(|| view.body_text.clone());
                     if r.lost_focus() && self.text != started_from {
                         out.commands.push(Command::SetText {
                             id,
                             text: self.text.clone(),
                         });
                     }
-                } else if !view.body_text.trim().is_empty() {
+                } else if !view.body_text.is_empty() {
                     // Structure rather than text: a list, a table, a group.
                     // Its parts are edited where they are, and since the
                     // first Windows walkthrough that includes a list's items,

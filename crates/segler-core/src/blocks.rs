@@ -11,6 +11,7 @@ use std::ops::Range;
 use crate::doclang::{self, Kind};
 use crate::otsl::{self, CellKind, Grid};
 use crate::tree::{Element, ElementId, Node};
+use crate::whitespace::{collapse, is_space};
 
 /// Inline styling accumulated from the formatting elements around a run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
@@ -399,31 +400,6 @@ fn push_run(runs: &mut Vec<Run>, text: &str, style: Style) {
             style,
         }),
     }
-}
-
-/// The four characters the spec counts as whitespace. A no-break space or
-/// an em space is text.
-fn is_space(c: char) -> bool {
-    matches!(c, ' ' | '\t' | '\r' | '\n')
-}
-
-/// Runs of whitespace become one space; a run that is only whitespace
-/// becomes one space so words on either side stay apart.
-fn collapse(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut in_space = false;
-    for c in text.chars() {
-        if is_space(c) {
-            if !in_space {
-                out.push(' ');
-                in_space = true;
-            }
-        } else {
-            out.push(c);
-            in_space = false;
-        }
-    }
-    out
 }
 
 /// The text of a code or formula body as the whitespace rules read it:

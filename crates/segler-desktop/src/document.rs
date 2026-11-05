@@ -42,8 +42,20 @@ pub struct Actions {
 struct Editing {
     target: Target,
     buffer: String,
+    started_from: String,
     /// The field takes focus on its first frame.
     fresh: bool,
+}
+
+impl Editing {
+    fn new(target: Target, buffer: String) -> Editing {
+        Editing {
+            target,
+            started_from: buffer.clone(),
+            buffer,
+            fresh: true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -210,16 +222,13 @@ impl Cx<'_> {
                                 let target = Target::Item(*id, n);
                                 if self.editing.as_ref().is_some_and(|e| e.target == target) {
                                     let list = *id;
-                                    self.editor(
-                                        ui,
-                                        target,
-                                        FontId::proportional(15.0),
-                                        move |text| Command::SetListItemText {
+                                    self.editor(ui, FontId::proportional(15.0), move |text| {
+                                        Command::SetListItemText {
                                             id: list,
                                             item: n,
                                             text,
-                                        },
-                                    );
+                                        }
+                                    });
                                     return;
                                 }
                                 if !item.runs.is_empty() {
@@ -244,11 +253,7 @@ impl Cx<'_> {
                                             TextTarget::Item { id: *id, item: n },
                                             || runs_text(&item.runs),
                                         );
-                                        *self.editing = Some(Editing {
-                                            target,
-                                            buffer,
-                                            fresh: true,
-                                        });
+                                        *self.editing = Some(Editing::new(target, buffer));
                                     }
                                 }
                                 for b in &item.blocks {
@@ -415,7 +420,7 @@ impl Cx<'_> {
         let selected = self.selection.element == Some(id);
         let target = Target::Element(id);
         if self.editing.as_ref().is_some_and(|e| e.target == target) {
-            self.editor(ui, target, font, |text| Command::SetText { id, text });
+            self.editor(ui, font, |text| Command::SetText { id, text });
             return;
         }
         let color = color.unwrap_or(ui.visuals().text_color());
@@ -434,16 +439,8 @@ impl Cx<'_> {
             self.actions.select_cell = None;
         }
         if response.double_clicked() || label.double_clicked() {
-            *self.editing = Some(Editing {
-                target,
-                buffer: self.buffer_for(TextTarget::Body(id), || {
-                    self.session
-                        .element(id)
-                        .map(|v| v.body_text.trim().to_owned())
-                        .unwrap_or_default()
-                }),
-                fresh: true,
-            });
+            let buffer = self.buffer_for(TextTarget::Body(id), String::new);
+            *self.editing = Some(Editing::new(target, buffer));
         }
     }
 
@@ -456,8 +453,9 @@ impl Cx<'_> {
     ) -> Option<egui::Response> {
         let target = Target::Element(id);
         if self.editing.as_ref().is_some_and(|e| e.target == target) {
-            self.editor(ui, target, FontId::monospace(13.5), |text| {
-                Command::SetText { id, text }
+            self.editor(ui, FontId::monospace(13.5), |text| Command::SetText {
+                id,
+                text,
             });
             return None;
         }
@@ -467,11 +465,8 @@ impl Cx<'_> {
         }
         let response = ui.add(egui::Label::new(rich).wrap().sense(Sense::click()));
         if response.double_clicked() {
-            *self.editing = Some(Editing {
-                target,
-                buffer: text.to_owned(),
-                fresh: true,
-            });
+            let buffer = self.buffer_for(TextTarget::Body(id), || text.to_owned());
+            *self.editing = Some(Editing::new(target, buffer));
         }
         Some(response)
     }
@@ -484,17 +479,11 @@ impl Cx<'_> {
     /// otherwise, which is every ordinary line and is why an angle bracket
     /// needs no escaping in one.
     fn buffer_for(&self, target: TextTarget, plain: impl FnOnce() -> String) -> String {
-        self.session.inline_text(target).unwrap_or_else(plain)
+        self.session.field_text(target).unwrap_or_else(plain)
     }
 
     /// The in-place text field. Commits on losing focus, cancels on Escape.
-    fn editor(
-        &mut self,
-        ui: &mut egui::Ui,
-        target: Target,
-        font: FontId,
-        make: impl FnOnce(String) -> Command,
-    ) {
+    fn editor(&mut self, ui: &mut egui::Ui, font: FontId, make: impl FnOnce(String) -> Command) {
         let Some(editing) = self.editing.as_mut() else {
             return;
         };
@@ -514,20 +503,10 @@ impl Cx<'_> {
             return;
         }
         if response.lost_focus() {
-            let buffer = editing.buffer.clone();
-            *self.editing = None;
-            let unchanged = match target {
-                Target::Element(id) => self
-                    .session
-                    .element(id)
-                    .is_some_and(|v| v.body_text.trim() == buffer),
-                // A cell and an item are ranges rather than elements, so
-                // there is no view to compare against; a commit that changed
-                // nothing costs one undo step and no document change.
-                Target::Cell(..) | Target::Item(..) => false,
-            };
-            if !unchanged {
-                self.actions.commands.push(make(buffer));
+            if let Some(done) = self.editing.take() {
+                if done.buffer != done.started_from {
+                    self.actions.commands.push(make(done.buffer));
+                }
             }
         }
     }
@@ -623,7 +602,7 @@ impl Cx<'_> {
                 ui.set_width(width - 2.0 * pad);
                 if self.editing.as_ref().is_some_and(|e| e.target == target) {
                     let (t, r, c) = (table, cell.row, cell.col);
-                    self.editor(ui, target, FontId::proportional(14.0), move |text| {
+                    self.editor(ui, FontId::proportional(14.0), move |text| {
                         Command::SetCellText {
                             id: t,
                             row: r,
@@ -668,11 +647,7 @@ impl Cx<'_> {
                                 .collect::<String>()
                         },
                     );
-                    *self.editing = Some(Editing {
-                        target,
-                        buffer,
-                        fresh: true,
-                    });
+                    *self.editing = Some(Editing::new(target, buffer));
                 }
                 for b in &cell.blocks {
                     self.block(ui, b);

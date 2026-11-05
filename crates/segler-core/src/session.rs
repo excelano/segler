@@ -26,6 +26,7 @@ use crate::otsl::{self, CellKind, Grid};
 use crate::replace;
 use crate::tree::{self, Document, Element, ElementId, Node, Text};
 use crate::validate::{self, Finding};
+use crate::whitespace;
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -476,7 +477,7 @@ impl Session {
         let Some((el, range)) = self.text_range(target) else {
             return true;
         };
-        match rewrite(el.children(), range, text) {
+        match rewrite(el.children(), range, text, whole_text(el)) {
             Ok((_, kept)) => kept,
             // Refused, so nothing is lost and there is nothing to ask about.
             // The command's own error is what the person sees, and it says
@@ -497,7 +498,17 @@ impl Session {
     pub fn inline_text(&self, target: TextTarget) -> Option<String> {
         let (el, range) = self.text_range(target)?;
         let nodes = &el.children()[range];
-        inline::shows_tags(nodes).then(|| inline::to_inline(nodes).trim().to_owned())
+        inline::shows_tags(nodes).then(|| shown_inline(nodes))
+    }
+
+    pub fn field_text(&self, target: TextTarget) -> Option<String> {
+        let (el, range) = self.text_range(target)?;
+        let nodes = &el.children()[range];
+        Some(if inline::shows_tags(nodes) {
+            shown_inline(nodes)
+        } else {
+            whitespace::read(nodes)
+        })
     }
 
     /// What a text edit would have to put back, by name, in document order.
@@ -578,7 +589,7 @@ impl Session {
                 .map(|b| [b.x_min.value, b.y_min.value, b.x_max.value, b.y_max.value]),
             rect: head.bounds.map(|b| b.fractions(resolution)),
             text: el.text(),
-            body_text: body_text(el, head.body.clone()),
+            body_text: whitespace::read(&el.children()[head.body.clone()]),
             editable_text: doclang::kind(el).is_some_and(carries_text),
             plain_text: blocks::is_plain(&el.children()[head.body.clone()]),
             markup,
@@ -718,7 +729,8 @@ impl Session {
                 }
                 let before = el.children().to_vec();
                 let body = doclang::head(el).body;
-                let (nodes, _) = rewrite(&before, body, text)?;
+                let whole = whole_text(el);
+                let (nodes, _) = rewrite(&before, body, text, whole)?;
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -847,7 +859,7 @@ impl Session {
                 // paragraph be corrected and not the cell beside it is
                 // arbitrary in a way nobody could predict.
                 let before = el.children().to_vec();
-                let (nodes, _) = rewrite(&before, range, text)?;
+                let (nodes, _) = rewrite(&before, range, text, false)?;
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -875,7 +887,7 @@ impl Session {
                     .map(|(_, range)| range)
                     .ok_or_else(|| CommandError::NoSuchListItem(el.name().to_owned(), *item))?;
                 let before = el.children().to_vec();
-                let (nodes, _) = rewrite(&before, range, text)?;
+                let (nodes, _) = rewrite(&before, range, text, false)?;
                 el.replace_children(nodes);
                 Ok((
                     *id,
@@ -1161,20 +1173,33 @@ fn rewrite(
     before: &[Node],
     range: std::ops::Range<usize>,
     text: &str,
+    whole: bool,
 ) -> Result<(Vec<Node>, bool), CommandError> {
     let old = &before[range.clone()];
+    let shown = if inline::shows_tags(old) {
+        shown_inline(old)
+    } else {
+        whitespace::read(old)
+    };
+    if shown == text {
+        return Ok((before.to_vec(), true));
+    }
 
     // Where the field showed tags, the string is markup and is read back
     // exactly. A malformed one is refused rather than fallen back on: falling
     // back would treat a missing `>` as an instruction to delete every tag in
     // the line, which is the opposite of what the person typing it meant.
     if inline::shows_tags(old) {
-        let inner = inline::from_inline(text)?;
+        let inner = encode_text_nodes(inline::from_inline(text)?);
         return Ok((splice(before, range, with_frame(old, inner)), true));
     }
 
-    if blocks::is_plain(old) {
-        return Ok((retext(before, range, text), true));
+    if blocks::is_plain(old) || is_plain_or_content(old) {
+        let encoded = whitespace::encode(text, whole);
+        if blocks::is_plain(old) && matches!(encoded[..], [Node::Text(_)]) {
+            return Ok((retext(before, range, text), true));
+        }
+        return Ok((splice(before, range, with_frame(old, encoded)), true));
     }
     match reflow(old, text) {
         Some(inner) => Ok((splice(before, range, inner), true)),
@@ -1196,9 +1221,23 @@ fn splice(before: &[Node], range: std::ops::Range<usize>, inner: Vec<Node>) -> V
 /// against the original at the edit and nowhere else. It is merged
 /// into a text node where there is one, so that no save gains an empty
 /// sibling it did not have.
+fn text_at(node: Option<&Node>) -> &str {
+    match node {
+        Some(Node::Text(t)) => t.value(),
+        _ => "",
+    }
+}
+
 fn with_frame(old: &[Node], mut inner: Vec<Node>) -> Vec<Node> {
-    let joined: String = old.iter().map(node_text).collect();
-    let (lead, trail) = frame(&joined);
+    let first = text_at(old.first());
+    let lead = &first[..first.len() - first.trim_start_matches(whitespace::is_space).len()];
+    let last = text_at(old.last());
+    let trail = if old.len() == 1 && lead.len() == first.len() {
+        ""
+    } else {
+        &last[last.trim_end_matches(whitespace::is_space).len()..]
+    };
+    let (lead, trail) = (lead.to_owned(), trail.to_owned());
     if !lead.is_empty() {
         match inner.first_mut() {
             Some(Node::Text(t)) => t.set(format!("{lead}{}", t.value())),
@@ -1227,9 +1266,9 @@ fn reflow(old: &[Node], text: &str) -> Option<Vec<Node>> {
             // and no position the new string implies. Refusing is what makes
             // the warning honest: neither is a thing to drop in silence.
             Node::Comment(_) | Node::Pi { .. } => return None,
-            Node::Element(e) => {
-                let inner = e.text();
-                if inner.trim().is_empty() {
+            Node::Element(_) => {
+                let inner = whitespace::read(std::slice::from_ref(node));
+                if inner.is_empty() {
                     return None;
                 }
                 let mut hits = rest.match_indices(inner.as_str());
@@ -1251,17 +1290,63 @@ fn reflow(old: &[Node], text: &str) -> Option<Vec<Node>> {
     if out.is_empty() {
         return None;
     }
-    Some(with_frame(old, out))
+    Some(with_frame(old, encode_text_nodes(out)))
 }
 
-/// What a node contributes to its parent's text.
-fn node_text(n: &Node) -> String {
-    match n {
-        Node::Text(t) => t.value().to_owned(),
-        Node::CData(s) => s.clone(),
-        Node::Element(e) => e.text(),
-        Node::Comment(_) | Node::Pi { .. } => String::new(),
+fn whole_text(el: &Element) -> bool {
+    matches!(doclang::kind(el), Some(Kind::Code | Kind::Formula))
+}
+
+fn is_plain_or_content(nodes: &[Node]) -> bool {
+    nodes.iter().all(|n| match n {
+        Node::Text(_) | Node::CData(_) => true,
+        Node::Element(e) => doclang::kind(e) == Some(Kind::Content),
+        Node::Comment(_) | Node::Pi { .. } => false,
+    })
+}
+
+fn shown_inline(nodes: &[Node]) -> String {
+    whitespace::collapse(&inline::to_inline(nodes))
+        .trim_matches(whitespace::is_space)
+        .to_owned()
+}
+
+fn encode_text_nodes(nodes: Vec<Node>) -> Vec<Node> {
+    let count = count_text_nodes(&nodes);
+    let mut seen = 0;
+    encode_in(nodes, count, &mut seen)
+}
+
+fn count_text_nodes(nodes: &[Node]) -> usize {
+    nodes
+        .iter()
+        .map(|n| match n {
+            Node::Text(_) => 1,
+            Node::Element(e) => count_text_nodes(e.children()),
+            Node::CData(_) | Node::Comment(_) | Node::Pi { .. } => 0,
+        })
+        .sum()
+}
+
+fn encode_in(nodes: Vec<Node>, count: usize, seen: &mut usize) -> Vec<Node> {
+    let mut out = Vec::new();
+    for node in nodes {
+        match node {
+            Node::Text(t) => {
+                let first = *seen == 0;
+                *seen += 1;
+                let last = *seen == count;
+                out.extend(whitespace::encode_between(t.value(), false, first, last));
+            }
+            Node::Element(mut e) if doclang::kind(&e) != Some(Kind::Content) => {
+                let children = encode_in(e.children().to_vec(), count, seen);
+                e.replace_children(children);
+                out.push(Node::Element(e));
+            }
+            other => out.push(other),
+        }
     }
+    out
 }
 
 fn retext(before: &[Node], range: std::ops::Range<usize>, text: &str) -> Vec<Node> {
@@ -1918,7 +2003,8 @@ mod tests {
         let s = Session::from_markup(src).unwrap();
         let text = id_at(&s, "/doclang/text[1]");
         assert!(s.inline_text(TextTarget::Body(text)).is_none());
-        assert!(!s.keeps_formatting(TextTarget::Body(text), "beforeafter"));
+        assert!(!s.keeps_formatting(TextTarget::Body(text), "before and after"));
+        assert!(s.keeps_formatting(TextTarget::Body(text), "beforeafter"));
     }
 
     /// Asking and doing must never disagree, so both go through `rewrite`.
@@ -2141,5 +2227,71 @@ mod tests {
         assert!(s.find_by_path("/html").is_none());
         let d = s.view();
         assert_eq!((d.pages, d.dirty, d.archive), (2, false, false));
+    }
+
+    fn edited(src: &str, path: &str, typed: &str) -> (String, String) {
+        let mut s = Session::from_markup(src).unwrap();
+        let id = id_at(&s, path);
+        s.apply(Command::SetText {
+            id,
+            text: typed.to_owned(),
+        })
+        .unwrap();
+        let saved = s.markup();
+        let reopened = Session::from_markup(&saved).unwrap();
+        let read = reopened.element(id_at(&reopened, path)).unwrap().body_text;
+        (saved, read)
+    }
+
+    #[test]
+    fn typed_whitespace_survives_a_save_and_reopen() {
+        let src = "<doclang><text>\n  Old words\n</text></doclang>";
+        for typed in ["a line\nbreak", "two  spaces", " leading space"] {
+            let (saved, read) = edited(src, "/doclang/text[1]", typed);
+            assert_eq!(read, typed, "{saved}");
+        }
+        let (saved, _) = edited(src, "/doclang/text[1]", "new words");
+        assert_eq!(saved, "<doclang><text>\n  new words\n</text></doclang>");
+    }
+
+    #[test]
+    fn an_edit_that_changes_no_words_changes_nothing() {
+        let src = "<doclang><text>\n  Some   words\n  across lines <bold>and</bold> a tag\n</text><code><content>fn a() {\n    b();\n}</content></code></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        for path in ["/doclang/text[1]", "/doclang/code[1]"] {
+            let id = id_at(&s, path);
+            let shown = s
+                .inline_text(TextTarget::Body(id))
+                .unwrap_or_else(|| s.element(id).unwrap().body_text);
+            s.apply(Command::SetText { id, text: shown }).unwrap();
+        }
+        assert_eq!(s.markup(), src);
+    }
+
+    #[test]
+    fn a_formatted_edit_gains_no_content_for_ordinary_spaces() {
+        let (saved, _) = edited(
+            "<doclang><text>The <bold>western</bold> approaches</text></doclang>",
+            "/doclang/text[1]",
+            "The <bold>western</bold> wide approaches",
+        );
+        assert_eq!(
+            saved,
+            "<doclang><text>The <bold>western</bold> wide approaches</text></doclang>"
+        );
+    }
+
+    #[test]
+    fn code_keeps_its_lines_in_one_content() {
+        let (saved, read) = edited(
+            "<doclang><code>x</code></doclang>",
+            "/doclang/code[1]",
+            "fn a() {\n    b();\n}",
+        );
+        assert_eq!(
+            saved,
+            "<doclang><code><content>fn a() {\n    b();\n}</content></code></doclang>"
+        );
+        assert_eq!(read, "fn a() {\n    b();\n}");
     }
 }
