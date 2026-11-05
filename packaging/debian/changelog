@@ -1,3 +1,17 @@
+segler (0.1.7) unstable; urgency=medium
+
+  * zip 9.1: fixes GHSA-m665-v7pm-7grj (critical) and four high/medium advisories in archive reading
+  * Screenshot scripts and the Windows packaging README drop the generated-by-ship note
+  * README: arm64 apt and both stores listed; DESIGN.md reads the DocLang version from the source, describes the Schematron port and the release path through build-release and ship-crates; packaging/README states the icon check without its date; attribution headers in scripts
+  * packaging/README: the Linux desktop takes the rounded icon
+  * Linux icon: the rounded mark, as Comma's; Windows and Mac keep the square one
+  * Run CI by hand: workflow_dispatch instead of push and pull request
+  * Remove ship.conf; the release apps read ship.toml
+  * packaging/README: the release apps, not ship, push the listings; the workflows are gone
+  * Releases are the apps in excelano/shipping
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 04 Nov 2026 20:48:30 -0600
+
 segler (0.1.6) unstable; urgency=medium
 
   * Release notes for 0.1.6
