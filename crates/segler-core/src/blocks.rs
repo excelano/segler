@@ -87,7 +87,8 @@ pub enum Block {
     Table {
         id: ElementId,
         kind: Kind,
-        caption: Option<Vec<Run>>,
+        /// One run list per caption, in document order.
+        captions: Vec<Vec<Run>>,
         rows: usize,
         cols: usize,
         cells: Vec<CellBlock>,
@@ -97,7 +98,8 @@ pub enum Block {
         class: Option<String>,
         /// The `src` URI, resolved by the renderer against the archive.
         src: Option<String>,
-        caption: Option<Vec<Run>>,
+        /// One run list per caption, in document order.
+        captions: Vec<Vec<Run>>,
         blocks: Vec<Block>,
     },
     Code {
@@ -167,10 +169,14 @@ pub fn block_of(el: &Element) -> Block {
     };
     let head = doclang::head(el);
     let body = &el.children()[head.body.clone()];
-    let caption = head.caption.map(|c| {
-        let ch = doclang::head(c);
-        runs_of(&c.children()[ch.body], Style::default()).0
-    });
+    let captions: Vec<Vec<Run>> = head
+        .captions
+        .iter()
+        .map(|c| {
+            let ch = doclang::head(c);
+            runs_of(&c.children()[ch.body], Style::default()).0
+        })
+        .collect();
     match kind {
         Kind::Heading => {
             let (runs, _) = runs_of(body, Style::default());
@@ -231,7 +237,7 @@ pub fn block_of(el: &Element) -> Block {
             Block::Table {
                 id,
                 kind,
-                caption,
+                captions,
                 rows: grid.rows,
                 cols: grid.cols,
                 cells,
@@ -256,7 +262,7 @@ pub fn block_of(el: &Element) -> Block {
                 id,
                 class: el.attr("class").map(str::to_owned),
                 src,
-                caption,
+                captions,
                 blocks: inner,
             }
         }
@@ -548,20 +554,24 @@ mod tests {
     }
 
     #[test]
-    fn tables_carry_their_grid_and_caption() {
-        let b = first("<table><caption>T1</caption><ched/>A<lcel/><nl/><fcel/><text>x</text><fcel/>y<nl/></table>");
+    fn tables_carry_their_grid_and_captions() {
+        let b = first("<table><caption>T1</caption><caption>T2</caption><ched/>A<lcel/><nl/><fcel/><text>x</text><fcel/>y<nl/></table>");
         let Block::Table {
             rows,
             cols,
             cells,
-            caption,
+            captions,
             ..
         } = b
         else {
             panic!("{b:?}")
         };
         assert_eq!((rows, cols, cells.len()), (2, 2, 3));
-        assert_eq!(caption.unwrap()[0].text, "T1");
+        assert_eq!(captions.len(), 2);
+        assert_eq!(
+            (captions[0][0].text.as_str(), captions[1][0].text.as_str()),
+            ("T1", "T2")
+        );
         assert_eq!(
             (cells[0].colspan, cells[0].kind),
             (2, CellKind::ColumnHeader)
@@ -576,7 +586,7 @@ mod tests {
         let b = first("<picture class=\"chart\"><label value=\"bar\"/><caption>Fig</caption><src uri=\"assets/a.png\"/><text>inner</text></picture>");
         let Block::Picture {
             src,
-            caption,
+            captions,
             blocks,
             class,
             ..
@@ -585,7 +595,7 @@ mod tests {
             panic!("{b:?}")
         };
         assert_eq!(src.as_deref(), Some("assets/a.png"));
-        assert_eq!(caption.unwrap()[0].text, "Fig");
+        assert_eq!(captions[0][0].text, "Fig");
         assert_eq!((blocks.len(), class.as_deref()), (1, Some("chart")));
         let c = first("<code><label value=\"rust\"/>\nfn main() {}\n</code>");
         let Block::Code { language, text, .. } = c else {

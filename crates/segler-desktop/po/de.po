@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: segler\n"
 "Report-Msgid-Bugs-To: https://github.com/excelano/segler/issues\n"
-"POT-Creation-Date: 2026-09-09 10:26-0500\n"
+"POT-Creation-Date: 2026-11-05 12:27-0600\n"
 "PO-Revision-Date: 2026-09-09 09:33-0500\n"
 "Last-Translator: David M. Anderson <david.anderson@excelano.com>\n"
 "Language-Team: German\n"
@@ -57,99 +57,103 @@ msgstr "Ecke"
 msgid "section row"
 msgstr "Abschnittszeile"
 
-#: crates/segler-desktop/src/inspector.rs:46
-#: crates/segler-desktop/src/main.rs:590 crates/segler-desktop/src/main.rs:800
+#: crates/segler-desktop/src/inspector.rs:77
+#: crates/segler-desktop/src/main.rs:589 crates/segler-desktop/src/main.rs:799
 msgid "Structure"
 msgstr "Struktur"
 
-#: crates/segler-desktop/src/inspector.rs:81
+#: crates/segler-desktop/src/inspector.rs:112
 msgid "Nothing on this page."
 msgstr "Nichts auf dieser Seite."
 
-#: crates/segler-desktop/src/inspector.rs:123
+#: crates/segler-desktop/src/inspector.rs:154
 msgid "Fold the picture's inner elements"
 msgstr "Die inneren Elemente des Bildes einklappen"
 
-#: crates/segler-desktop/src/inspector.rs:125
+#: crates/segler-desktop/src/inspector.rs:156
 msgid "Show the picture's inner elements"
 msgstr "Die inneren Elemente des Bildes anzeigen"
 
-#: crates/segler-desktop/src/inspector.rs:194
-#: crates/segler-desktop/src/main.rs:592
+#: crates/segler-desktop/src/inspector.rs:225
+#: crates/segler-desktop/src/main.rs:591
 msgid "Element"
 msgstr "Element"
 
-#: crates/segler-desktop/src/inspector.rs:198
+#: crates/segler-desktop/src/inspector.rs:229
 msgid "Select an element on the page or in the structure."
 msgstr "Ein Element auf der Seite oder in der Struktur auswählen."
 
-#: crates/segler-desktop/src/inspector.rs:214
+#: crates/segler-desktop/src/inspector.rs:245
 msgid "Kind"
 msgstr "Art"
 
-#: crates/segler-desktop/src/inspector.rs:227
+#: crates/segler-desktop/src/inspector.rs:258
 msgid "Path"
 msgstr "Pfad"
 
-#: crates/segler-desktop/src/inspector.rs:232
+#: crates/segler-desktop/src/inspector.rs:263
 msgid "Level"
 msgstr "Ebene"
 
-#: crates/segler-desktop/src/inspector.rs:261
+#: crates/segler-desktop/src/inspector.rs:294
 msgid "Class"
 msgstr "Klasse"
 
-#: crates/segler-desktop/src/inspector.rs:287
+#: crates/segler-desktop/src/inspector.rs:320
 msgid "Label"
 msgstr "Beschriftung"
 
-#: crates/segler-desktop/src/inspector.rs:289
+#: crates/segler-desktop/src/inspector.rs:322
 msgid "none"
 msgstr "keine"
 
-#: crates/segler-desktop/src/inspector.rs:302
+#: crates/segler-desktop/src/inspector.rs:335
 msgid "Layer"
 msgstr "Lage"
 
-#: crates/segler-desktop/src/inspector.rs:319
+#: crates/segler-desktop/src/inspector.rs:352
 msgid "Box"
 msgstr "Rahmen"
 
-#: crates/segler-desktop/src/inspector.rs:339
+#: crates/segler-desktop/src/inspector.rs:372
 msgid "Clear"
 msgstr "Löschen"
 
-#: crates/segler-desktop/src/inspector.rs:342
+#: crates/segler-desktop/src/inspector.rs:375
 msgid "Add"
 msgstr "Hinzufügen"
 
-#: crates/segler-desktop/src/inspector.rs:360
+#: crates/segler-desktop/src/inspector.rs:393
 msgid "Text"
 msgstr "Text"
 
-#: crates/segler-desktop/src/inspector.rs:406
+#: crates/segler-desktop/src/inspector.rs:439
 msgid "Text (from its parts)"
 msgstr "Text (aus seinen Teilen)"
 
-#: crates/segler-desktop/src/inspector.rs:423
+#: crates/segler-desktop/src/inspector.rs:456
 msgid "Cell row {row}, column {column}"
 msgstr "Zelle Zeile {row}, Spalte {column}"
 
-#: crates/segler-desktop/src/inspector.rs:451
+#: crates/segler-desktop/src/inspector.rs:484
 msgid "Remove element…"
 msgstr "Element entfernen …"
 
-#: crates/segler-desktop/src/inspector.rs:456
+#: crates/segler-desktop/src/inspector.rs:489
 msgid "Markup"
 msgstr "Auszeichnung"
 
-#: crates/segler-desktop/src/inspector.rs:471
+#: crates/segler-desktop/src/inspector.rs:504
 msgid "Problems"
 msgstr "Probleme"
 
-#: crates/segler-desktop/src/inspector.rs:473
+#: crates/segler-desktop/src/inspector.rs:507
 msgid "none; the document is valid"
 msgstr "keine; das Dokument ist gültig"
+
+#: crates/segler-desktop/src/inspector.rs:509
+msgid "the document is valid"
+msgstr "das Dokument ist gültig"
 
 #: crates/segler-desktop/src/main.rs:283
 msgid "Opened {file}"
@@ -211,27 +215,27 @@ msgstr "Wiederholen"
 msgid "of {count}"
 msgstr "von {count}"
 
-#: crates/segler-desktop/src/main.rs:563
+#: crates/segler-desktop/src/main.rs:562
 msgid "Zoom"
 msgstr "Zoom"
 
-#: crates/segler-desktop/src/main.rs:576
+#: crates/segler-desktop/src/main.rs:575
 msgid "Fit"
 msgstr "Einpassen"
 
-#: crates/segler-desktop/src/main.rs:586
+#: crates/segler-desktop/src/main.rs:585
 msgid "Page image"
 msgstr "Seitenbild"
 
-#: crates/segler-desktop/src/main.rs:615
+#: crates/segler-desktop/src/main.rs:614
 msgid "Formatting in this text"
 msgstr "Formatierung in diesem Text"
 
-#: crates/segler-desktop/src/main.rs:622
+#: crates/segler-desktop/src/main.rs:621
 msgid "Keep this edit as plain text?"
 msgstr "Diese Änderung als reinen Text behalten?"
 
-#: crates/segler-desktop/src/main.rs:627
+#: crates/segler-desktop/src/main.rs:626
 msgid ""
 "{what} could not be matched to what you typed, so keeping this edit will "
 "write the line as plain text without them."
@@ -239,7 +243,7 @@ msgstr ""
 "{what} ließen sich dem Getippten nicht zuordnen; diese Änderung zu behalten "
 "schreibt die Zeile als reinen Text ohne sie."
 
-#: crates/segler-desktop/src/main.rs:629
+#: crates/segler-desktop/src/main.rs:628
 msgid ""
 "{what} could not be matched to what you typed, so keeping this edit will "
 "write the line as plain text without it."
@@ -247,116 +251,116 @@ msgstr ""
 "{what} ließ sich dem Getippten nicht zuordnen; diese Änderung zu behalten "
 "schreibt die Zeile als reinen Text ohne sie."
 
-#: crates/segler-desktop/src/main.rs:640
+#: crates/segler-desktop/src/main.rs:639
 msgid "Keep as plain text"
 msgstr "Als reinen Text behalten"
 
-#: crates/segler-desktop/src/main.rs:645 crates/segler-desktop/src/main.rs:692
-#: crates/segler-desktop/src/main.rs:719
+#: crates/segler-desktop/src/main.rs:644 crates/segler-desktop/src/main.rs:691
+#: crates/segler-desktop/src/main.rs:718
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: crates/segler-desktop/src/main.rs:663
+#: crates/segler-desktop/src/main.rs:662
 msgid "Edit discarded; the formatting is unchanged"
 msgstr "Änderung verworfen; die Formatierung bleibt unverändert"
 
-#: crates/segler-desktop/src/main.rs:677
+#: crates/segler-desktop/src/main.rs:676
 msgid "this element"
 msgstr "dieses Element"
 
-#: crates/segler-desktop/src/main.rs:680
+#: crates/segler-desktop/src/main.rs:679
 msgid "Remove element?"
 msgstr "Element entfernen?"
 
-#: crates/segler-desktop/src/main.rs:682
+#: crates/segler-desktop/src/main.rs:681
 msgid "{what} and everything inside it will be removed. Undo brings it back."
 msgstr "{what} und alles darin wird entfernt. Rückgängig holt es zurück."
 
-#: crates/segler-desktop/src/main.rs:687
+#: crates/segler-desktop/src/main.rs:686
 msgid "Remove"
 msgstr "Entfernen"
 
-#: crates/segler-desktop/src/main.rs:709
+#: crates/segler-desktop/src/main.rs:708
 msgid "Save changes?"
 msgstr "Änderungen speichern?"
 
-#: crates/segler-desktop/src/main.rs:710
+#: crates/segler-desktop/src/main.rs:709
 msgid "The document has unsaved changes."
 msgstr "Das Dokument hat ungespeicherte Änderungen."
 
-#: crates/segler-desktop/src/main.rs:713
+#: crates/segler-desktop/src/main.rs:712
 msgid "Save and close"
 msgstr "Speichern und schließen"
 
-#: crates/segler-desktop/src/main.rs:716
+#: crates/segler-desktop/src/main.rs:715
 msgid "Discard"
 msgstr "Verwerfen"
 
-#: crates/segler-desktop/src/main.rs:801
+#: crates/segler-desktop/src/main.rs:800
 msgid "Open a DocLang document or archive."
 msgstr "Ein DocLang-Dokument oder -Archiv öffnen."
 
-#: crates/segler-desktop/src/main.rs:864
+#: crates/segler-desktop/src/main.rs:863
 msgid "Open a DocLang document or archive (Ctrl+O)."
 msgstr "Ein DocLang-Dokument oder -Archiv öffnen (Strg+O)."
 
-#: crates/segler-desktop/src/main.rs:898
+#: crates/segler-desktop/src/main.rs:897
 msgid "Text changed"
 msgstr "Text geändert"
 
-#: crates/segler-desktop/src/main.rs:903
+#: crates/segler-desktop/src/main.rs:902
 msgid "{name} set to {value}"
 msgstr "{name} auf {value} gesetzt"
 
-#: crates/segler-desktop/src/main.rs:906
+#: crates/segler-desktop/src/main.rs:905
 msgid "{name} removed"
 msgstr "{name} entfernt"
 
-#: crates/segler-desktop/src/main.rs:908
+#: crates/segler-desktop/src/main.rs:907
 msgid "Label set to {value}"
 msgstr "Beschriftung auf {value} gesetzt"
 
-#: crates/segler-desktop/src/main.rs:910
+#: crates/segler-desktop/src/main.rs:909
 msgid "Label removed"
 msgstr "Beschriftung entfernt"
 
-#: crates/segler-desktop/src/main.rs:912
+#: crates/segler-desktop/src/main.rs:911
 msgid "Layer set to {value}"
 msgstr "Lage auf {value} gesetzt"
 
-#: crates/segler-desktop/src/main.rs:917
+#: crates/segler-desktop/src/main.rs:916
 msgid "Box changed"
 msgstr "Rahmen geändert"
 
-#: crates/segler-desktop/src/main.rs:918
+#: crates/segler-desktop/src/main.rs:917
 msgid "Box removed"
 msgstr "Rahmen entfernt"
 
-#: crates/segler-desktop/src/main.rs:919
+#: crates/segler-desktop/src/main.rs:918
 msgid "Changed to {kind}"
 msgstr "Geändert zu {kind}"
 
-#: crates/segler-desktop/src/main.rs:920
+#: crates/segler-desktop/src/main.rs:919
 msgid "Moved"
 msgstr "Verschoben"
 
-#: crates/segler-desktop/src/main.rs:921
+#: crates/segler-desktop/src/main.rs:920
 msgid "Inserted {kind}"
 msgstr "{kind} eingefügt"
 
-#: crates/segler-desktop/src/main.rs:922
+#: crates/segler-desktop/src/main.rs:921
 msgid "Element removed"
 msgstr "Element entfernt"
 
-#: crates/segler-desktop/src/main.rs:924
+#: crates/segler-desktop/src/main.rs:923
 msgid "List item {number} changed"
 msgstr "Listeneintrag {number} geändert"
 
-#: crates/segler-desktop/src/main.rs:928
+#: crates/segler-desktop/src/main.rs:927
 msgid "Cell row {row}, column {column} changed"
 msgstr "Zelle Zeile {row}, Spalte {column} geändert"
 
-#: crates/segler-desktop/src/main.rs:935
+#: crates/segler-desktop/src/main.rs:934
 msgid "Cell row {row}, column {column} is now {kind}"
 msgstr "Zelle Zeile {row}, Spalte {column} ist jetzt {kind}"
 

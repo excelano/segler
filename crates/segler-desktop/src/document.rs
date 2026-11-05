@@ -263,13 +263,13 @@ impl Cx<'_> {
             Block::Table {
                 id,
                 kind,
-                caption,
+                captions,
                 rows,
                 cols,
                 cells,
             } => {
                 let selected = self.selection.element == Some(*id);
-                if let Some(c) = caption {
+                for c in captions {
                     let s = style(false, true);
                     let job = layout(
                         c,
@@ -288,7 +288,7 @@ impl Cx<'_> {
             Block::Picture {
                 id,
                 src,
-                caption,
+                captions,
                 blocks,
                 ..
             } => {
@@ -330,7 +330,7 @@ impl Cx<'_> {
                             }
                         }
                     }
-                    if let Some(c) = caption {
+                    for c in captions {
                         let s = style(false, true);
                         let job = layout(
                             c,

@@ -27,7 +27,8 @@ pub enum Category {
     Payload,
     /// Inline formatting.
     Formatting,
-    /// OTSL cell markers and the list divider.
+    /// OTSL cell markers, the list and cue-block dividers, and the
+    /// components of a track timestamp.
     Structural,
     /// Children of the document head.
     DocumentHead,
@@ -82,6 +83,12 @@ kinds! {
     Value = "value": Semantic,
     Hint = "hint": Semantic,
     Caption = "caption": Semantic,
+    Track = "track": Semantic,
+    Cover = "cover": Semantic,
+    Frame = "frame": Semantic,
+    Audio = "audio": Semantic,
+    Voice = "voice": Semantic,
+    Chapter = "chapter": Semantic,
 
     Label = "label": Property,
     Thread = "thread": Property,
@@ -118,6 +125,11 @@ kinds! {
     Xcel = "xcel": Structural,
     Nl = "nl": Structural,
     Ldiv = "ldiv": Structural,
+    Bdiv = "bdiv": Structural,
+    Hours = "hours": Structural,
+    Minutes = "minutes": Structural,
+    Seconds = "seconds": Structural,
+    Msecs = "msecs": Structural,
 
     DefaultResolution = "default_resolution": DocumentHead,
 }
@@ -134,7 +146,7 @@ impl Kind {
     }
 
     /// The position of a property element in the head's fixed order:
-    /// label, thread, xref or href, layer, the four locations, caption,
+    /// label, thread, xref or href, layer, the four locations, captions,
     /// description, summary, custom. `None` for anything that is not a
     /// property element.
     pub fn head_slot(self) -> Option<u8> {
@@ -216,7 +228,8 @@ pub struct Head<'a> {
     /// The `layer` value, with the spec's default applied.
     pub layer: &'a str,
     pub bounds: Option<Bounds>,
-    pub caption: Option<&'a Element>,
+    /// Every caption, in document order; an element head may carry several.
+    pub captions: Vec<&'a Element>,
     pub description: Option<&'a Element>,
     pub summary: Option<&'a Element>,
     pub custom: Option<&'a Element>,
@@ -235,7 +248,7 @@ pub fn head(el: &Element) -> Head<'_> {
         href: None,
         layer: "body",
         bounds: None,
-        caption: None,
+        captions: Vec::new(),
         description: None,
         summary: None,
         custom: None,
@@ -270,7 +283,7 @@ pub fn head(el: &Element) -> Head<'_> {
                     });
                 }
             }
-            Some(Kind::Caption) => head.caption = Some(child),
+            Some(Kind::Caption) => head.captions.push(child),
             Some(Kind::Description) => head.description = Some(child),
             Some(Kind::Summary) => head.summary = Some(child),
             Some(Kind::Custom) => head.custom = Some(child),
@@ -293,9 +306,10 @@ pub fn head(el: &Element) -> Head<'_> {
     head
 }
 
-/// The document's `version` attribute, with the spec's default applied.
-pub fn version(doc: &Document) -> &str {
-    doc.root.attr("version").unwrap_or(crate::SPEC_VERSION)
+/// The document's `version` attribute. `None` when it is omitted, which the
+/// spec says leaves the version unspecified rather than implying one.
+pub fn version(doc: &Document) -> Option<&str> {
+    doc.root.attr("version")
 }
 
 /// Whether the root declares the DocLang namespace as its default.
@@ -374,7 +388,7 @@ mod tests {
         for k in Kind::ALL {
             assert_eq!(Kind::from_name(k.name()), Some(*k));
         }
-        assert_eq!(Kind::ALL.len(), 56);
+        assert_eq!(Kind::ALL.len(), 67);
         assert_eq!(Kind::from_name("acme_smiles"), None);
     }
 
@@ -410,7 +424,8 @@ mod tests {
             b.fractions((512, 512)),
             [10.0 / 512.0, 20.0 / 512.0, 0.3, 40.0 / 512.0]
         );
-        assert_eq!(h.caption.unwrap().text(), "Cap");
+        assert_eq!(h.captions.len(), 1);
+        assert_eq!(h.captions[0].text(), "Cap");
         let body: Vec<&Element> = pic.children()[h.body]
             .iter()
             .filter_map(|n| match n {
@@ -438,7 +453,7 @@ mod tests {
             "<doclang version=\"0.7\" xmlns=\"https://www.doclang.ai/ns/v0\"><head><default_resolution width=\"1024\"/></head><text>a</text><page_break/><text>b</text><page_break/></doclang>",
         )
         .unwrap();
-        assert_eq!(version(&doc), "0.7");
+        assert_eq!(version(&doc), Some("0.7"));
         assert!(namespaced(&doc));
         assert_eq!(default_resolution(&doc), (1024, 512));
         let p = pages(&doc);
@@ -461,5 +476,6 @@ mod tests {
             }]
         );
         assert!(!namespaced(&doc));
+        assert_eq!(version(&doc), None);
     }
 }

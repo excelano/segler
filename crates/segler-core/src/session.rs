@@ -271,7 +271,8 @@ pub struct ElementView {
 pub struct DocumentView {
     pub path: Option<PathBuf>,
     pub archive: bool,
-    pub version: String,
+    /// The declared version; `None` when the document declares none.
+    pub version: Option<String>,
     pub resolution: (u32, u32),
     pub pages: usize,
     pub dirty: bool,
@@ -394,7 +395,7 @@ impl Session {
         DocumentView {
             path: self.path.clone(),
             archive: self.archive.is_some(),
-            version: doclang::version(&self.doc).to_owned(),
+            version: doclang::version(&self.doc).map(str::to_owned),
             resolution: doclang::default_resolution(&self.doc),
             pages: doclang::pages(&self.doc).len(),
             dirty: self.dirty(),
@@ -1307,14 +1308,20 @@ fn frame(s: &str) -> (String, String) {
 }
 
 /// Where a new head element of `kind` goes among `nodes`: after the last
-/// head element that precedes it in the head order, else at the front.
+/// head element that precedes it in the head order, else at the front. The
+/// two repeatable kinds, locations and captions, go after their own kind.
 fn head_insert_index(nodes: &[Node], kind: Kind) -> usize {
     let slot = kind.head_slot().unwrap_or(0);
     let mut at = 0;
     for (i, n) in nodes.iter().enumerate() {
         if let Node::Element(e) = n {
             match doclang::kind(e).and_then(Kind::head_slot) {
-                Some(s) if s <= slot && (s != slot || kind == Kind::Location) => at = i + 1,
+                Some(s)
+                    if s <= slot
+                        && (s != slot || matches!(kind, Kind::Location | Kind::Caption)) =>
+                {
+                    at = i + 1
+                }
                 Some(_) => break,
                 None => break,
             }
@@ -2026,7 +2033,7 @@ mod tests {
         .unwrap();
         let m = s.element(text).unwrap().markup;
         assert_eq!(m, "<text><label value=\"note\"/><layer value=\"background\"/><location value=\"1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/>Body &amp; soul</text>");
-        assert!(s.findings().is_empty());
+        assert!(!s.findings().iter().any(|f| f.is_defect()));
         s.apply(Command::SetLabel {
             id: text,
             value: None,

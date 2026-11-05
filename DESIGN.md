@@ -19,7 +19,7 @@ The specification is the authority on the format, and this document neither rest
 
 Seven facts in the specification shape everything below, and they are named here so that nothing later has to be inferred from them.
 
-Every semantic element has a head and a body. The head is a fixed-order sequence of property elements: label, thread, one of xref or href, layer, four locations, caption, description, summary, custom. The body is the payload. Property semantics live in leading child elements rather than attributes, on purpose, because the format is designed around a tokenizer. An editor's model has to keep that order on the way out.
+Every semantic element has a head and a body. The head is a fixed-order sequence of property elements: label, thread, one of xref or href, layer, four locations, any number of captions, description, summary, custom. The body is the payload. Property semantics live in leading child elements rather than attributes, on purpose, because the format is designed around a tokenizer. An editor's model has to keep that order on the way out.
 
 Geometry is a 512-point grid. Four `location` values are `x_min, y_min, x_max, y_max` on a grid whose real size the document head's `default_resolution` declares, relative to the top left of the page. Every box the window draws goes through that normalisation, and every box a person drags comes back through it.
 
@@ -29,7 +29,7 @@ Pages are `page_break` elements. There is no page element. A document with two b
 
 An archive is an OPC package. `.dclx` is a ZIP with `[Content_Types].xml`, `_rels/.rels`, `document.xml`, optional `pages/N.png` counted from one, and optional `assets/`. OPC only stores or deflates, which is why `§5` takes `zip` with deflate alone.
 
-Version 0.x breaks on every minor: a document is incompatible with the next minor's schema by the spec's own rule. Segler targets one version at a time and says which; it does not pretend to read a version it was not built against.
+Version 0.x breaks on every minor: a document is incompatible with the next minor's schema by the spec's own rule. Segler targets one version at a time and says which. A document that declares another version, or none, is checked against that one version and the check says so as a warning, which leaves the document valid if nothing else is found; the spec asks a validator to warn on an undeclared version, and carrying an older minor's rule set beside the current one buys nothing the spec promises.
 
 Validation is an XSD and a Schematron. The XSD is structural. The Schematron is a set of patterns and assertions in XPath 3.1 with `queryBinding="xslt3"`, which no Rust engine runs. `§6` says what that costs.
 
@@ -95,7 +95,7 @@ The XSD is ported into the model. A typed model that can only represent valid st
 
 The Schematron is ported by hand, a size a person can carry, and each pattern becomes a Rust check with the pattern's own identifier and message, so that a finding here reads the same as a finding from the reference toolkit. The port is what tracks spec drift: every rule change upstream is a diff in this file and a diff in that check.
 
-**Where the port and the reference toolkit disagree, the corpus decides.** The toolkit transpiles the Schematron to XSLT itself and prefixes every rule context with `//`, which in XPath binds only to the first alternative of a union, so most of `element-head-placement`'s contexts are evaluated against the document node and match nothing. The port scopes that rule to a list's or table's own head and implements every other pattern as written, which means it reports things the toolkit misses — a head element after text in a `heading` among them. Those are defects in the document, not disagreements to paper over, and the transpiler is a finding to take upstream.
+**Where the port and the reference toolkit disagree, the corpus decides.** `segler corpus --toolkit` runs the toolkit's `doclang validate` beside the port on every file of a spec checkout and compares the verdict of each layer. The toolkit validates a file against the version it declares while the port checks every file against the current one, so a disagreement on an older fixture is read against that difference before it is read as a defect in either.
 
 **The conformance corpus is a command, never a test.** `segler corpus /path/to/doclang` walks the specification checkout's `examples/` and `tests/`, parses and re-serializes each file, and compares the serialized bytes against the file itself and the verdict and findings against the Python toolkit's. All of them must agree. It needs the checkout and the toolkit installed, which `cargo test` does not imply, and a test that has to choose between skipping quietly and failing on a machine that was never going to have those is worse than a command run on purpose. Run it before and after any change to the model, the parser, the serializer or the validator.
 

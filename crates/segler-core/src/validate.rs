@@ -5,16 +5,20 @@
 //! over the tree: which elements may appear where and in what order, which
 //! attributes they take, what values those attributes may hold, and whether
 //! text is allowed between them. The **rules** layer is the Schematron,
-//! thirteen patterns ported one to one, each finding carrying the pattern's
+//! nineteen patterns ported one to one, each finding carrying the pattern's
 //! id so that it can be read next to the toolkit's own output.
 //!
-//! Both layers are per specification version, and a spec bump is a diff
-//! here against a diff in `doclang.xsd` and `doclang.sch`. Agreement with
-//! the toolkit is measured by `segler corpus --toolkit`, never assumed.
+//! Both layers are the current specification version's, [`crate::SPEC_VERSION`],
+//! and a spec bump is a diff here against a diff in `doclang.xsd` and
+//! `doclang.sch`. A document declaring another version, or none, is checked
+//! against this one and carries a [`Layer::Version`] warning saying so.
+//! Agreement with the toolkit is measured by `segler corpus --toolkit`, never
+//! assumed.
 //!
 //! Author: David M. Anderson
 //! Built with AI assistance (Claude, Anthropic)
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -28,6 +32,9 @@ pub enum Layer {
     Schema,
     /// The Schematron patterns.
     Rules,
+    /// The declared version differs from the one checked against, or is
+    /// missing. A warning: a document with only these findings is valid.
+    Version,
 }
 
 impl fmt::Display for Layer {
@@ -35,6 +42,7 @@ impl fmt::Display for Layer {
         f.write_str(match self {
             Layer::Schema => "schema",
             Layer::Rules => "rules",
+            Layer::Version => "version",
         })
     }
 }
@@ -52,13 +60,51 @@ pub struct Finding {
     pub message: String,
 }
 
-/// Every finding in `doc`, schema layer first, in document order within a
-/// layer. An empty result is a valid document.
+impl Finding {
+    /// Whether this finding makes the document invalid, as opposed to a
+    /// warning about it.
+    pub fn is_defect(&self) -> bool {
+        self.layer != Layer::Version
+    }
+}
+
+/// Every finding in `doc`: the version warning first, then the schema
+/// layer, then the rules, in document order within a layer. A result with no
+/// [`Finding::is_defect`] finding is a valid document.
 pub fn validate(doc: &Document) -> Vec<Finding> {
     let mut findings = Vec::new();
+    version_check(doc, &mut findings);
     schema::check(doc, &mut findings);
     rules::check(doc, &mut findings);
     findings
+}
+
+/// The spec's conformance clause: an instance with no version is checked
+/// against the latest version the validator supports, with a warning. One
+/// that declares another version is checked against this one too, since
+/// before 1.0 Segler carries one rule set.
+fn version_check(doc: &Document, out: &mut Vec<Finding>) {
+    if kind(&doc.root) != Some(Kind::Doclang) {
+        return;
+    }
+    let message = match doclang::version(doc) {
+        Some(crate::SPEC_VERSION) => return,
+        Some(v) => format!(
+            "the document declares DocLang {v}; it was checked as DocLang {}",
+            crate::SPEC_VERSION
+        ),
+        None => format!(
+            "the document declares no DocLang version; it was checked as DocLang {}",
+            crate::SPEC_VERSION
+        ),
+    };
+    out.push(Finding {
+        layer: Layer::Version,
+        rule: "version",
+        element: doc.root.id(),
+        path: format!("/{}", doc.root.name()),
+        message,
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -147,7 +193,18 @@ fn is_top_level(k: Kind) -> bool {
             | Kind::Picture
             | Kind::Table
             | Kind::Index
+            | Kind::Track
     )
+}
+
+/// The components of a track timestamp run.
+fn is_time_part(k: Kind) -> bool {
+    matches!(k, Kind::Hours | Kind::Minutes | Kind::Seconds | Kind::Msecs)
+}
+
+/// `transcript_content`: what a track cue block holds after its media.
+fn is_transcript(k: Kind) -> bool {
+    k == Kind::Content || k == Kind::Voice || is_headless_txt(k)
 }
 
 /// `virtual_text_content`: what may follow a list divider or a cell token.
@@ -249,6 +306,11 @@ mod schema {
         Picture,
         /// `marker?`: `ldiv`.
         Divider,
+        /// `src? vtc*`: `cover`, `frame`, `audio`.
+        Media,
+        /// `cover? (bdiv timestamp timestamp? chapter? frame? audio?
+        /// transcript*)*`: `track`.
+        Track,
     }
 
     struct Model {
@@ -267,9 +329,8 @@ mod schema {
             Head => m(true, false, Body::Any),
             Custom => m(false, false, Body::Any),
             PageBreak | Checkbox | DefaultResolution | Location | Label | Thread | Xref | Href
-            | Layer | Src | Fcel | Ecel | Ched | Rhed | Corn | Srow | Lcel | Ucel | Xcel | Nl => {
-                m(false, false, Body::Empty)
-            }
+            | Layer | Src | Fcel | Ecel | Ched | Rhed | Corn | Srow | Lcel | Ucel | Xcel | Nl
+            | Bdiv | Hours | Minutes | Seconds | Msecs => m(false, false, Body::Empty),
             Content => m(true, false, Body::TextOnly),
             Description | Summary => m(true, false, Body::Choice(|c| c == Content)),
             Bold | Italic | Underline | Strikethrough | Superscript | Subscript | Handwriting
@@ -278,27 +339,30 @@ mod schema {
                 false,
                 Body::Choice(|c| c == Content || is_formatting(c)),
             ),
-            Marker => m(
-                true,
-                true,
-                Body::Choice(|c| c == Content || is_formatting(c) || c == Checkbox),
-            ),
-            Text | Heading | Caption | PageHeader | PageFooter | Footnote | Key | Value => m(
+            Text | Heading | Caption | PageHeader | PageFooter | Footnote | Key | Value
+            | Marker | Voice | Chapter => m(
                 true,
                 true,
                 Body::Choice(|c| c == Content || is_headless_txt(c) || is_top_level(c)),
             ),
             Code | Formula => m(true, true, Body::Choice(|c| c == Content || is_headless(c))),
-            FieldRegion | FieldHeading | FieldItem => m(
+            FieldRegion | FieldItem => m(
                 true,
                 true,
                 Body::Choice(|c| is_headless_txt(c) || is_top_level(c)),
+            ),
+            FieldHeading => m(
+                true,
+                true,
+                Body::Choice(|c| c == Content || is_headless_txt(c) || is_top_level(c)),
             ),
             Group => m(false, true, Body::Choice(is_top_level)),
             List => m(true, true, Body::Items),
             Table | Index => m(true, true, Body::Cells),
             Tabular => m(true, false, Body::Cells),
             Picture => m(true, true, Body::Picture),
+            Cover | Frame | Audio => m(true, true, Body::Media),
+            Track => m(true, true, Body::Track),
             Ldiv => m(false, false, Body::Divider),
         }
     }
@@ -308,6 +372,10 @@ mod schema {
         Enum(&'static [&'static str]),
         NonNegative,
         Positive,
+        /// An integer from the first bound to the second, both included.
+        Range(i128, i128),
+        /// `MAJOR.MINOR`, the XSD's `[0-9]+\.[0-9]+`.
+        MinorVersion,
         Any,
     }
 
@@ -315,7 +383,7 @@ mod schema {
         use Attr::*;
         use Kind::*;
         match k {
-            Doclang => &[("version", false, Enum(&["0.7"]))],
+            Doclang => &[("version", false, MinorVersion)],
             Heading | FieldHeading => &[("level", false, Positive)],
             List => &[("class", false, Enum(&["ordered", "unordered"]))],
             Picture => &[("class", false, Enum(&["undefined", "chart"]))],
@@ -329,12 +397,21 @@ mod schema {
                 ("value", true, NonNegative),
                 ("resolution", false, Positive),
             ],
+            Hours => &[("value", true, NonNegative)],
+            Minutes | Seconds => &[("value", true, Range(0, 59))],
+            Msecs => &[("value", true, Range(0, 999))],
             DefaultResolution => &[
                 ("width", false, NonNegative),
                 ("height", false, NonNegative),
             ],
             _ => &[],
         }
+    }
+
+    fn is_minor_version(s: &str) -> bool {
+        let digits = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
+        s.split_once('.')
+            .is_some_and(|(major, minor)| digits(major) && digits(minor))
     }
 
     fn is_integer(s: &str) -> Option<i128> {
@@ -410,12 +487,18 @@ mod schema {
                         Attr::Enum(values) => values.contains(&a.value.as_str()),
                         Attr::NonNegative => is_integer(&a.value).is_some_and(|n| n >= 0),
                         Attr::Positive => is_integer(&a.value).is_some_and(|n| n > 0),
+                        Attr::Range(lo, hi) => {
+                            is_integer(&a.value).is_some_and(|n| (*lo..=*hi).contains(&n))
+                        }
+                        Attr::MinorVersion => is_minor_version(&a.value),
                     };
                     if !ok {
                         let expected = match constraint {
                             Attr::Enum(values) => format!("one of {}", values.join(", ")),
                             Attr::NonNegative => "a non-negative integer".to_owned(),
                             Attr::Positive => "a positive integer".to_owned(),
+                            Attr::Range(lo, hi) => format!("an integer from {lo} to {hi}"),
+                            Attr::MinorVersion => "a MAJOR.MINOR version".to_owned(),
                             Attr::Any => unreachable!(),
                         };
                         push(
@@ -585,7 +668,128 @@ mod schema {
                     }
                 }
             }
+            Body::Media => {
+                let mut j = i;
+                if children
+                    .get(j)
+                    .is_some_and(|(_, c)| kind(c) == Some(Kind::Src))
+                {
+                    j += 1;
+                }
+                for (_, c) in &children[j..] {
+                    match kind(c) {
+                        Some(Kind::Src) => push(
+                            el,
+                            path,
+                            format!("<src> must come first in the body of <{}>", el.name()),
+                        ),
+                        _ => reject_unless(el, c, path, is_vtc, push),
+                    }
+                }
+            }
+            Body::Track => check_track(el, &children, i, path, push),
         }
+    }
+
+    /// `cover?` then cue blocks, each `bdiv timestamp timestamp? chapter?
+    /// frame? audio? transcript*`. A cue block that goes wrong is reported
+    /// once and skipped to the next `bdiv`.
+    fn check_track(
+        el: &Element,
+        children: &[(usize, &Element)],
+        start: usize,
+        path: &str,
+        push: &mut impl FnMut(&Element, &str, String),
+    ) {
+        let at = |j: usize| children.get(j).and_then(|(_, c)| kind(c));
+        let mut j = start;
+        if at(j) == Some(Kind::Cover) {
+            j += 1;
+        }
+        while j < children.len() {
+            let (_, c) = children[j];
+            if kind(c) != Some(Kind::Bdiv) {
+                push(
+                    el,
+                    path,
+                    format!("a cue block begins with <bdiv>; found <{}>", c.name()),
+                );
+                j = next_bdiv(children, j + 1);
+                continue;
+            }
+            j += 1;
+            match timestamp(children, j) {
+                Ok(next) => j = next,
+                Err(found) => {
+                    push(el, path, format!("a cue block's start timestamp is hours? minutes? seconds msecs?; found {found}"));
+                    j = next_bdiv(children, j);
+                    continue;
+                }
+            }
+            if at(j).is_some_and(is_time_part) {
+                match timestamp(children, j) {
+                    Ok(next) => j = next,
+                    Err(found) => {
+                        push(el, path, format!("a cue block's end timestamp is hours? minutes? seconds msecs?; found {found}"));
+                        j = next_bdiv(children, j);
+                        continue;
+                    }
+                }
+            }
+            for optional in [Kind::Chapter, Kind::Frame, Kind::Audio] {
+                if at(j) == Some(optional) {
+                    j += 1;
+                }
+            }
+            while j < children.len() && at(j) != Some(Kind::Bdiv) {
+                let (_, c) = children[j];
+                match kind(c) {
+                    Some(k)
+                        if is_time_part(k)
+                            || matches!(
+                                k,
+                                Kind::Chapter | Kind::Frame | Kind::Audio | Kind::Cover
+                            ) =>
+                    {
+                        push(
+                            el,
+                            path,
+                            format!("<{}> is out of order in a cue block of <track>", c.name()),
+                        )
+                    }
+                    _ => reject_unless(el, c, path, is_transcript, push),
+                }
+                j += 1;
+            }
+        }
+    }
+
+    /// Consume `hours? minutes? seconds msecs?` from `j`, returning the
+    /// index after it, or what was found where `seconds` was due.
+    fn timestamp(children: &[(usize, &Element)], mut j: usize) -> Result<usize, String> {
+        let at = |j: usize| children.get(j).and_then(|(_, c)| kind(c));
+        if at(j) == Some(Kind::Hours) {
+            j += 1;
+        }
+        if at(j) == Some(Kind::Minutes) {
+            j += 1;
+        }
+        if at(j) != Some(Kind::Seconds) {
+            return Err(children
+                .get(j)
+                .map_or("nothing".to_owned(), |(_, c)| format!("<{}>", c.name())));
+        }
+        j += 1;
+        if at(j) == Some(Kind::Msecs) {
+            j += 1;
+        }
+        Ok(j)
+    }
+
+    fn next_bdiv(children: &[(usize, &Element)], from: usize) -> usize {
+        (from..children.len())
+            .find(|&j| kind(children[j].1) == Some(Kind::Bdiv))
+            .unwrap_or(children.len())
     }
 
     /// Consume an element head starting at `start`, in the XSD's order, and
@@ -625,6 +829,9 @@ mod schema {
             if s == 4 && next_slot <= 4 {
                 locations += 1;
                 next_slot = 4;
+            } else if s == 5 && next_slot <= 6 {
+                // Captions repeat.
+                next_slot = 6;
             } else if s < next_slot {
                 push(
                     parent,
@@ -726,6 +933,93 @@ mod rules {
                 }
             }
 
+            // track-structure
+            if k == Kind::Track && !children.is_empty() {
+                if let Some((_, c)) = first_body {
+                    if !matches!(kind(c), Some(Kind::Cover | Kind::Bdiv)) {
+                        push("track-structure", format!("Track must have bdiv (optionally preceded by a single cover) as first element after the optional element head; found {}", c.name()));
+                    }
+                }
+                if let Some((first_bdiv, _)) =
+                    children.iter().find(|(_, c)| kind(c) == Some(Kind::Bdiv))
+                {
+                    if let Some(text) = text_in(&v.el.children()[..*first_bdiv]) {
+                        push("track-structure", format!("Track must not contain non-whitespace text before its first cue block (bdiv); found {text:?}"));
+                    }
+                }
+            }
+
+            // track-cue-block, track-cue-block-timestamp-order,
+            // track-audio-requires-end, track-cue-block-sequence
+            if k == Kind::Track {
+                let bdivs: Vec<usize> = children
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, (_, c))| kind(c) == Some(Kind::Bdiv))
+                    .map(|(n, _)| n)
+                    .collect();
+                for (b, &n) in bdivs.iter().enumerate() {
+                    let end = bdivs.get(b + 1).copied().unwrap_or(children.len());
+                    let cue = &children[n + 1..end];
+                    let node_end = cue_node_end(v.el, &children, end);
+                    let first = cue.first().map(|(i, c)| (*i, *c));
+                    if let Some((_, c)) = first {
+                        if !matches!(kind(c), Some(Kind::Hours | Kind::Minutes | Kind::Seconds)) {
+                            push("track-cue-block", format!("A track cue block must begin with a start timestamp: its first element must be hours, minutes or seconds; found {}", c.name()));
+                        }
+                    }
+                    let text_end = first.map_or(node_end, |(i, _)| i);
+                    if let Some(text) = text_in(&v.el.children()[children[n].0 + 1..text_end]) {
+                        push("track-cue-block", format!("A track cue block must not contain non-whitespace text before its start timestamp; found {text:?}"));
+                    }
+
+                    let seconds: Vec<usize> = (n + 1..end)
+                        .filter(|&j| kind(children[j].1) == Some(Kind::Seconds))
+                        .collect();
+                    if let [s1, s2] = seconds[..] {
+                        let (start, finish) =
+                            (millis(&children, Some(s1)), millis(&children, Some(s2)));
+                        if !matches!(
+                            finish.partial_cmp(&start),
+                            Some(Ordering::Greater | Ordering::Equal)
+                        ) {
+                            push("track-cue-block-timestamp-order", format!("A track cue block end timestamp must not be earlier than its start timestamp; found start={start}ms, end={finish}ms"));
+                        }
+                    }
+                    if cue.iter().any(|(_, c)| kind(c) == Some(Kind::Audio)) && seconds.len() != 2 {
+                        push("track-audio-requires-end", "A track cue block with an audio clip must carry an end time; the clip spans the cue block's interval [start, end]".to_owned());
+                    }
+
+                    if b > 0 {
+                        let start = millis(&children, seconds_after(&children, n));
+                        let previous = millis(&children, seconds_after(&children, bdivs[b - 1]));
+                        if !matches!(
+                            start.partial_cmp(&previous),
+                            Some(Ordering::Greater | Ordering::Equal)
+                        ) {
+                            push("track-cue-block-sequence", format!("Track cue blocks must appear in non-decreasing order of start time; found this cue block start={start}ms, previous cue block start={previous}ms"));
+                        }
+                    }
+                }
+
+                // track-chapter-strictly-increasing
+                let block_start = |j: usize| {
+                    let bdiv = (0..j)
+                        .rev()
+                        .find(|&b| kind(children[b].1) == Some(Kind::Bdiv));
+                    millis(&children, bdiv.and_then(|b| seconds_after(&children, b)))
+                };
+                let chapters: Vec<usize> = (0..children.len())
+                    .filter(|&j| kind(children[j].1) == Some(Kind::Chapter))
+                    .collect();
+                for pair in chapters.windows(2) {
+                    let (previous, start) = (block_start(pair[0]), block_start(pair[1]));
+                    if start.partial_cmp(&previous) != Some(Ordering::Greater) {
+                        push("track-chapter-strictly-increasing", format!("Each chapter must begin strictly later than the previous chapter; two chapters cannot mark the same instant; found this chapter start={start}ms, previous chapter start={previous}ms"));
+                    }
+                }
+            }
+
             // table-structure
             if matches!(k, Kind::Table | Kind::Index) {
                 if let Some((_, c)) = first_body {
@@ -780,14 +1074,17 @@ mod rules {
                     | Kind::Table
                     | Kind::Index
                     | Kind::Group
+                    | Kind::Voice
+                    | Kind::Chapter
+                    | Kind::Cover
+                    | Kind::Frame
+                    | Kind::Audio
+                    | Kind::Track
             ) {
-                // For a list, table or index only its own head counts: text
-                // in an earlier item or cell followed by a head element in a
-                // later one is that item's business, and the two virtual-text
-                // patterns below judge it. The Schematron's XPath reads wider
-                // than that, but it never ran on those elements in the
-                // reference toolkit (DESIGN.md §6), and the corpus marks such
-                // documents valid.
+                // For a list, table, index or track only its own head counts,
+                // the part before its first body element: an item's, a cell's
+                // or a cue block's own head is the virtual-text patterns'
+                // business.
                 let own = match k {
                     Kind::List => children
                         .iter()
@@ -797,6 +1094,7 @@ mod rules {
                         .iter()
                         .find(|(_, c)| kind(c).is_some_and(is_table_sep))
                         .map_or(v.el.children().len(), |(i, _)| *i),
+                    Kind::Track => first_body.map_or(v.el.children().len(), |(i, _)| i),
                     _ => v.el.children().len(),
                 };
                 let last_head = children
@@ -1004,6 +1302,54 @@ mod rules {
         });
     }
 
+    /// Non-whitespace text among `nodes`, trimmed and joined, if any.
+    fn text_in(nodes: &[Node]) -> Option<String> {
+        let text: String = nodes
+            .iter()
+            .filter_map(|n| match n {
+                Node::Text(t) if !t.value().trim().is_empty() => Some(t.value().trim()),
+                Node::CData(c) if !c.trim().is_empty() => Some(c.trim()),
+                _ => None,
+            })
+            .collect();
+        (!text.is_empty()).then_some(text)
+    }
+
+    /// The node index a cue block ends at: the next `bdiv`'s, or the end of
+    /// the track.
+    fn cue_node_end(track: &Element, children: &[(usize, &Element)], next: usize) -> usize {
+        children
+            .get(next)
+            .map_or(track.children().len(), |(i, _)| *i)
+    }
+
+    /// `following-sibling::dl:seconds[1]` of the element at `from`, which
+    /// may lie past the next `bdiv`, as the XPath does not stop there.
+    fn seconds_after(children: &[(usize, &Element)], from: usize) -> Option<usize> {
+        (from + 1..children.len()).find(|&j| kind(children[j].1) == Some(Kind::Seconds))
+    }
+
+    /// A timestamp in milliseconds from the run anchored on the `seconds` at
+    /// `seconds`: the `minutes` directly before it, the `hours` directly
+    /// before those (or before the seconds), the `msecs` directly after.
+    /// NaN where the XPath's `number()` would give it, which fails every
+    /// comparison as the assertions expect.
+    fn millis(children: &[(usize, &Element)], seconds: Option<usize>) -> f64 {
+        let Some(s) = seconds else {
+            return f64::NAN;
+        };
+        let value = |j: usize| number(children[j].1.attr("value").unwrap_or(""));
+        let is = |j: Option<usize>, want: Kind| j.filter(|&j| kind(children[j].1) == Some(want));
+        let before = |j: usize| j.checked_sub(1);
+        let minutes = is(before(s), Kind::Minutes);
+        let hours = is(before(minutes.unwrap_or(s)), Kind::Hours);
+        let msecs = is(Some(s + 1).filter(|&j| j < children.len()), Kind::Msecs);
+        3_600_000.0 * hours.map_or(0.0, value)
+            + 60_000.0 * minutes.map_or(0.0, value)
+            + 1000.0 * value(s)
+            + msecs.map_or(0.0, value)
+    }
+
     /// XPath `number()`: a numeric string or NaN.
     fn number(s: &str) -> f64 {
         s.trim().parse::<f64>().unwrap_or(f64::NAN)
@@ -1084,16 +1430,18 @@ mod rules {
 mod tests {
     use super::*;
 
+    /// The defects in `src`; the version warning is tested on its own.
     fn findings(src: &str) -> Vec<(Layer, &'static str)> {
         validate(&Document::parse(src).unwrap())
             .into_iter()
+            .filter(Finding::is_defect)
             .map(|f| (f.layer, f.rule))
             .collect()
     }
 
     #[test]
     fn a_valid_document_has_no_findings() {
-        let src = r#"<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.7"><head><default_resolution width="1000"/></head>
+        let src = r#"<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.9"><head><default_resolution width="1000"/></head>
 <heading level="2"><location value="1"/><location value="2"/><location value="3"/><location value="4"/>T</heading>
 <list class="ordered"><ldiv/><label value="x"/>one<ldiv/><text>two</text></list>
 <table><ched/>A<ched/>B<nl/><fcel/>1<fcel/>2<nl/></table>
@@ -1105,7 +1453,7 @@ mod tests {
     #[test]
     fn schema_findings() {
         assert_eq!(
-            findings("<doclang version=\"0.6\"/>"),
+            findings("<doclang version=\"6\"/>"),
             [(Layer::Schema, "xsd")]
         );
         assert_eq!(findings("<doclang><text><layer value=\"body\"/><location value=\"1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/><label/>x</text></doclang>"), [(Layer::Schema, "xsd")]);
@@ -1121,6 +1469,90 @@ mod tests {
         assert_eq!(
             findings("<doclang><description><bold>x</bold></description></doclang>").len(),
             2
+        );
+    }
+
+    #[test]
+    fn another_or_no_version_is_a_warning_and_still_valid() {
+        let current = format!("<doclang version=\"{}\"/>", crate::SPEC_VERSION);
+        assert_eq!(validate(&Document::parse(&current).unwrap()), []);
+        for src in ["<doclang version=\"0.7\"/>", "<doclang/>"] {
+            let all = validate(&Document::parse(src).unwrap());
+            assert_eq!(all.len(), 1, "{src}");
+            assert_eq!(all[0].layer, Layer::Version);
+            assert!(!all[0].is_defect());
+        }
+    }
+
+    #[test]
+    fn captions_repeat_and_markers_and_field_headings_widened() {
+        let v = |body: &str| format!("<doclang version=\"0.9\">{body}</doclang>");
+        assert_eq!(findings(&v("<picture><caption>a</caption><caption>b</caption><description>d</description></picture>")), []);
+        assert_eq!(
+            findings(&v("<picture><caption>a</caption><description>d</description><caption>b</caption></picture>")),
+            [(Layer::Schema, "xsd")]
+        );
+        assert_eq!(
+            findings(&v(
+                "<list><ldiv><marker><text>1.</text></marker></ldiv>one</list>"
+            )),
+            []
+        );
+        assert_eq!(findings(&v("<field_region><field_heading><content>A  B</content></field_heading></field_region>")), []);
+    }
+
+    #[test]
+    fn tracks() {
+        let v = |body: &str| format!("<doclang version=\"0.9\"><track>{body}</track></doclang>");
+        let ok = "<cover><src uri=\"c.png\"/></cover><bdiv/><seconds value=\"1\"/><minutes value=\"0\"/><seconds value=\"2\"/><msecs value=\"500\"/><chapter>One</chapter><audio><src uri=\"a.mp3\"/></audio><voice>Ann</voice> hello <bold>there</bold><bdiv/><hours value=\"1\"/><seconds value=\"0\"/><chapter>Two</chapter>bye";
+        assert_eq!(findings(&v(ok)), []);
+        let schema = [(Layer::Schema, "xsd")];
+        assert_eq!(
+            findings(&v("<bdiv/><minutes value=\"60\"/><seconds value=\"0\"/>")),
+            schema
+        );
+        assert_eq!(
+            findings(&v(
+                "<bdiv/><seconds value=\"0\"/><seconds value=\"1\"/><seconds value=\"2\"/>"
+            )),
+            schema
+        );
+        assert_eq!(
+            findings(&v(
+                "<bdiv/><seconds value=\"0\"/><frame/><chapter>x</chapter>"
+            )),
+            schema
+        );
+        let rule = |body: &str| {
+            findings(&v(body))
+                .into_iter()
+                .filter(|f| f.0 == Layer::Rules)
+                .map(|f| f.1)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            rule("<bdiv/><seconds value=\"5\"/><seconds value=\"4\"/>"),
+            ["track-cue-block-timestamp-order"]
+        );
+        assert_eq!(
+            rule("<bdiv/><seconds value=\"5\"/><bdiv/><seconds value=\"4\"/>"),
+            ["track-cue-block-sequence"]
+        );
+        assert_eq!(
+            rule("<bdiv/><seconds value=\"5\"/><audio/>"),
+            ["track-audio-requires-end"]
+        );
+        assert_eq!(
+            rule("<bdiv/>early<seconds value=\"5\"/>"),
+            ["track-cue-block"]
+        );
+        assert_eq!(
+            rule("stray<bdiv/><seconds value=\"5\"/>"),
+            ["track-structure"]
+        );
+        assert_eq!(
+            rule("<bdiv/><seconds value=\"5\"/><chapter>a</chapter><bdiv/><seconds value=\"5\"/><chapter>b</chapter>"),
+            ["track-chapter-strictly-increasing"]
         );
     }
 

@@ -17,8 +17,8 @@ use crate::tree::Document;
 /// Counts and declarations gathered from one pass over the document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Summary {
-    /// The root's `version` attribute, or the spec's default when absent.
-    pub version: String,
+    /// The root's `version` attribute; `None` when the document declares none.
+    pub version: Option<String>,
     /// Whether the root declares the DocLang namespace.
     pub namespaced: bool,
     /// Pages, as the spec counts them: `page_break` elements plus one.
@@ -60,7 +60,7 @@ impl Summary {
             }
         }
         Ok(Summary {
-            version: doclang::version(doc).to_owned(),
+            version: doclang::version(doc).map(str::to_owned),
             namespaced: doclang::namespaced(doc),
             pages: doclang::pages(doc).len(),
             elements,
@@ -82,7 +82,7 @@ mod tests {
   <text>Two</text>
 </doclang>"#;
         let s = Summary::of(markup).unwrap();
-        assert_eq!(s.version, "0.7");
+        assert_eq!(s.version.as_deref(), Some("0.7"));
         assert!(s.namespaced);
         assert_eq!(s.pages, 2);
         assert_eq!(s.elements["text"], 2);
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn defaults_when_root_is_bare() {
         let s = Summary::of("<doclang><text>x</text></doclang>").unwrap();
-        assert_eq!(s.version, crate::SPEC_VERSION);
+        assert_eq!(s.version, None);
         assert!(!s.namespaced);
         assert_eq!(s.pages, 1);
         assert_eq!(s.located, 0);

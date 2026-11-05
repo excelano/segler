@@ -32,4 +32,4 @@ pub const NAMESPACE: &str = "https://www.doclang.ai/ns/v0";
 /// The specification version this crate targets, in the `MAJOR.MINOR` form
 /// the `version` attribute of the root element carries. Every 0.x minor is a
 /// breaking change by the spec's own rule, so this is exact rather than a floor.
-pub const SPEC_VERSION: &str = "0.7";
+pub const SPEC_VERSION: &str = "0.9";

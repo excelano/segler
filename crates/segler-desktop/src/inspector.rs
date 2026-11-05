@@ -502,10 +502,13 @@ impl Editor {
 pub fn problems(ui: &mut egui::Ui, session: &Session, findings: &[Finding], out: &mut Requests) {
     ui.horizontal(|ui| {
         ui.heading(t("Problems"));
+        let defects = findings.iter().filter(|f| f.is_defect()).count();
         if findings.is_empty() {
             ui.weak(t("none; the document is valid"));
+        } else if defects == 0 {
+            ui.weak(t("the document is valid"));
         } else {
-            ui.weak(format!("{}", findings.len()));
+            ui.weak(format!("{defects}"));
         }
     });
     egui::ScrollArea::vertical()

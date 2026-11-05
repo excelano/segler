@@ -168,7 +168,10 @@ fn inspect(file: &Path) -> Result<(), String> {
         archive::Kind::Archive => "archive",
     };
     println!("kind        {kind}");
-    println!("version     {}", summary.version);
+    println!(
+        "version     {}",
+        summary.version.as_deref().unwrap_or("not declared")
+    );
     println!(
         "namespace   {}",
         if summary.namespaced {
@@ -194,14 +197,15 @@ fn validate_file(file: &Path) -> Result<ExitCode, String> {
     let markup = load(file)?;
     let doc = Document::parse(&markup).map_err(|e| format!("{}: {e}", file.display()))?;
     let findings = validate::validate(&doc);
-    if findings.is_empty() {
-        println!("{}: valid", file.display());
-        return Ok(ExitCode::SUCCESS);
-    }
     for f in &findings {
         println!("{}  {}  {}\n    {}", f.layer, f.rule, f.path, f.message);
     }
-    println!("{}: {} findings", file.display(), findings.len());
+    let defects = findings.iter().filter(|f| f.is_defect()).count();
+    if defects == 0 {
+        println!("{}: valid", file.display());
+        return Ok(ExitCode::SUCCESS);
+    }
+    println!("{}: {defects} findings", file.display());
     Ok(ExitCode::FAILURE)
 }
 
@@ -331,13 +335,13 @@ fn print_blocks(blocks: &[Block], depth: usize) {
             }
             Block::Table {
                 kind,
-                caption,
+                captions,
                 rows,
                 cols,
                 cells,
                 ..
             } => {
-                if let Some(c) = caption {
+                for c in captions {
                     println!("{pad}[{}: {}]", kind.name(), runs_text(c));
                 }
                 for r in 0..*rows {
@@ -364,17 +368,17 @@ fn print_blocks(blocks: &[Block], depth: usize) {
             }
             Block::Picture {
                 src,
-                caption,
+                captions,
                 blocks,
                 ..
             } => {
                 println!(
                     "{pad}[picture {}]{}",
                     src.as_deref().unwrap_or("no src"),
-                    caption
-                        .as_ref()
+                    captions
+                        .iter()
                         .map(|c| format!(" {}", runs_text(c)))
-                        .unwrap_or_default()
+                        .collect::<String>()
                 );
                 print_blocks(blocks, depth + 1);
             }
@@ -450,7 +454,7 @@ fn edit(file: &Path, edits: &[String], out: Option<&Path>, undo: bool) -> Result
             .map_err(|e| format!("edit {line:?}: {e}"))?;
         applied += 1;
     }
-    let findings = session.findings().len();
+    let findings = session.findings().iter().filter(|f| f.is_defect()).count();
     if undo {
         for _ in 0..applied {
             session.undo();
@@ -755,7 +759,10 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
             skipped += 1;
             continue;
         }
-        let findings = validate::validate(&doc);
+        let findings: Vec<_> = validate::validate(&doc)
+            .into_iter()
+            .filter(|f| f.is_defect())
+            .collect();
         let schema = findings.iter().any(|f| f.layer == Layer::Schema);
         let rules = findings.iter().any(|f| f.layer == Layer::Rules);
         match (expectation(file), findings.is_empty()) {
