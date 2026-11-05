@@ -920,6 +920,7 @@ fn describe(command: &Command) -> String {
         Command::Insert { kind, .. } => fill(t("Inserted {kind}"), &[("kind", kind.name())]),
         Command::Remove { .. } => t("Element removed").into(),
         Command::SetTurnText { .. } => t("Transcript changed").into(),
+        Command::SetCueTimes { .. } => t("Times changed").into(),
         Command::SetListItemText { item, .. } => fill(
             t("List item {number} changed"),
             &[("number", &(item + 1).to_string())],

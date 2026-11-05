@@ -105,6 +105,11 @@ pub enum Command {
         turn: usize,
         text: String,
     },
+    SetCueTimes {
+        id: ElementId,
+        cue: usize,
+        text: String,
+    },
     /// Change what a table cell is: its token.
     SetCellKind {
         id: ElementId,
@@ -134,6 +139,10 @@ pub enum CommandError {
     NoSuchListItem(String, usize),
     #[error("<{0}> has no turn {2} in cue block {1}")]
     NoSuchTurn(String, usize, usize),
+    #[error("<{0}> has no cue block {1}")]
+    NoSuchCue(String, usize),
+    #[error("{0}")]
+    BadTime(String),
     /// The field showed tags and what came back is not markup. Refused rather
     /// than fallen back on, because falling back would read a missing `>` as
     /// an instruction to delete every tag in the line.
@@ -963,6 +972,26 @@ impl Session {
                     },
                 ))
             }
+            Command::SetCueTimes { id, cue, text } => {
+                let (start, end) = parse_cue_times(text).map_err(CommandError::BadTime)?;
+                let el = self
+                    .doc
+                    .find_mut(*id)
+                    .ok_or(CommandError::NoSuchElement(*id))?;
+                let parts = (doclang::kind(el) == Some(Kind::Track))
+                    .then(|| blocks::cue_parts(el).into_iter().nth(*cue))
+                    .flatten()
+                    .ok_or_else(|| CommandError::NoSuchCue(el.name().to_owned(), *cue))?;
+                let before = el.children().to_vec();
+                el.replace_children(with_times(el, &parts, start, end));
+                Ok((
+                    *id,
+                    Restore::Children {
+                        id: *id,
+                        nodes: before,
+                    },
+                ))
+            }
             Command::SetCellKind { id, row, col, kind } => {
                 let el = self
                     .doc
@@ -1205,6 +1234,126 @@ fn carries_text(k: Kind) -> bool {
             | Kind::Voice
             | Kind::Chapter
     )
+}
+
+type Time = [u64; 4];
+
+fn parse_cue_times(text: &str) -> Result<(Time, Option<Time>), String> {
+    let mut halves = text.split(['–', '—', '-']);
+    let start = parse_time(halves.next().unwrap_or(""))?;
+    let end = match halves.next().map(str::trim) {
+        None | Some("") => None,
+        Some(t) => Some(parse_time(t)?),
+    };
+    if halves.next().is_some() {
+        return Err(format!("{text:?} is more than a start and an end time"));
+    }
+    Ok((start, end))
+}
+
+fn parse_time(text: &str) -> Result<Time, String> {
+    let text = text.trim();
+    let bad =
+        || format!("{text:?} is not a time; write it as s, m:ss or h:mm:ss, with .mmm if needed");
+    let (clock, fraction) = match text.split_once('.') {
+        Some((c, f)) => (c, Some(f)),
+        None => (text, None),
+    };
+    let number = |s: &str| {
+        (!s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| s.parse::<u64>().ok())
+            .flatten()
+            .ok_or_else(bad)
+    };
+    let fields: Vec<u64> = clock.split(':').map(number).collect::<Result<_, _>>()?;
+    let [h, m, s] = match fields[..] {
+        [s] => [0, 0, s],
+        [m, s] => [0, m, s],
+        [h, m, s] => [h, m, s],
+        _ => return Err(bad()),
+    };
+    let ms = match fraction {
+        None => 0,
+        Some(f) if f.len() <= 3 => number(f)? * 10u64.pow(3 - f.len() as u32),
+        Some(_) => return Err(bad()),
+    };
+    if m > 59 || s > 59 {
+        return Err(format!("{text:?}: minutes and seconds run from 0 to 59"));
+    }
+    Ok([h, m, s, ms])
+}
+
+fn time_elements(value: Time, style: &[bool; 4]) -> Vec<Node> {
+    const NAMES: [Kind; 4] = [Kind::Hours, Kind::Minutes, Kind::Seconds, Kind::Msecs];
+    let [h, m, _, ms] = value;
+    let wanted = [
+        h > 0 || style[0],
+        h > 0 || m > 0 || style[1],
+        true,
+        ms > 0 || style[3],
+    ];
+    (0..4)
+        .filter(|&slot| wanted[slot])
+        .map(|slot| {
+            let mut el = Element::new(NAMES[slot].name());
+            el.set_attr("value", value[slot].to_string());
+            Node::Element(el)
+        })
+        .collect()
+}
+
+fn with_times(
+    track: &Element,
+    parts: &blocks::CueParts,
+    start: Time,
+    end: Option<Time>,
+) -> Vec<Node> {
+    let children = track.children();
+    let runs = blocks::time_runs(track, &parts.times);
+    let style_of = |run: Option<&Vec<usize>>| {
+        let mut style = [false; 4];
+        for &i in run.into_iter().flatten() {
+            if let Node::Element(e) = &children[i] {
+                if let Some(slot) = blocks::time_slot(doclang::kind(e)) {
+                    style[slot] = true;
+                }
+            }
+        }
+        style
+    };
+    let start_style = style_of(runs.first());
+    let end_style = if runs.len() > 1 {
+        style_of(runs.get(1))
+    } else {
+        start_style
+    };
+    let mut replaced: Vec<Option<Vec<Node>>> = vec![None; children.len()];
+    let first_of = |run: Option<&Vec<usize>>| run.and_then(|r| r.first().copied());
+    let old: Vec<usize> = runs.iter().flatten().copied().collect();
+    let start_at = first_of(runs.first()).unwrap_or(parts.bdiv + 1);
+    let mut new_start = time_elements(start, &start_style);
+    match (end, first_of(runs.get(1))) {
+        (Some(end), Some(at)) => replaced[at] = Some(time_elements(end, &end_style)),
+        (Some(end), None) => new_start.extend(time_elements(end, &end_style)),
+        (None, _) => {}
+    }
+    let mut out = Vec::with_capacity(children.len() + 4);
+    let mut start_written = false;
+    for (i, node) in children.iter().enumerate() {
+        if i == start_at && !start_written {
+            out.extend(std::mem::take(&mut new_start));
+            start_written = true;
+        }
+        if let Some(nodes) = replaced[i].take() {
+            out.extend(nodes);
+        } else if !old.contains(&i) {
+            out.push(node.clone());
+        }
+    }
+    if !start_written {
+        out.extend(new_start);
+    }
+    out
 }
 
 fn turn_range(track: &Element, cue: usize, turn: usize) -> Option<std::ops::Range<usize>> {
@@ -2414,5 +2563,50 @@ mod tests {
         })
         .unwrap();
         assert!(s.markup().contains("<voice>Maria</voice>"));
+    }
+
+    #[test]
+    fn cue_times_are_set_added_and_removed_in_the_files_own_components() {
+        let src = "<doclang version=\"0.9\"><track><bdiv/><minutes value=\"0\"/><seconds value=\"2\"/> Hi. <bdiv/><minutes value=\"0\"/><seconds value=\"9\"/> Bye.</track></doclang>";
+        let mut s = Session::from_markup(src).unwrap();
+        let track = id_at(&s, "/doclang/track[1]");
+        let set = |s: &mut Session, cue, text: &str| {
+            s.apply(Command::SetCueTimes {
+                id: track,
+                cue,
+                text: text.to_owned(),
+            })
+        };
+        set(&mut s, 0, "0:03 – 0:05.5").unwrap();
+        assert!(s.markup().contains("<bdiv/><minutes value=\"0\"/><seconds value=\"3\"/><minutes value=\"0\"/><seconds value=\"5\"/><msecs value=\"500\"/> Hi. "));
+        set(&mut s, 0, "0:03").unwrap();
+        assert!(s
+            .markup()
+            .contains("<bdiv/><minutes value=\"0\"/><seconds value=\"3\"/> Hi. "));
+        set(&mut s, 1, "1:02:03").unwrap();
+        assert!(s.markup().contains(
+            "<bdiv/><hours value=\"1\"/><minutes value=\"2\"/><seconds value=\"3\"/> Bye."
+        ));
+        assert!(matches!(
+            set(&mut s, 1, "0:75"),
+            Err(CommandError::BadTime(_))
+        ));
+        assert!(matches!(
+            set(&mut s, 1, "soon"),
+            Err(CommandError::BadTime(_))
+        ));
+        assert!(!s
+            .findings()
+            .iter()
+            .any(|f| f.rule == "track-cue-block-sequence"));
+        set(&mut s, 1, "0:01").unwrap();
+        assert!(s
+            .findings()
+            .iter()
+            .any(|f| f.rule == "track-cue-block-sequence"));
+        for _ in 0..4 {
+            s.undo();
+        }
+        assert_eq!(s.markup(), src);
     }
 }

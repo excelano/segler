@@ -564,41 +564,75 @@ pub fn turn_ranges(
     turns
 }
 
-fn timestamp(track: &Element, times: &[usize]) -> (String, Option<String>) {
+pub fn time_slot(kind: Option<Kind>) -> Option<usize> {
+    match kind {
+        Some(Kind::Hours) => Some(0),
+        Some(Kind::Minutes) => Some(1),
+        Some(Kind::Seconds) => Some(2),
+        Some(Kind::Msecs) => Some(3),
+        _ => None,
+    }
+}
+
+pub fn time_runs(track: &Element, times: &[usize]) -> Vec<Vec<usize>> {
     let children = track.children();
-    let mut runs: Vec<[Option<u64>; 4]> = Vec::new();
-    let mut current = [None; 4];
+    let mut runs: Vec<Vec<usize>> = Vec::new();
+    let mut current: Vec<usize> = Vec::new();
+    let mut filled = [false; 4];
     for &i in times {
         let Node::Element(e) = &children[i] else {
             continue;
         };
-        let slot = match doclang::kind(e) {
-            Some(Kind::Hours) => 0,
-            Some(Kind::Minutes) => 1,
-            Some(Kind::Seconds) => 2,
-            _ => 3,
+        let Some(slot) = time_slot(doclang::kind(e)) else {
+            continue;
         };
-        if current[slot..].iter().any(Option::is_some) {
-            runs.push(current);
-            current = [None; 4];
+        if filled[slot..].iter().any(|f| *f) {
+            runs.push(std::mem::take(&mut current));
+            filled = [false; 4];
         }
-        current[slot] = e.attr("value").and_then(|v| v.trim().parse().ok());
+        filled[slot] = true;
+        current.push(i);
     }
-    runs.push(current);
-    let show = |[h, m, s, ms]: [Option<u64>; 4]| {
-        let (h, m, s) = (h.unwrap_or(0), m.unwrap_or(0), s.unwrap_or(0));
-        let mut out = if h > 0 {
-            format!("{h}:{m:02}:{s:02}")
-        } else {
-            format!("{m}:{s:02}")
-        };
-        if let Some(ms) = ms.filter(|ms| *ms > 0) {
-            out.push_str(&format!(".{ms:03}"));
+    if !current.is_empty() {
+        runs.push(current);
+    }
+    runs
+}
+
+fn run_value(track: &Element, run: &[usize]) -> [u64; 4] {
+    let mut value = [0; 4];
+    for &i in run {
+        if let Node::Element(e) = &track.children()[i] {
+            if let Some(slot) = time_slot(doclang::kind(e)) {
+                value[slot] = e
+                    .attr("value")
+                    .and_then(|v| v.trim().parse().ok())
+                    .unwrap_or(0);
+            }
         }
-        out
+    }
+    value
+}
+
+pub fn format_time([h, m, s, ms]: [u64; 4]) -> String {
+    let mut out = if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m}:{s:02}")
     };
-    let start = runs.first().copied().map(show).unwrap_or_default();
-    (start, runs.get(1).copied().map(show))
+    if ms > 0 {
+        out.push_str(&format!(".{ms:03}"));
+    }
+    out
+}
+
+fn timestamp(track: &Element, times: &[usize]) -> (String, Option<String>) {
+    let runs = time_runs(track, times);
+    let show = |run: &Vec<usize>| format_time(run_value(track, run));
+    (
+        runs.first().map(show).unwrap_or_default(),
+        runs.get(1).map(show),
+    )
 }
 
 fn src_of(el: &Element) -> Option<String> {

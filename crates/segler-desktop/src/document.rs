@@ -68,6 +68,7 @@ enum Target {
     /// `Cell` carries a row and a column.
     Item(ElementId, usize),
     Turn(ElementId, usize, usize),
+    Times(ElementId, usize),
 }
 
 #[derive(Default)]
@@ -693,10 +694,31 @@ impl Cx<'_> {
                 Some(end) => format!("{} – {end}", cue.start),
                 None => cue.start.clone(),
             };
-            ui.add_sized(
-                [110.0, 18.0],
-                egui::Label::new(egui::RichText::new(time).monospace().weak()),
-            );
+            let target = Target::Times(track, n);
+            ui.allocate_ui(Vec2::new(110.0, 18.0), |ui| {
+                ui.set_width(110.0);
+                if self.editing.as_ref().is_some_and(|e| e.target == target) {
+                    self.editor(ui, FontId::monospace(13.0), move |text| {
+                        Command::SetCueTimes {
+                            id: track,
+                            cue: n,
+                            text,
+                        }
+                    });
+                    return;
+                }
+                let label = ui.add(
+                    egui::Label::new(egui::RichText::new(&time).monospace().weak())
+                        .sense(Sense::click()),
+                );
+                if label.clicked() {
+                    self.actions.select = Some(Some(cue.bdiv));
+                    self.actions.select_cell = None;
+                }
+                if label.double_clicked() {
+                    *self.editing = Some(Editing::new(target, time.clone()));
+                }
+            });
             ui.vertical(|ui| {
                 if let Some(src) = &cue.frame {
                     self.thumbnail(ui, src);
