@@ -184,6 +184,9 @@ fn inspect(file: &Path) -> Result<(), String> {
     if loaded.kind == archive::Kind::Archive {
         println!("page images {}", loaded.pages.len());
         println!("assets      {}", loaded.assets.len());
+        for r in &loaded.recordings {
+            println!("recording   {} (track {})", r.name, r.track);
+        }
     }
     println!("located     {}", summary.located);
     println!("elements");
@@ -194,9 +197,10 @@ fn inspect(file: &Path) -> Result<(), String> {
 }
 
 fn validate_file(file: &Path) -> Result<ExitCode, String> {
-    let markup = load(file)?;
-    let doc = Document::parse(&markup).map_err(|e| format!("{}: {e}", file.display()))?;
-    let findings = validate::validate(&doc);
+    let loaded = archive::load(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    let doc = Document::parse(&loaded.markup).map_err(|e| format!("{}: {e}", file.display()))?;
+    let mut findings = validate::validate(&doc);
+    findings.extend(validate::recordings(&doc, &loaded.recordings));
     for f in &findings {
         println!("{}  {}  {}\n    {}", f.layer, f.rule, f.path, f.message);
     }

@@ -80,6 +80,44 @@ pub fn validate(doc: &Document) -> Vec<Finding> {
     findings
 }
 
+pub fn recordings(doc: &Document, recordings: &[crate::archive::Recording]) -> Vec<Finding> {
+    let tracks = doc
+        .elements()
+        .filter(|e| kind(e) == Some(Kind::Track))
+        .count();
+    let mut out = Vec::new();
+    let mut push = |message: String| {
+        out.push(Finding {
+            layer: Layer::Rules,
+            rule: "archive-recordings",
+            element: doc.root.id(),
+            path: format!("/{}", doc.root.name()),
+            message,
+        })
+    };
+    for (i, r) in recordings.iter().enumerate() {
+        if r.track as usize > tracks {
+            push(format!(
+                "{} is the recording of track {}, and the document has {tracks} track elements",
+                r.name, r.track
+            ));
+        }
+        if let Some(first) = recordings[..i]
+            .iter()
+            .find(|o| o.modality == r.modality && o.track == r.track)
+        {
+            push(format!(
+                "{} and {} are both the {} recording of track {}; a track has at most one",
+                first.name,
+                r.name,
+                r.modality.folder(),
+                r.track
+            ));
+        }
+    }
+    out
+}
+
 /// The spec's conformance clause: an instance with no version is checked
 /// against the latest version the validator supports, with a warning. One
 /// that declares another version is checked against this one too, since
@@ -1561,6 +1599,41 @@ mod tests {
             rule("<bdiv/><seconds value=\"5\"/><chapter>a</chapter><bdiv/><seconds value=\"5\"/><chapter>b</chapter>"),
             ["track-chapter-strictly-increasing"]
         );
+    }
+
+    #[test]
+    fn a_recording_needs_its_track_and_a_track_one_recording_per_kind() {
+        use crate::archive::{Modality, Recording};
+        let doc =
+            Document::parse("<doclang><track><bdiv/><seconds value=\"0\"/></track></doclang>")
+                .unwrap();
+        let r = |modality, track, name: &str| Recording {
+            modality,
+            track,
+            name: name.to_owned(),
+        };
+        assert_eq!(
+            recordings(
+                &doc,
+                &[
+                    r(Modality::Audio, 1, "audio/1.wav"),
+                    r(Modality::Video, 1, "video/1.mp4")
+                ]
+            ),
+            []
+        );
+        let found = recordings(
+            &doc,
+            &[
+                r(Modality::Audio, 1, "audio/1.mp3"),
+                r(Modality::Audio, 1, "audio/1.wav"),
+                r(Modality::Video, 2, "video/2.mp4"),
+            ],
+        );
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert!(found
+            .iter()
+            .all(|f| f.rule == "archive-recordings" && f.is_defect()));
     }
 
     #[test]

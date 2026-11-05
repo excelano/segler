@@ -304,6 +304,7 @@ pub struct Session {
     /// over untouched. `None` for bare markup.
     archive: Option<Vec<u8>>,
     pages: Vec<archive::PagePart>,
+    recordings: Vec<archive::Recording>,
     doc: Document,
     selected: Option<ElementId>,
     undo: Vec<Entry>,
@@ -340,6 +341,7 @@ impl Session {
             path: None,
             archive: None,
             pages: loaded.pages,
+            recordings: loaded.recordings,
             doc,
             selected: None,
             undo: Vec::new(),
@@ -360,6 +362,10 @@ impl Session {
     /// The markup as it would be saved.
     pub fn markup(&self) -> String {
         self.doc.to_string()
+    }
+
+    pub fn recordings(&self) -> &[archive::Recording] {
+        &self.recordings
     }
 
     /// A part of the archive, for a front-end that wants a page image.
@@ -385,7 +391,9 @@ impl Session {
     /// Validation findings, computed on first ask after each change.
     pub fn findings(&mut self) -> &[Finding] {
         if self.findings.is_none() {
-            self.findings = Some(validate::validate(&self.doc));
+            let mut findings = validate::validate(&self.doc);
+            findings.extend(validate::recordings(&self.doc, &self.recordings));
+            self.findings = Some(findings);
         }
         self.findings.as_deref().unwrap_or_default()
     }

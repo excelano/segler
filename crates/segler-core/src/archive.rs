@@ -46,6 +46,28 @@ pub struct PagePart {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Modality {
+    Audio,
+    Video,
+}
+
+impl Modality {
+    pub fn folder(self) -> &'static str {
+        match self {
+            Modality::Audio => "audio",
+            Modality::Video => "video",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Recording {
+    pub modality: Modality,
+    pub track: u32,
+    pub name: String,
+}
+
 /// A document loaded from disk: the markup and, for an archive, what came
 /// with it. Page images are named rather than decoded, because decoding is
 /// the renderer's business and most of them will never be looked at.
@@ -58,6 +80,7 @@ pub struct Loaded {
     pub pages: Vec<PagePart>,
     /// Part names under `assets/`.
     pub assets: Vec<String>,
+    pub recordings: Vec<Recording>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -90,6 +113,7 @@ pub fn load_bytes(bytes: &[u8]) -> Result<Loaded, Error> {
             markup: String::from_utf8(bytes.to_vec()).map_err(|_| Error::NotUtf8)?,
             pages: Vec::new(),
             assets: Vec::new(),
+            recordings: Vec::new(),
         })
     }
 }
@@ -121,11 +145,15 @@ fn load_archive(bytes: &[u8]) -> Result<Loaded, Error> {
         .collect();
     assets.sort();
 
+    let mut recordings: Vec<Recording> = names.iter().filter_map(|n| recording(n)).collect();
+    recordings.sort_by(|a, b| (a.track, &a.name).cmp(&(b.track, &b.name)));
+
     Ok(Loaded {
         kind: Kind::Archive,
         markup,
         pages,
         assets,
+        recordings,
     })
 }
 
@@ -184,6 +212,19 @@ fn page_part(name: &str) -> Option<PagePart> {
     })
 }
 
+fn recording(name: &str) -> Option<Recording> {
+    let (modality, file) = [Modality::Audio, Modality::Video]
+        .into_iter()
+        .find_map(|m| Some((m, name.strip_prefix(m.folder())?.strip_prefix('/')?)))?;
+    let (stem, ext) = file.rsplit_once('.')?;
+    let track: u32 = stem.parse().ok()?;
+    (track >= 1 && !ext.is_empty()).then(|| Recording {
+        modality,
+        track,
+        name: name.to_owned(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,6 +272,26 @@ mod tests {
         let numbers: Vec<u32> = loaded.pages.iter().map(|p| p.number).collect();
         assert_eq!(numbers, [1, 2, 10]);
         assert_eq!(loaded.assets, ["assets/chart.svg"]);
+        assert!(loaded.recordings.is_empty());
+    }
+
+    #[test]
+    fn recordings_are_numbered_by_track() {
+        let bytes = archive(&[
+            (DOCUMENT_PART, MARKUP.as_bytes()),
+            ("video/3.mp4", b"v"),
+            ("audio/1.wav", b"a"),
+            ("audio/0.wav", b"a"),
+            ("audio/notes.txt", b"x"),
+            ("audiobook/1.mp3", b"x"),
+        ]);
+        let found: Vec<(Modality, u32)> = load_bytes(&bytes)
+            .unwrap()
+            .recordings
+            .iter()
+            .map(|r| (r.modality, r.track))
+            .collect();
+        assert_eq!(found, [(Modality::Audio, 1), (Modality::Video, 3)]);
     }
 
     #[test]
