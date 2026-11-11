@@ -187,6 +187,12 @@ fn inspect(file: &Path) -> Result<(), String> {
         for r in &loaded.recordings {
             println!("recording   {} (track {})", r.name, r.track);
         }
+        if let Some(source) = &loaded.source {
+            println!(
+                "source      {}",
+                source.content_type.as_deref().unwrap_or("no content type")
+            );
+        }
     }
     println!("located     {}", summary.located);
     println!("elements");
@@ -201,6 +207,7 @@ fn validate_file(file: &Path) -> Result<ExitCode, String> {
     let doc = Document::parse(&loaded.markup).map_err(|e| format!("{}: {e}", file.display()))?;
     let mut findings = validate::validate(&doc);
     findings.extend(validate::recordings(&doc, &loaded.recordings));
+    findings.extend(validate::source(&doc, loaded.source.as_ref()));
     for f in &findings {
         println!("{}  {}  {}\n    {}", f.layer, f.rule, f.path, f.message);
     }

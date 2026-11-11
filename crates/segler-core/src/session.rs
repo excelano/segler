@@ -327,6 +327,7 @@ pub struct Session {
     archive: Option<Vec<u8>>,
     pages: Vec<archive::PagePart>,
     recordings: Vec<archive::Recording>,
+    source: Option<archive::Source>,
     doc: Document,
     selected: Option<ElementId>,
     undo: Vec<Entry>,
@@ -364,6 +365,7 @@ impl Session {
             archive: None,
             pages: loaded.pages,
             recordings: loaded.recordings,
+            source: loaded.source,
             doc,
             selected: None,
             undo: Vec::new(),
@@ -430,6 +432,7 @@ impl Session {
         if self.findings.is_none() {
             let mut findings = validate::validate(&self.doc);
             findings.extend(validate::recordings(&self.doc, &self.recordings));
+            findings.extend(validate::source(&self.doc, self.source.as_ref()));
             self.findings = Some(findings);
         }
         self.findings.as_deref().unwrap_or_default()

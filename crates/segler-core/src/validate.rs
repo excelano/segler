@@ -80,21 +80,42 @@ pub fn validate(doc: &Document) -> Vec<Finding> {
     findings
 }
 
+/// An archive finding, which belongs to the package rather than an element
+/// and so sits on the root.
+fn archive_finding(doc: &Document, rule: &'static str, message: String) -> Finding {
+    Finding {
+        layer: Layer::Rules,
+        rule,
+        element: doc.root.id(),
+        path: format!("/{}", doc.root.name()),
+        message,
+    }
+}
+
+/// An archive's `source` part needs an `<Override>` naming its type, since a
+/// part without an extension matches no `<Default>`.
+pub fn source(doc: &Document, source: Option<&crate::archive::Source>) -> Vec<Finding> {
+    match source {
+        Some(s) if s.content_type.is_none() => vec![archive_finding(
+            doc,
+            "archive-source",
+            format!(
+                "the archive carries {} and {} gives no <Override> with its content type",
+                crate::archive::SOURCE_PART,
+                crate::archive::CONTENT_TYPES_PART
+            ),
+        )],
+        _ => Vec::new(),
+    }
+}
+
 pub fn recordings(doc: &Document, recordings: &[crate::archive::Recording]) -> Vec<Finding> {
     let tracks = doc
         .elements()
         .filter(|e| kind(e) == Some(Kind::Track))
         .count();
     let mut out = Vec::new();
-    let mut push = |message: String| {
-        out.push(Finding {
-            layer: Layer::Rules,
-            rule: "archive-recordings",
-            element: doc.root.id(),
-            path: format!("/{}", doc.root.name()),
-            message,
-        })
-    };
+    let mut push = |message: String| out.push(archive_finding(doc, "archive-recordings", message));
     for (i, r) in recordings.iter().enumerate() {
         if r.track as usize > tracks {
             push(format!(
@@ -1634,6 +1655,20 @@ mod tests {
         assert!(found
             .iter()
             .all(|f| f.rule == "archive-recordings" && f.is_defect()));
+    }
+
+    #[test]
+    fn a_source_part_needs_its_content_type() {
+        use crate::archive::Source;
+        let doc = Document::parse("<doclang/>").unwrap();
+        let typed = Source {
+            content_type: Some("application/pdf".to_owned()),
+        };
+        assert_eq!(source(&doc, None), []);
+        assert_eq!(source(&doc, Some(&typed)), []);
+        let found = source(&doc, Some(&Source { content_type: None }));
+        assert_eq!(found.len(), 1);
+        assert!(found[0].rule == "archive-source" && found[0].is_defect());
     }
 
     #[test]
