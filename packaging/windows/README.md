@@ -13,10 +13,8 @@ removes the associations and leaves them.
 
 **This directory is `slipcase-desktop/packaging/windows` cloned, and where a
 file here says something was measured, it was measured there unless it says
-otherwise.** That repository has been through Microsoft Store certification, a
-rejection, and a resubmission; its README is the long form of everything below
-and is worth reading before changing anything here. What is genuinely different
-in this copy is short enough to list:
+otherwise.** Its README is the long form of everything below; read it before
+changing anything here. What is different in this copy is short enough to list:
 
 - **Two file types where Slipcase has one.** `.dclx` and `.dclg`, each with its
   own ProgID, its own content type, and its own icon. `install.ps1` is written
@@ -25,9 +23,8 @@ in this copy is short enough to list:
 - **Three icon directories where Slipcase has one**, for the same reason: the
   application, plus one per file kind so a `.dclx` and a `.dclg` do not draw
   the same picture in Explorer.
-- **An empty certification baseline.** `build-msix.ps1`'s `$KNOWN_FINDINGS` is
-  empty until a kit run puts something in it. Copying Slipcase's would be
-  carrying a list of things somebody else measured.
+- **Its own certification baseline.** `build-msix.ps1`'s `$KNOWN_FINDINGS`
+  holds what a kit run against this package reported, not Slipcase's list.
 - **The signing certificate is already trusted**, because Partner Center
   assigns `Publisher` per account and not per product: Segler's is the same
   X.500 string Slipcase's is, so the throwaway certificate in
@@ -82,7 +79,7 @@ virtualised.
 | `listing/` | The Store logo at the two sizes Partner Center's listing form accepts. Not in the package |
 | `make-ico/` | The tool that builds all of it |
 | `AppxManifest.xml.in` | The MSIX manifest, with the identity and the version left as placeholders |
-| `identity.psd1` | What Partner Center assigned when the name was reserved, less the publisher, which is the `STORE_PUBLISHER` organisation secret |
+| `identity.psd1` | What Partner Center assigned when the name was reserved, less the publisher, which comes from `STORE_PUBLISHER` in the machine's environment |
 | `build-msix.ps1` | Builds the package from a release binary, and optionally signs it and runs the certification kit |
 | `check-imports.ps1` | Walks the PE import table and refuses any DLL not known to ship with Windows |
 | `screenshot.ps1` | Photographs the window at a size the Store accepts, driving it first if asked. |
@@ -93,15 +90,13 @@ virtualised.
 
 The lightest thing that registers two extensions properly and uninstalls
 cleanly, which is what the application needs: one executable, three icons, and
-no runtime files of its own. MSI through WiX, Inno Setup, and NSIS were all
-considered and all rejected on slipcase-desktop for the same reason - each needs
-a toolchain that is not on a stock Windows and not in this repository's build,
-to produce a package that would do what forty lines of registry writes do.
+no runtime files of its own. MSI through WiX, Inno Setup, and NSIS each need a
+toolchain that is not on a stock Windows and not in this repository's build, to
+produce a package that would do what forty lines of registry writes do.
 `packaging/linux` is a pair of shell scripts for the same reason, and these two
 are its counterpart, argument for argument.
 
-That rejection stands here, and now the channel decides it too. The Store takes
-MSIX, WiX builds MSI, and the two are not steps on one path. The two scripts
+The channel decides it too. The Store takes MSIX, WiX builds MSI, and the two are not steps on one path. The two scripts
 stay as well: they are the per-user, no-toolchain, no-account route, and a Store
 listing is not a reason to take that away from somebody who would rather not
 have one.
@@ -131,7 +126,7 @@ Two of each of the first six rows, one per file kind.
 | `Software\Classes\Excelano.Segler.Archive` | `DocLang archive` | What Explorer's Type column shows |
 | `…\DefaultIcon` | `dclx.ico,0` | What Explorer draws |
 | `…\shell\open\command` | `"…\segler-desktop.exe" "%1"` | What a double-click runs |
-| `…\Application` → `ApplicationName` | `Segler` | The name a person recognises |
+| `…\Application` → `ApplicationName` | `Segler` | The name a person recognizes |
 | `Software\Classes\Applications\segler-desktop.exe` | `FriendlyAppName`, both types under `SupportedTypes` | The Open With list |
 | `Software\Microsoft\Windows\CurrentVersion\Uninstall\Segler` | — | Add/Remove Programs |
 
@@ -258,7 +253,7 @@ not DPI aware until this existed.
 
 ## What a Store build is
 
-`build-msix.ps1` produces it and `ship` has the process; what belongs here
+`build-msix.ps1` produces it and `ship-winstore` submits it; what belongs here
 is why it is shaped that way.
 
 **Signing is not optional for a local install.** The shell will not accept an
@@ -280,5 +275,5 @@ application's executables live under `WindowsApps` behind an app-execution
 alias, declaring one is a manifest extension nobody has asked for, and a
 command-line tool a person cannot type the name of is worse than one they
 install another way. The Debian package carries both because one `apt install`
-is one product; the Store package is the window. The CLI ships
-through cargo-dist.
+is one product; the Store package is the window. The CLI ships through the apt
+package and crates.io.

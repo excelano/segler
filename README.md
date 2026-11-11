@@ -37,9 +37,8 @@ curl -fsSL https://excelano.com/apt/setup.sh | sudo sh && sudo apt install segle
 ```
 
 That installs the application, the `segler` command-line tool, and the desktop
-integration that opens a `.dclx` or `.dclg` on a double-click. The Windows
-build is on the Microsoft Store and the macOS build on the Mac App Store, both
-listed as Segler.
+integration that opens a `.dclx` or `.dclg` on a double-click.
+https://excelano.com/segler/ is the product page for every platform.
 
 From crates.io, on any platform with a Rust toolchain, `cargo install segler`
 installs the command-line tool alone and `cargo install segler-desktop` the

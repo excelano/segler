@@ -1,7 +1,7 @@
 # macOS
 
 `DESIGN.md` §8. The application bundle, the two type declarations, the three
-icons, the sandbox, and the Store package. Five files here and everything
+icons, the sandbox, and the Store package. These files are here and everything
 else is generated:
 
     Info.plist.in         the bundle's property list, @VERSION@ and @BUILD@ substituted
@@ -10,7 +10,7 @@ else is generated:
     check-install.sh      asks an installed bundle what it is, on the machine it is on
     screenshot.sh         photographs the window at a size App Store Connect accepts, driving it first if asked
     shots.sh              the listing's four shots as recipes: which document, which frame, and what happens before the shutter
-    window-probe.swift    asks the window server whether a window appeared, for CI
+    window-probe.swift    asks the window server whether a window appeared
 
 Build it, sign it, register it:
 
@@ -98,11 +98,10 @@ cold launch and a document double-clicked into a running window. It is the
 one module in this repository that writes `unsafe`, and `CLAUDE.md` says what
 that costs.
 
-Measured here on 2026-09-06 against a development-signed universal bundle on
-an Intel Mac running macOS 15.7: `open archive-demo.dclx` with nothing
-running produced a window titled for the archive, and `open some.dclg` into
-that window replaced the document. `.github/workflows/apple-silicon.yml`
-repeats the first half on arm64 on every push.
+Against a development-signed universal bundle, `open archive-demo.dclx` with
+nothing running produces a window titled for the archive, and `open some.dclg`
+into that window replaces the document. `window-probe.swift` checks the first
+half on an arm64 Mac without a screenshot.
 
 ## Save under the sandbox
 
@@ -117,9 +116,9 @@ file beside the document, which is how every other platform replaces a file
 whole, stops with *Operation not permitted*. `crates/segler-core/src/replace.rs`
 carries the macOS arm: the rewrite waits in the directory macOS provides for
 replacing a file from, on the document's own volume, and lands with
-`replaceItemAtURL:`. Measured here the same day: Cmd+S on an unchanged
-document under the sandbox rewrote it byte for byte, and nothing was left
-beside it or in the application's container.
+`replaceItemAtURL:`. Cmd+S on an unchanged document under the sandbox rewrites
+it byte for byte, and nothing is left beside it or in the application's
+container.
 
 Two things the platform does to a saved file, both its and not this
 application's. It marks the file `com.apple.quarantine` with this
@@ -147,7 +146,7 @@ rather than notarized.
 
 ## What a Store build is
 
-`build-app.sh --store PROFILE` produces it and `ship` has the process.
+`build-app.sh --store PROFILE` produces it and `ship-macstore` uploads it.
 A universal bundle carrying the profile as `embedded.provisionprofile`,
 signed with the distribution identity and entitlements generated from the
 profile, wrapped by `productbuild` into a signed `.pkg`. The script refuses
@@ -173,10 +172,8 @@ and the real article is reached through TestFlight.
 
 ## No private symbol reaches the binary
 
-Guideline 2.5.1, and it cost slipcase-desktop a review cycle: a private
-CoreGraphics symbol that `winit` 0.30 declares whether or not it is called,
-and review reads the symbol table. This tree's first release binary carried it
-too, measured 2026-09-06. The workspace `Cargo.toml`'s `[patch.crates-io]`
+Guideline 2.5.1: a private CoreGraphics symbol that `winit` declares whether
+or not it is called, and review reads the symbol table. The workspace `Cargo.toml`'s `[patch.crates-io]`
 removes it and says when to delete itself, and `build-app.sh` refuses to
 bundle an executable that imports a symbol from a system framework which that
 framework's own public headers do not declare.

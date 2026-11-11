@@ -9,7 +9,7 @@
 
 A desktop application that opens a DocLang document or archive, renders it as a reader would see it, and lets a person edit it there and save a valid document back. Underneath it, the first Rust library that represents DocLang without losing anything.
 
-The library is a deliverable in its own right. DocLang's reference toolkit is Python, the official viewer is JavaScript and view-only, and docling.rs, the Rust port of IBM's converter, reads DocLang into a model built for conversion rather than editing. A lossless Rust model is the missing piece, and it is licensed and organised so that the DocLang project could take it in whole.
+The library is a deliverable in its own right. DocLang's reference toolkit is Python, the official viewer is JavaScript and view-only, and docling.rs, the Rust port of IBM's converter, reads DocLang into a model built for conversion rather than editing. A lossless Rust model is the missing piece, and it is licensed and organized so that the DocLang project could take it in whole.
 
 The specification is the authority on the format, and this document neither restates nor amends it. Where a rule is cited below it is the spec's rule and the spec's wording wins.
 
@@ -21,7 +21,7 @@ Seven facts in the specification shape everything below, and they are named here
 
 Every semantic element has a head and a body. The head is a fixed-order sequence of property elements: label, thread, one of xref or href, layer, four locations, any number of captions, description, summary, custom. The body is the payload. Property semantics live in leading child elements rather than attributes, on purpose, because the format is designed around a tokenizer. An editor's model has to keep that order on the way out.
 
-Geometry is a 512-point grid. Four `location` values are `x_min, y_min, x_max, y_max` on a grid whose real size the document head's `default_resolution` declares, relative to the top left of the page. Every box the window draws goes through that normalisation, and every box a person drags comes back through it.
+Geometry is a 512-point grid. Four `location` values are `x_min, y_min, x_max, y_max` on a grid whose real size the document head's `default_resolution` declares, relative to the top left of the page. Every box the window draws goes through that normalization, and every box a person drags comes back through it.
 
 Tables are OTSL. A table body is a flat run of cell markers, `fcel`, `ched`, `rhed`, `lcel`, `ucel`, `xcel` and the rest, with `nl` ending a row and the rectangular rule requiring every row to carry the same number of markers. The grid is not in the XML; it is computed from the sequence, and a cell edit has to be expressed back as a change to the sequence.
 
@@ -41,7 +41,7 @@ Segler is an editor for DocLang documents. A DocLang document is the `<doclang>`
 
 An editor shows the document. The main pane renders the tree the way a reader would see it, headings as headings, paragraphs as paragraphs, lists, tables as grids, pictures from their `src`, captions under them, and edits happen there: click into a paragraph and retype it, change a heading's level and watch it change, fix a table cell in the grid. The view is drawn from the tree, so an edit shows because the thing it changed is the thing on screen, and it works identically for both file types because it needs nothing but the tree.
 
-The page scans keep a job, a secondary one. When a paragraph reads wrong and a person wants to see what the scanner saw, or a bounding box is off, the scan belongs beside the rendered document with the boxes drawn on it. That is a reference pane, shown on request for an archive that carries scans, and absent by design for a bare file. It is not the centre of the window: a pane at the centre would be empty for a whole class of documents and would never change when the document does.
+The page scans keep a job, a secondary one. When a paragraph reads wrong and a person wants to see what the scanner saw, or a bounding box is off, the scan belongs beside the rendered document with the boxes drawn on it. That is a reference pane, shown on request for an archive that carries scans, and absent by design for a bare file. It is not the center of the window: a pane at the center would be empty for a whole class of documents and would never change when the document does.
 
 Two readings of "editor" remain out. An XML editor with DocLang awareness is a language server plus a shell, which a VS Code extension would do better; it survives as the markup pane. And there is no reason to keep authoring out any longer than it keeps itself out: a rendered, editable document can be started from nothing as easily as opened, and the only thing that costs is a New command. The user is the DocLang community: whoever has a document and wants to change what is in it.
 
@@ -53,11 +53,11 @@ Three crates in one workspace, and one boundary between them that is the design.
 
 `segler-core` owns everything that is not pixels. The document model, the parser, the serializer, validation, the OTSL grid, the archive format, selection, every edit command, undo and redo, and save. It has no dependency on any user-interface crate and never will.
 
-`segler` is the command-line tool over the core. Inspect, validate, pack, unpack, format, diff, and the conformance corpus runner. It proves the core on real files, and it is a product in its own right.
+`segler` is the command-line tool over the core: it inspects and validates a document, shows a page's boxes and blocks and a table's grid, applies edits through the session, and runs the conformance corpus. `segler --help` lists the commands. It proves the core on real files, and it is a product in its own right.
 
 `segler-desktop` is the window. It asks the core for a view-model of the current page and the current selection, draws it, and sends commands back. It holds no document state of its own beyond what is being drawn.
 
-**The boundary is a view-model and a command set, and it is the reason a native front-end stays possible.** The core exposes a session: open, the view-model for page N, apply a command, undo, validate, save. The view-model is plain data: boxes with ids and normalised coordinates, tree rows with ids and labels, the markup as text with id-to-span mapping. Commands are plain data too: set label, set heading level, set text, move box, reorder, set cell kind. egui is one consumer. A Swift or C# front-end over UniFFI would be another, consuming the same data and sending the same commands, and would need nothing from the egui crate. Logic that appears in `segler-desktop` and that any other front-end would also need is in the wrong crate, and the test for that is whether it touches egui types.
+**The boundary is a view-model and a command set, and it is the reason a native front-end stays possible.** The core exposes a session: open, the view-model for page N, apply a command, undo, validate, save. The view-model is plain data: boxes with ids and normalized coordinates, tree rows with ids and labels, the markup as text with id-to-span mapping. Commands are plain data too: set label, set heading level, set text, move box, reorder, set cell kind. egui is one consumer. A Swift or C# front-end over UniFFI would be another, consuming the same data and sending the same commands, and would need nothing from the egui crate. Logic that appears in `segler-desktop` and that any other front-end would also need is in the wrong crate, and the test for that is whether it touches egui types.
 
 **The model is lossless, and that is the property that separates it from docling.rs.** Every element, attribute, text run, CDATA section and comment in a file survives a parse and a serialize, in order. The spec allows things the editor has no button for, custom vocabularies and `custom` elements among them, and they pass through untouched. If the model cannot represent something the spec allows, the model is wrong. docling.rs reads DocLang into a flat node list with inline formatting baked into Markdown-style strings and its reader ignores what it does not know, which is right for a converter and disqualifying here. It is an import engine behind a feature flag, for opening a PDF that is not DocLang yet, and it never touches the model.
 
@@ -71,7 +71,7 @@ Three crates in one workspace, and one boundary between them that is the design.
 
 ## 5. Dependencies
 
-The rule is slipcase-desktop's, borrowed whole: nothing compiles C. A crate that links a system library is fine; one that builds C is not. Across the fleet this is a preference rather than a rule, held in `~/notes/pure_rust_preference.md` together with what taking C costs; this repository keeps it as a rule for itself, as slipcase-desktop does. The measurement is the artefact rather than the manifest, because the manifest lies in one direction: `cargo tree -i cc` names `wayland-backend`, which declares `cc` as a build dependency and uses it only under its `client_system` feature, and nothing here enables that. No `.o` or `.a` anywhere under the build directories, and `cargo tree -i cmake` and `-i bindgen` coming back empty, is what the rule means. A build needs a Rust toolchain and nothing else, on all three platforms.
+The rule is slipcase-desktop's, borrowed whole: nothing compiles C. A crate that links a system library is fine; one that builds C is not. Across the fleet this is a preference rather than a rule, held in `~/notes/pure_rust_preference.md` together with what taking C costs; this repository keeps it as a rule for itself, as slipcase-desktop does. The measurement is the artifact rather than the manifest, because the manifest lies in one direction: `cargo tree -i cc` names `wayland-backend`, which declares `cc` as a build dependency and uses it only under its `client_system` feature, and nothing here enables that. No `.o` or `.a` anywhere under the build directories, and `cargo tree -i cmake` and `-i bindgen` coming back empty, is what the rule means. A build needs a Rust toolchain and nothing else, on all three platforms.
 
 The framework is egui, through eframe, the same framework as slipcase-desktop, so a problem found in one is fixable for both and the packaging tree transfers. What egui does natively covers most of `§7`: images are textures, boxes are painter calls, the tree is collapsing headers, the table grid is `egui_extras`. Its weak surface is free-form text editing, which `§7` confines. The boundary in `§4` is what keeps that surface replaceable.
 
@@ -129,7 +129,7 @@ What is not here: no rendering of PDF or of any format other than DocLang, and n
 
 Cloned from slipcase-desktop, one directory per platform under `packaging/`, with that repository's store listing and submission notes as the template. What was measured there is taken as measured here: the Visual C++ runtime linked in with `+crt-static` and the import table checked before packaging; the Linux `Depends` checked against `/proc/PID/maps` on both Wayland and X11; the Mac bundle with the App Sandbox; `CFBundleVersion` from the first-parent commit count. A Store build needs the `[patch.crates-io]` on `excelano/winit` that `Cargo.toml` carries, whose comment says what it fixes and when it can go. `build-app.sh` refuses any binary importing a symbol no public framework header declares.
 
-Both stores carry the name **Segler**. The App ID is `com.excelano.segler-desktop` and the App Store Connect Apple ID is 6808761705.
+Both stores carry the name **Segler**. The bundle identifier is `com.excelano.segler-desktop`.
 
 **Linux** is one package for one product, `segler`, carrying both executables, the desktop entry, the two media types with their icons, and a manual page for each binary. The specification names `application/vnd.doclang.document+xml` for the markup and nothing for the archive, so `packaging/linux/mime/doclang.xml` declares `application/vnd.doclang.archive+zip` as a provisional name beside it and says so; the declaration ships in the package because nothing else on a Linux machine makes it, and the day a second DocLang product for Linux exists it moves to a shared package. Apache-2.0 means a DEP-5 copyright file rather than a copied `LICENSE`, which is what Debian wants.
 
@@ -164,7 +164,7 @@ everywhere else. The mechanism is the `potext` crate, written in
 slipcase-desktop and made a crate so that more than one application could have
 it; this section is what the rest of this repository may assume.
 
-The catalogues live in `crates/segler-desktop/po/`, inside the crate that reads
+The catalogs live in `crates/segler-desktop/po/`, inside the crate that reads
 them rather than beside the workspace, because `include_str!` reaching above a
 crate's own directory compiles here and fails in `cargo package`: the tarball
 carries only what is under the crate root, and `ship-crates` publishes every
@@ -179,7 +179,7 @@ original rather than a placeholder.
 `potext` will not load a fuzzy entry, so the window falls back to English until
 somebody has read the new sentence.
 
-**`segler-core` has no catalogue and gets none.** It is the model and the
+**`segler-core` has no catalog and gets none.** It is the model and the
 command boundary. Every sentence a person reads is produced in
 `segler-desktop`, including `describe`, which turns a `Command` into the status
 line — so §7's rule that the interface is a renderer holds for language too,
@@ -196,7 +196,7 @@ translated: *Kind*, *Level*, *Class*, *Layer*, *Box*. The cell kinds in the
 element pane are also the window's, not OTSL's tags, so they are translated
 too.
 
-**`crates/segler-desktop/po/update-po.sh` is the only way the catalogues move**, and its `pseudo.sh`
+**`crates/segler-desktop/po/update-po.sh` is the only way the catalogs move**, and its `pseudo.sh`
 writes the pseudolocale that finds a string which never went through `t` and a
 label built to the width of English. Run the second before writing any
 translation rather than after.

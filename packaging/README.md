@@ -75,7 +75,7 @@ directories this package writes into, so the caches are rebuilt by dpkg
 without a `postinst` asking for it.
 
 `copyright` is a DEP-5 file rather than a copy of `LICENSE`. Apache-2.0 is one
-of Debian's common licences and policy wants it referred to at
+of Debian's common licenses and policy wants it referred to at
 `/usr/share/common-licenses` rather than copied; lintian makes the copy an
 error; lintian runs on the built package.
 
