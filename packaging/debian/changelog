@@ -1,3 +1,14 @@
+segler (0.3.0) unstable; urgency=medium
+
+  * Check that an archive's original source part names its content type
+  * Edit a cue block's times in place
+  * Show a track as cue-block rows, and edit its turns, speakers and chapters in place
+  * Archives: list audio/ and video/ recordings, and check each names a track and a track has one per kind
+  * A body of text and <content> is plain text to the element pane, as it is to the edit
+  * Edit text as DocLang 0.9 reads it, and write it so it reads back as typed
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 11 Nov 2026 16:03:50 -0600
+
 segler (0.2.0) unstable; urgency=medium
 
   * The segler-core requirement names the workspace version, so a release bump rewrites it
