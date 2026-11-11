@@ -63,11 +63,11 @@ usage: build-app.sh [--binary PATH] [--outdir DIR] [--universal] [--sign ID]
                  declares, however it was built. PROFILE is the
                  .provisionprofile downloaded from the developer portal.
 
-                 The release binary is built on the Apple silicon runner and
-                 attached to the release, so signing it here is a download and
-                 this command, with no toolchain and nothing compiled:
+                 build-release builds the universal binary and attaches it to
+                 the release, so signing it here is a download and this
+                 command, with no toolchain and nothing compiled:
 
-                   gh release download v0.1.4 -p segler-desktop-universal
+                   gh release download vX.Y.Z -p segler-desktop-universal
                    ./packaging/macos/build-app.sh \
                        --binary ./segler-desktop-universal \
                        --store ~/Downloads/Segler_Mac_App_Store.provisionprofile
@@ -166,8 +166,8 @@ target_dir=$(cd "$root" && cargo metadata --format-version 1 --no-deps |
 # separately and joined here. `lipo` is the only step: nothing is compiled
 # twice by this script and nothing is compiled at all.
 # Only when nothing was handed over. `--binary` takes an executable built
-# elsewhere and already joined - the Apple silicon runner attaches a universal
-# one to the release, and that is the file this is given for a Store build, so
+# elsewhere and already joined - build-release attaches a universal one to the
+# release, and that is the file this is given for a Store build, so
 # there is nothing here to compile or to join. The architecture check below is
 # what holds in either case, and it is asked of whatever is about to be
 # packaged rather than only of what `lipo` wrote.
@@ -198,7 +198,7 @@ fi
 # or worse, accepted and unrunnable on half the machines that bought it. Asked
 # of whatever is about to be packaged rather than only of what `lipo` just
 # wrote, because `--binary` takes one built elsewhere: the release binary is
-# built on the runner and signed here, so the joining is no longer the only
+# joined by build-release and signed here, so the joining here is not the only
 # way a universal binary arrives.
 if [ "$universal" = yes ] || [ -n "$store_profile" ]; then
     for triple in x86_64 arm64; do
@@ -209,14 +209,12 @@ if [ "$universal" = yes ] || [ -n "$store_profile" ]; then
     done
 fi
 
-# **A private symbol in the binary is a rejection, and one cost slipcase-desktop
-# a review cycle.** Its 0.1.1 was refused on 2026-08-31 for referencing
-# `_CGSSetWindowBackgroundBlurRadius`, which arrived through `winit` and which
-# neither application calls. Review scans the symbol table rather than the
-# call graph, so *unreachable* is not *absent*. The workspace `Cargo.toml`'s
-# `[patch.crates-io]` is what removes it, and this is what notices if it or
-# anything like it comes back; before that patch this tree's own release
-# binary carried it and `_CGSMainConnectionID` beside it.
+# **A private symbol in the binary is a rejection.** `winit` references
+# `_CGSSetWindowBackgroundBlurRadius` and `_CGSMainConnectionID`, which this
+# application never calls. Review scans the symbol table rather than the call
+# graph, so *unreachable* is not *absent*. The workspace `Cargo.toml`'s
+# `[patch.crates-io]` is what removes them, and this is what notices if they or
+# anything like them comes back.
 #
 # **The question it asks is a real one rather than a list of names.** For
 # every undefined symbol the executable imports from a system *framework*,

@@ -7,10 +7,8 @@
 # drives the actions given, parks the pointer and captures. `shots.sh` is the
 # repository's and says which document and which frames. This is what sits
 # between them — the arguments, the language, where the set lands, and the
-# counting — and it existed in two divergent copies before it was one file:
-# Segler's took no language and wrote its frames flat, Tommy Flyleaf's took
-# `--lang` and wrote a subdirectory per locale, and only the second is the
-# layout `ship <repo> --shots` reads.
+# counting. It writes a subdirectory per locale, the layout `shots-macstore`
+# reads.
 #
 # WHAT shots.sh HAS TO PROVIDE
 #
@@ -59,7 +57,7 @@
 # Built with AI assistance (Claude, Anthropic)
 
 # locale_of turns a language as a person types it into the tag both stores use
-# for a listing, which is also the subdirectory name ship reads.
+# for a listing, which is also the subdirectory name `shots-macstore` reads.
 locale_of() {
     case "$1" in
         en|en-US|en-us) echo en-US ;;

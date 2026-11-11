@@ -312,11 +312,11 @@ if ($subsystem -ne 2) {
 
 # The imports, because a DLL that is not part of Windows has to already be on
 # the machine before the application will start, and the machine that matters
-# is a certification tester's rather than this one. Slipcase 0.1.1 was packaged,
-# certified, submitted and failed on exactly that: it imported VCRUNTIME140.dll
-# from the Visual C++ Redistributable, which every machine here has and a clean
-# Windows does not. The check is its own script because CI runs it too, and it
-# is here because this is the last place a bad binary can still be stopped.
+# is a certification tester's rather than this one. VCRUNTIME140.dll, from the
+# Visual C++ Redistributable, is the usual case: every machine here has it and a
+# clean Windows does not. The check is its own script so that it can run on a
+# binary alone, and it is here because this is the last place a bad binary can
+# still be stopped.
 & (Join-Path $here 'check-imports.ps1') -Binary $Binary
 if ($LASTEXITCODE -ne 0) {
     Refuse "$Binary imports a DLL that does not ship with Windows - see above"

@@ -3,12 +3,10 @@
 // Author: David M. Anderson
 // Built with AI assistance (Claude, Anthropic)
 //
-// This exists for CI. `.github/workflows/apple-silicon.yml` runs the suite and
-// the corpus natively on arm64, and the one thing no runner reaches otherwise
-// is the window, which is exactly the code the arm64 walkthrough exists for:
-// `src/opened_document.rs` is the only `unsafe` in the desktop crate, and
-// macOS delivers a double-clicked document through an Apple Event rather than
-// argv.
+// The one thing the test suite does not reach is the window, which is the
+// code an arm64 walkthrough exists for: `src/opened_document.rs` is the only
+// `unsafe` in the desktop crate, and macOS delivers a double-clicked document
+// through an Apple Event rather than argv.
 //
 // A screenshot is the wrong assertion. slipcase-desktop records `screencapture`
 // returning the desktop with every window omitted while reporting no error, so
