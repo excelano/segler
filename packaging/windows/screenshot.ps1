@@ -1,12 +1,11 @@
 # Photograph an application's own window at a size the Microsoft Store accepts.
 #
-# Screenshots were once listed as something no script could do, and that was an
-# assumption rather than a measurement. What a script cannot do is decide which
-# document to open and whether the result is a good advertisement. What it can
-# do is every mechanical part: launch the application, size the window so the
-# visible frame is exactly the size asked for, bring it to the front, drive it
-# into the state the shot is of, park the pointer off the frame, capture, and
-# refuse if what came back is the wrong size.
+# What a script cannot do is decide which document to open and whether the
+# result is a good advertisement. What it can do is every mechanical part:
+# launch the application, size the window so the visible frame is exactly the
+# size asked for, bring it to the front, drive it into the state the shot is
+# of, park the pointer off the frame, capture, and refuse if what came back is
+# the wrong size.
 #
 # This file knows nothing about the product it photographs. What to launch and
 # what to do to the window come from `shots.ps1` beside it, which is the repo's
@@ -62,42 +61,37 @@
 # is advisory: Windows refuses it from a process that does not own the
 # foreground, and it returns false rather than raising. The capture is
 # `CopyFromScreen` over the window's rectangle, so a window that stayed behind
-# is photographed as whatever is on top of it. That is not a hypothetical -
-# Segler's `03-picture.png` of 2026-09-05 went to the store folder as a picture
-# of a terminal, an Explorer ribbon and a sliver of the application, and it got
-# there because the script called `SetForegroundWindow` and did not look. It
+# is photographed as whatever is on top of it: a terminal, an Explorer ribbon
+# and a sliver of the application, saved to the store folder as the shot. It
 # sends the ALT tap that releases the foreground lock, retries, and refuses if
 # the window is still not in front.
 #
 # **It waits for a window rather than for a number of seconds, and then waits
-# for that window to be the one.** A cold start under a loaded runner takes
-# longer than a cold start on a desk, and a fixed sleep is either wasted or
+# for that window to be the one.** A cold start on a loaded machine takes
+# longer than a cold start on an idle one, and a fixed sleep is either wasted or
 # short. But the first handle a process reports is not always the window a
-# person sees: Segler's first cold launch on a runner reported one, this script
-# sized and drove it, and the picture came back a third desktop wallpaper with
-# the real window offset inside it and the correction never typed. So the
-# handle has to be visible, titled, and the same on two reads before anything
-# is done to it - and it is read again before the shutter, because actions sent
-# to a window that is no longer the one is a photograph of the wrong thing
-# reported as a success.
+# person sees: sizing and driving that handle leaves a picture that is a third
+# desktop wallpaper, with the real window offset inside it and none of the
+# actions in it. So the handle has to be visible, titled, and the same on two
+# reads before anything is done to it - and it is read again before the
+# shutter, because actions sent to a window that is no longer the one is a
+# photograph of the wrong thing reported as a success.
 #
 # **And it polls the geometry until it stops moving.** A cold start of the
 # packaged application is still positioning itself seconds in, and a rect read
-# during that produced a window sitting below where it was asked to be with the
+# during that leaves the window sitting below where it was asked to be with the
 # desktop showing along two edges. Two consecutive equal reads, or a refusal.
 #
 # TWO THINGS MEASURED RATHER THAN ASSUMED, BOTH OF THEM PIXELS
 #
 # `SetWindowPos` sizes the *window rect*, which carries an invisible resize
-# border outside the visible frame: asking for 1366x768 gave a frame of
+# border outside the visible frame: asking for 1366x768 gives a frame of
 # 1352x761, which is under the Store's minimum. The visible frame is
 # `DWMWA_EXTENDED_FRAME_BOUNDS`, and the difference measured is 14 by 7.
 #
 # And that frame's top edge is one pixel above what is actually drawn, so a
-# capture at exactly the frame rect picks up a sliver of whatever is behind. It
-# arrived as a strip of console text across the top of slipcase-desktop's first
-# two attempts. The capture is two rows taller than needed and the top two are
-# cropped.
+# capture at exactly the frame rect picks up a sliver of whatever is behind.
+# The capture is two rows taller than needed and the top two are cropped.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -301,9 +295,9 @@ switch ($verb) {
     }
 }
 
-# Polled rather than slept through. A fixed wait is either wasted time on a
-# desk or too short on a loaded runner, and the second reads as "nothing opened
-# it" when the truth is that it had not opened it yet.
+# Polled rather than slept through. A fixed wait is either wasted time on an
+# idle machine or too short on a loaded one, and the second reads as "nothing
+# opened it" when the truth is that it had not opened it yet.
 #
 # What counts as the window: visible, titled, and the same handle twice running.
 # A handle that is none of those is a window on its way to being one.
@@ -403,7 +397,7 @@ $NOTOPMOST = [IntPtr](-2)
 # Bring it to the front and then look, rather than ask and assume. A tap of ALT
 # releases the foreground lock that stops a background process raising a window;
 # without it `SetForegroundWindow` returns false and the window stays where it
-# was, which is how a picture of a terminal reached the store folder.
+# was, behind whatever the capture then photographs.
 function Take-Foreground([int] $tries = 10) {
     foreach ($try in 1..$tries) {
         if ([Shot.Win]::GetForegroundWindow() -eq $handle) { return $true }
@@ -561,11 +555,10 @@ foreach ($action in $Do) {
 # --- photographing it -------------------------------------------------------
 
 # The pointer goes somewhere the window is not, because egui draws hover state
-# and the capture keeps it. Measured on slipcase-desktop 2026-08-29: a retake
-# landed with the mouse resting over a field, which came out highlighted and
-# focus-ringed in a picture meant to show the application at rest, and with the
-# scroll bar drawn because the pointer was inside the scroll area. Neither is
-# wrong and both are noise a shopper reads as an interface doing something.
+# and the capture keeps it. A pointer resting over a field leaves it
+# highlighted and focus-ringed in a picture meant to show the application at
+# rest, and a pointer inside a scroll area leaves the scroll bar drawn. Neither
+# is wrong and both are noise a shopper reads as an interface doing something.
 #
 # Bottom right of the virtual screen rather than a constant: the window is
 # placed near the top left, and a fixed 1900x1200 is off-screen on a smaller
@@ -582,8 +575,8 @@ Start-Sleep -Seconds $Settle
 # rather than refused on. A machine that runs its own errands - a shell window
 # raised behind, a scheduled task, an image's own housekeeping - takes it for a
 # moment and gives it up again, and a set of four that dies on the first is
-# worse than a set that says what interrupted it. The guarantee is unchanged:
-# the capture happens only with the window verified in front.
+# worse than a set that says what interrupted it. The guarantee holds either
+# way: the capture happens only with the window verified in front.
 if ([Shot.Win]::GetForegroundWindow() -ne $handle) {
     $thief = [Shot.Win]::WhatIsInFront()
     if (-not (Take-Foreground)) {
@@ -595,9 +588,9 @@ if ([Shot.Win]::GetForegroundWindow() -ne $handle) {
 # The window is read once more, because everything above was done to a handle
 # and the capture is of a rectangle. An application that replaced its window
 # between the first click and here has taken the actions with it, and the
-# rectangle now holds whatever is at those coordinates - which came back once
-# as a third of the desktop wallpaper with the real window offset inside it,
-# and was reported as a success.
+# rectangle now holds whatever is at those coordinates - a third of the
+# desktop wallpaper with the real window offset inside it, say, reported as a
+# success.
 $current = Get-Window
 if ($current -ne [IntPtr]::Zero -and $current -ne $handle) {
     Refuse "the window was replaced between the actions and the capture: $([Shot.Win]::TitleOf($handle)) became $([Shot.Win]::TitleOf($current)), and what was driven is not what would be photographed"

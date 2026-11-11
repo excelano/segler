@@ -49,9 +49,9 @@
 # THE ENGLISH SET IS ASKED FOR TOO
 #
 # Every set is taken with a language named, English included, so the frames do
-# not depend on what the machine taking them happens to be set to. A runner
-# that came up in another language would otherwise photograph that language and
-# report success.
+# not depend on what the machine taking them happens to be set to. A machine
+# set to another language would otherwise photograph that language and report
+# success.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -125,19 +125,18 @@ take_shots() {
 
 # appearance sets the desktop's appearance and reads it back.
 #
-# Here rather than in each repository's recipe, where it was written once and
-# would have been written five more times. No control in a window changes it,
-# so it is set before a launch; the driver stops whatever is running and
-# launches again for every frame, so a value set here is read at the start it
-# belongs to.
+# Here rather than in each repository's recipe, because every recipe with a
+# dark frame needs it. No control in a window changes it, so it is set before a
+# launch; the driver stops whatever is running and launches again for every
+# frame, so a value set here is read at the start it belongs to.
 #
 # **Asked of System Events, and not written with `defaults`.** `defaults write
 # -g AppleInterfaceStyle Dark` writes the value and `defaults read` returns it,
 # because both go through the same preferences cache - and the window server is
-# never told, so an application launched afterwards still draws light. Measured
-# on 2026-09-17: the dark frame came back a pixel-for-pixel duplicate of its
-# light pair. System Events sets it the way the Settings pane does, and it is
-# already trusted for Accessibility on a runner, which the driver needs anyway.
+# never told, so an application launched afterwards still draws light and the
+# dark frame comes back a pixel-for-pixel duplicate of its light pair. System
+# Events sets it the way the Settings pane does, and it is already trusted for
+# Accessibility on the Mac, which the driver needs anyway.
 #
 # Read back for the same reason: a frame taken after an appearance that did not
 # take is a duplicate of its pair, and a duplicate is the sort of thing that
@@ -149,12 +148,11 @@ appearance() {
         *) echo "shots.sh: appearance is light or dark, not $1" >&2; exit 2 ;;
     esac
     osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to ${want}" >/dev/null
-    # The first second is the settle this always waited out, kept: the value is
-    # read on a machine that has had a moment to apply it. What is new is
-    # everything after it. A desktop slower than one second is a runner that is
-    # busy, not one that refused, and this file is sourced with `set -e` from a
-    # `shots.sh` - so the exit below ends the whole set, and with it the
-    # release, on a machine that was only loaded.
+    # The first second is a settle, so the value is read on a machine that has
+    # had a moment to apply it. The polling after it is there because a desktop
+    # slower than one second is a machine that is busy, not one that refused,
+    # and this file is sourced with `set -e` from a `shots.sh` - so the exit
+    # below would end the whole set on a machine that was only loaded.
     sleep 1
     waited=0
     while :; do
@@ -180,10 +178,10 @@ appearance() {
     done
     if [ "$got" != "$want" ]; then
         # An empty answer is not a desktop that disagreed. osascript prints its
-        # refusal on stderr and nothing on stdout, and the likeliest reason on
-        # a runner is that System Events is not trusted for Accessibility - so
-        # that is what is named, rather than a line about the appearance with a
-        # blank where the value should be.
+        # refusal on stderr and nothing on stdout, and the likeliest reason is
+        # that System Events is not trusted for Accessibility - so that is what
+        # is named, rather than a line about the appearance with a blank where
+        # the value should be.
         if [ -z "$got" ]; then
             echo "shots.sh: System Events answered nothing about dark mode; it needs Accessibility trust, which the driver needs too" >&2
         else
@@ -195,8 +193,8 @@ appearance() {
 }
 
 # stage copies what the shot opens somewhere that reads like a person's machine
-# rather than like a build: the path is in the frame, and photographing the
-# checkout put a /private/tmp workspace in the picture.
+# rather than like a build: the path is in the frame, and a checkout's path
+# would put a build workspace in the picture.
 #
 # Before every shot rather than once, because an application that writes beside
 # what it opens leaves its output in that folder, and the next shot then
