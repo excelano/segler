@@ -145,7 +145,7 @@ eframe substitutes its own icon for a viewport that names none and hands it to `
 
 Releases are built by `build-release` in excelano/shipping on each platform's own machine; CI (`ci.yml`) is `workflow_dispatch`, run by hand.
 
-crates.io carries the crates: `ship-crates` in excelano/shipping publishes them in dependency order, so the library, the CLI and the application are each a `cargo install` away on any platform with a toolchain.
+crates.io carries the library and the CLI: `ship-crates` in excelano/shipping publishes them in dependency order. The application is `publish = false`; a crate carries no desktop integration, so it ships through the apt package and the stores.
 
 ---
 
@@ -167,8 +167,7 @@ it; this section is what the rest of this repository may assume.
 The catalogs live in `crates/segler-desktop/po/`, inside the crate that reads
 them rather than beside the workspace, because `include_str!` reaching above a
 crate's own directory compiles here and fails in `cargo package`: the tarball
-carries only what is under the crate root, and `ship-crates` publishes every
-crate.
+carries only what is under the crate root.
 
 **A message is looked up by its English text, never by a key.** So a call site
 reads as the sentence a person sees, and a message with no translation is the

@@ -41,10 +41,8 @@ integration that opens a `.dclx` or `.dclg` on a double-click.
 https://excelano.com/segler/ is the product page for every platform.
 
 From crates.io, on any platform with a Rust toolchain, `cargo install segler`
-installs the command-line tool alone and `cargo install segler-desktop` the
-application. Neither carries the desktop integration, so a double-click reaches
-the application only through the apt package or `packaging/linux/install.sh`.
-The library both are built on is `segler-core`.
+installs the command-line tool alone. The library it is built on is
+`segler-core`.
 
 ## Build
 

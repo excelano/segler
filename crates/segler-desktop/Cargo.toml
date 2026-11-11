@@ -1,9 +1,8 @@
 [package]
 name = "segler-desktop"
 description = "Edit DocLang documents as a reader sees them"
+publish = false
 readme = "../../README.md"
-keywords = ["doclang", "gui", "egui", "editor", "dclx"]
-categories = ["gui", "text-processing"]
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
