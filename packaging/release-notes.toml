@@ -10,27 +10,31 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.2.0"
+version = "0.3.0"
 
 [locales."de-de"]
 whats-new = """
-Segler folgt jetzt DocLang 0.9. Es prüft Medientranskripte mit Zeitmarken \
-(track), mehrere Beschriftungen an einem Element und die übrigen Neuerungen \
-von 0.8 und 0.9, und es liest Leerraum so, wie 0.9 ihn festlegt. Ein \
-Dokument, das eine ältere Version angibt, etwa DocLang 0.7 aus Duckling oder \
-Docling, wird als 0.9 geprüft und bleibt gültig, mit einem Hinweis darauf. \
-Alle Beschriftungen eines Bildes oder einer Tabelle werden jetzt angezeigt, \
-und ein Leerzeichen am Rand von fettem oder kursivem Text geht in der Ansicht \
-nicht mehr verloren.
+Segler zeigt eine Transkriptspur (track) jetzt so, wie ein Untertitel-Editor \
+sie zeigt: eine Zeitspalte neben dem Text, jeder Sprecher vor seinem Beitrag, \
+Kapiteltitel als Überschriften und Vorschaubilder für Titelbild und \
+Einzelbilder. Der Text eines Beitrags, ein Sprechername und ein Kapiteltitel \
+lassen sich direkt bearbeiten, ebenso Anfangs- und Endzeit eines Abschnitts. \
+Enthält ein Archiv Audio- oder Videoaufnahmen einer Spur, listet Segler sie \
+auf und prüft, dass jede zu einer Spur des Dokuments gehört. Trägt ein Archiv \
+das Originaldokument, aus dem es entstanden ist, prüft Segler, dass dessen Typ \
+angegeben ist, und zeigt ihn an. Beim Bearbeiten bleibt der Leerraum erhalten: \
+Was Sie eingeben, wird so gespeichert, dass es genauso wieder gelesen wird.
 """
 
 [locales."en-us"]
 whats-new = """
-Segler now follows DocLang 0.9. It validates time-aligned media transcripts \
-(track), several captions on one element and the rest of what 0.8 and 0.9 \
-added, and it reads whitespace the way 0.9 defines it. A document that \
-declares an older version, such as DocLang 0.7 from Duckling or Docling, is \
-checked as 0.9 and stays valid, with a note saying so. Every caption of a \
-picture or table is now shown, and a space at the edge of bold or italic text \
-is no longer lost from the view.
+Segler now shows a transcript track the way a subtitle editor does: a time \
+column beside the text, each speaker before their turn, chapter titles as \
+headings, and thumbnails for the cover and frames. A turn's text, a speaker's \
+name and a chapter title are edited in place, and so are a cue's start and \
+end times. When an archive carries audio or video recordings of a track, \
+Segler lists them and checks that each belongs to a track the document has. \
+When an archive carries the original document it was made from, Segler checks \
+that its type is declared and shows it. Editing keeps whitespace as typed: \
+what you enter is saved so that it reads back the same.
 """
