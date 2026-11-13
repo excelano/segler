@@ -65,9 +65,9 @@ website = "https://excelano.com/segler/"
 support = "https://excelano.com/support/?app=Segler&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#segler"
 description = """
-DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben: der Aufbau, der Text, das Layout und die Lesereihenfolge eines Dokuments in einer Datei, von der LF AI & Data Foundation. Das meiste DocLang stammt von einem Modell aus einem PDF oder einem Scan, und ein Modell irrt sich mitunter: eine falsch gelesene Zeile, eine Überschrift, die für einen Absatz gehalten wurde, eine Tabellenzelle in der falschen Spalte.
+Segler ist ein Editor für DocLang-Dokumente. Sie öffnen ein Dokument, lesen es, wie ein Leser es läse, berichtigen, was das Modell falsch gelesen hat, und speichern dieselbe Datei mit Ihren Änderungen und sonst nichts anderem.
 
-Segler ist ein Editor für solche Dokumente.
+DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben: der Aufbau, der Text, das Layout und die Lesereihenfolge eines Dokuments in einer Datei, von der LF AI & Data Foundation. Das meiste DocLang stammt von einem Modell aus einem PDF oder einem Scan, und ein Modell irrt sich mitunter: eine falsch gelesene Zeile, eine Überschrift, die für einen Absatz gehalten wurde, eine Tabellenzelle in der falschen Spalte. In Segler beheben Sie solche Fehler.
 
 WAS SIE SEHEN
 
@@ -98,14 +98,14 @@ Segler ist Open Source unter derselben Lizenz wie DocLang selbst, und die Biblio
 name = "Segler"
 subtitle = "DocLang-Dokumente bearbeiten"
 promotional-text = "Ein DocLang-Dokument öffnen, es lesen, wie ein Leser es läse, es an Ort und Stelle verbessern und dieselbe Datei mit Ihren Änderungen speichern, sonst unverändert."
-keywords = "DocLang,dclx,dclg,Dokument,Editor,Auszeichnung,XML,docling,Layout,Korrektur"
+keywords = "DocLang,dclx,dclg,Dokument,Editor,Auszeichnung,XML,OCR,Layout,Korrektur"
 
 [locales."de-de".microsoft]
 name = "Segler"
 short-description = """
-DocLang ist das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben. Das meiste ist die Lesart eines Modells von einem PDF oder Scan, mitunter falsch.
+Segler ist ein Editor für DocLang, das offene Auszeichnungsformat für Dokumente, die Sprachmodelle lesen und schreiben. Meist ist es die Lesart eines Modells von einem PDF oder Scan, mitunter falsch.
 
-Segler zeigt ein Dokument, wie ein Leser es sähe, und lässt Sie es dort verbessern: eine falsch gelesene Zeile, die Ebene einer Überschrift, eine Zelle. Trägt das Archiv Seitenbilder, prüfen Sie daran eine zweifelhafte Zeile.
+Segler zeigt ein Dokument, wie ein Leser es sähe, und lässt Sie es dort verbessern: eine verlesene Zeile, die Ebene einer Überschrift, eine Zelle. Trägt das Archiv Seitenbilder, prüfen Sie daran eine zweifelhafte Zeile.
 
 Speichern schreibt die geöffnete Datei mit Ihren Änderungen und sonst nichts.
 """
@@ -127,7 +127,7 @@ keywords = [
   "Dokumenteditor",
   "Auszeichnung",
   "XML",
-  "docling",
+  "OCR-Korrektur",
   "Layout",
 ]
 
@@ -136,9 +136,9 @@ website = "https://excelano.com/segler/"
 support = "https://excelano.com/support/?app=Segler&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#segler"
 description = """
-DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file, from the LF AI & Data Foundation. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong: a misread line, a heading taken for a paragraph, a table cell in the wrong column.
+Segler is an editor for DocLang documents. Open one, read it as a reader would, correct what the model that produced it got wrong, and save the same file with your edits and nothing else changed.
 
-Segler is an editor for those documents.
+DocLang is the open markup format for documents that language models read and write: the structure, the text, the layout and the reading order of a document in one file, from the LF AI & Data Foundation. Most DocLang is produced by a model from a PDF or a scan, and a model is sometimes wrong: a misread line, a heading taken for a paragraph, a table cell in the wrong column. Segler is where you fix them.
 
 WHAT YOU SEE
 
@@ -169,12 +169,12 @@ Segler is open source under the same license as DocLang itself, and the library 
 name = "Segler"
 subtitle = "Edit DocLang documents"
 promotional-text = "Open a DocLang document, read it as a reader would, correct it where you read it, and save the same file with your edits and nothing else changed."
-keywords = "doclang,dclx,dclg,document,editor,markup,xml,docling,layout,review"
+keywords = "doclang,dclx,dclg,document,editor,markup,xml,ocr,layout,review"
 
 [locales."en-us".microsoft]
 name = "Segler"
 short-description = """
-DocLang is the open markup format for documents that language models read and write. Most of it is a model's reading of a PDF or a scan, and sometimes wrong.
+Segler is an editor for DocLang, the open markup format for documents that language models read and write. Most DocLang is a model's reading of a PDF or scan, sometimes wrong.
 
 Segler shows such a document as a reader would see it and lets you correct it there: a misread line, a heading's level, a table cell. When the archive carries page images, open them beside the document to check a doubtful line against the scan.
 
@@ -198,6 +198,6 @@ keywords = [
   "document editor",
   "markup",
   "XML",
-  "docling",
+  "OCR correction",
   "layout",
 ]
