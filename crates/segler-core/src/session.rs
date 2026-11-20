@@ -327,7 +327,7 @@ pub struct Session {
     archive: Option<Vec<u8>>,
     pages: Vec<archive::PagePart>,
     recordings: Vec<archive::Recording>,
-    source: Option<archive::Source>,
+    package: Option<archive::Package>,
     doc: Document,
     selected: Option<ElementId>,
     undo: Vec<Entry>,
@@ -365,7 +365,7 @@ impl Session {
             archive: None,
             pages: loaded.pages,
             recordings: loaded.recordings,
-            source: loaded.source,
+            package: loaded.package,
             doc,
             selected: None,
             undo: Vec::new(),
@@ -431,8 +431,9 @@ impl Session {
     pub fn findings(&mut self) -> &[Finding] {
         if self.findings.is_none() {
             let mut findings = validate::validate(&self.doc);
-            findings.extend(validate::recordings(&self.doc, &self.recordings));
-            findings.extend(validate::source(&self.doc, self.source.as_ref()));
+            if let Some(package) = &self.package {
+                findings.extend(validate::archive(&self.doc, package));
+            }
             self.findings = Some(findings);
         }
         self.findings.as_deref().unwrap_or_default()

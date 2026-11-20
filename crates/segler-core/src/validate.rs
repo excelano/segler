@@ -35,6 +35,13 @@ pub enum Layer {
     /// The declared version differs from the one checked against, or is
     /// missing. A warning: a document with only these findings is valid.
     Version,
+    Archive,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    Defect,
+    Warning,
 }
 
 impl fmt::Display for Layer {
@@ -43,6 +50,7 @@ impl fmt::Display for Layer {
             Layer::Schema => "schema",
             Layer::Rules => "rules",
             Layer::Version => "version",
+            Layer::Archive => "archive",
         })
     }
 }
@@ -59,13 +67,14 @@ pub struct Finding {
     /// Where that element is, as `/doclang/text[2]/xref[1]`.
     pub path: String,
     pub message: String,
+    pub severity: Severity,
 }
 
 impl Finding {
     /// Whether this finding makes the document invalid, as opposed to a
     /// warning about it.
     pub fn is_defect(&self) -> bool {
-        self.layer != Layer::Version
+        self.severity == Severity::Defect
     }
 }
 
@@ -80,63 +89,277 @@ pub fn validate(doc: &Document) -> Vec<Finding> {
     findings
 }
 
-/// An archive finding, which belongs to the package rather than an element
-/// and so sits on the root.
-fn archive_finding(doc: &Document, rule: &'static str, message: String) -> Finding {
-    Finding {
-        layer: Layer::Rules,
-        rule,
-        element: doc.root.id(),
-        path: format!("/{}", doc.root.name()),
-        message,
-    }
-}
+pub fn archive(doc: &Document, package: &crate::archive::Package) -> Vec<Finding> {
+    use crate::archive::{self as a, Metadata, Positional};
 
-/// An archive's `source` part needs an `<Override>` naming its type, since a
-/// part without an extension matches no `<Default>`.
-pub fn source(doc: &Document, source: Option<&crate::archive::Source>) -> Vec<Finding> {
-    match source {
-        Some(s) if s.content_type.is_none() => vec![archive_finding(
-            doc,
-            "archive-source",
-            format!(
-                "the archive carries {} and {} gives no <Override> with its content type",
-                crate::archive::SOURCE_PART,
-                crate::archive::CONTENT_TYPES_PART
-            ),
-        )],
-        _ => Vec::new(),
-    }
-}
-
-pub fn recordings(doc: &Document, recordings: &[crate::archive::Recording]) -> Vec<Finding> {
-    let tracks = doc
-        .elements()
-        .filter(|e| kind(e) == Some(Kind::Track))
-        .count();
+    let version = declared_minor(doc);
+    let applies = |since: (u64, u64)| version.is_none_or(|v| v >= since);
     let mut out = Vec::new();
-    let mut push = |message: String| out.push(archive_finding(doc, "archive-recordings", message));
-    for (i, r) in recordings.iter().enumerate() {
-        if r.track as usize > tracks {
-            push(format!(
-                "{} is the recording of track {}, and the document has {tracks} track elements",
-                r.name, r.track
-            ));
+    if !applies((0, 8)) {
+        return out;
+    }
+    let mut push =
+        |rule: &'static str, path: &str, element: ElementId, message: String, severity| {
+            out.push(Finding {
+                layer: Layer::Archive,
+                rule,
+                element,
+                path: path.to_owned(),
+                message,
+                severity,
+            })
+        };
+    let root = doc.root.id();
+    let mut defect = |rule, part: &str, message| push(rule, part, root, message, Severity::Defect);
+
+    match &package.content_types {
+        Metadata::Missing => defect(
+            "archive-content-types",
+            a::CONTENT_TYPES_PART,
+            format!("the archive has no {}", a::CONTENT_TYPES_PART),
+        ),
+        Metadata::Malformed(e) => defect(
+            "archive-content-types",
+            a::CONTENT_TYPES_PART,
+            format!("{} is not well-formed: {e}", a::CONTENT_TYPES_PART),
+        ),
+        Metadata::Read(types) => {
+            if types.overrides.get(a::DOCUMENT_PART).map(String::as_str)
+                != Some(a::DOCUMENT_CONTENT_TYPE)
+            {
+                defect(
+                    "archive-content-types",
+                    a::CONTENT_TYPES_PART,
+                    format!(
+                        "{} has no <Override> for /{} with the content type {}",
+                        a::CONTENT_TYPES_PART,
+                        a::DOCUMENT_PART,
+                        a::DOCUMENT_CONTENT_TYPE
+                    ),
+                );
+            }
+            for part in &package.parts {
+                if part != a::CONTENT_TYPES_PART && types.of(part).is_none() {
+                    defect(
+                        "archive-content-types",
+                        part,
+                        format!("{part} has no content type in {}", a::CONTENT_TYPES_PART),
+                    );
+                }
+            }
         }
-        if let Some(first) = recordings[..i]
-            .iter()
-            .find(|o| o.modality == r.modality && o.track == r.track)
+    }
+
+    match &package.relationships {
+        Metadata::Missing => defect(
+            "archive-relationships",
+            a::RELATIONSHIPS_PART,
+            format!("the archive has no {}", a::RELATIONSHIPS_PART),
+        ),
+        Metadata::Malformed(e) => defect(
+            "archive-relationships",
+            a::RELATIONSHIPS_PART,
+            format!("{} is not well-formed: {e}", a::RELATIONSHIPS_PART),
+        ),
+        Metadata::Read(_) => {
+            let documents: Vec<_> = package.relationships_of(a::DOCUMENT_RELATIONSHIP).collect();
+            if documents.len() != 1 {
+                defect(
+                    "archive-relationships",
+                    a::RELATIONSHIPS_PART,
+                    format!(
+                        "{} has {} relationships of type {}; it needs one",
+                        a::RELATIONSHIPS_PART,
+                        documents.len(),
+                        a::DOCUMENT_RELATIONSHIP
+                    ),
+                );
+            } else if documents[0].target.as_deref() != Some(a::DOCUMENT_PART) {
+                defect(
+                    "archive-relationships",
+                    a::RELATIONSHIPS_PART,
+                    format!(
+                        "the {} relationship must target {}",
+                        a::DOCUMENT_RELATIONSHIP,
+                        a::DOCUMENT_PART
+                    ),
+                );
+            }
+        }
+    }
+
+    if applies((0, 10)) {
+        for (kind, label) in [
+            (a::SOURCE_RELATIONSHIP, "source"),
+            (a::SOURCE_METADATA_RELATIONSHIP, "source descriptor"),
+        ] {
+            let found: Vec<_> = package.relationships_of(kind).collect();
+            if found.len() > 1 {
+                defect(
+                    "archive-source",
+                    a::RELATIONSHIPS_PART,
+                    format!(
+                        "{} has more than one {kind} relationship",
+                        a::RELATIONSHIPS_PART
+                    ),
+                );
+            }
+            for r in found {
+                let Some(part) = &r.target else {
+                    defect(
+                        "archive-source",
+                        a::RELATIONSHIPS_PART,
+                        format!("the {label} relationship must target a part of the archive"),
+                    );
+                    continue;
+                };
+                if !package.has_part(part) {
+                    defect(
+                        "archive-source",
+                        a::RELATIONSHIPS_PART,
+                        format!("the {label} part {part} is missing"),
+                    );
+                    continue;
+                }
+                match package.descriptors.get(part) {
+                    Some(a::Descriptor::Malformed(e)) => defect(
+                        "archive-source",
+                        part,
+                        format!("{part} is not well-formed: {e}"),
+                    ),
+                    Some(d) if !d.is_source_descriptor() => defect(
+                        "archive-source",
+                        part,
+                        format!(
+                            "the root element of {part} must be source in the namespace {}",
+                            a::SOURCE_METADATA_NAMESPACE
+                        ),
+                    ),
+                    _ => {}
+                }
+            }
+        }
+        if package
+            .relationships_of(a::SOURCE_METADATA_RELATIONSHIP)
+            .next()
+            .is_some()
+            && package
+                .relationships_of(a::SOURCE_RELATIONSHIP)
+                .next()
+                .is_none()
         {
-            push(format!(
-                "{} and {} are both the {} recording of track {}; a track has at most one",
-                first.name,
-                r.name,
-                r.modality.folder(),
-                r.track
-            ));
+            defect(
+                "archive-source",
+                a::RELATIONSHIPS_PART,
+                format!(
+                    "{} has a source descriptor and no source relationship",
+                    a::RELATIONSHIPS_PART
+                ),
+            );
+        }
+    }
+
+    let mut pages = 1usize;
+    let mut tracks = 0usize;
+    let mut sources: Vec<(ElementId, String, String, String)> = Vec::new();
+    let mut links: Vec<String> = Vec::new();
+    walk_document(doc, &mut |v| {
+        match kind(v.el) {
+            Some(Kind::PageBreak) if !v.ancestors.contains(&Kind::Head) => pages += 1,
+            Some(Kind::Track) => tracks += 1,
+            _ => {}
+        }
+        let Some(uri) = v.el.attr("uri") else {
+            return;
+        };
+        let Some(part) = crate::archive::markup_part(uri) else {
+            return;
+        };
+        match v.el.local_name() {
+            "src" => sources.push((v.el.id(), v.path.to_owned(), uri.to_owned(), part)),
+            "href" => links.push(part),
+            _ => {}
+        }
+    });
+
+    let mut ordered: Vec<&String> = package.parts.iter().collect();
+    ordered.sort();
+    let mut recordings: Vec<(a::Modality, u32, &str)> = Vec::new();
+    for part in ordered {
+        match a::positional(part) {
+            Some(Positional::Page(n)) if n as usize > pages => defect(
+                "archive-pages",
+                part,
+                format!("{part} is the image of page {n}, and the document has {pages} pages"),
+            ),
+            Some(Positional::Recording(modality, n)) => {
+                if n as usize > tracks {
+                    defect(
+                        "archive-recordings",
+                        part,
+                        format!("{part} is the recording of track {n}, and the document has {tracks} track elements"),
+                    );
+                }
+                if let Some((_, _, first)) = recordings
+                    .iter()
+                    .find(|(m, t, _)| *m == modality && *t == n)
+                {
+                    defect(
+                        "archive-recordings",
+                        part,
+                        format!(
+                            "{first} and {part} are both the {} recording of track {n}; a track has at most one",
+                            modality.folder()
+                        ),
+                    );
+                } else {
+                    recordings.push((modality, n, part));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if applies((0, 10)) {
+        for (element, path, uri, part) in &sources {
+            if !package.has_part(part) {
+                push(
+                    "archive-references",
+                    path,
+                    *element,
+                    format!("the <src> URI {uri} names {part}, which is not in the archive"),
+                    Severity::Defect,
+                );
+            }
+        }
+        for part in &package.parts {
+            let accounted = part == a::CONTENT_TYPES_PART
+                || sources.iter().any(|(_, _, _, p)| p == part)
+                || links.contains(part)
+                || package.relationship_targets.contains(part)
+                || a::relationships_base(part).is_some()
+                || a::positional(part).is_some();
+            if !accounted {
+                push(
+                    "archive-unreferenced",
+                    part,
+                    root,
+                    format!("{part} is not referenced by the markup or a relationship, and is not a page image or a track's recording"),
+                    Severity::Warning,
+                );
+            }
         }
     }
     out
+}
+
+fn declared_minor(doc: &Document) -> Option<(u64, u64)> {
+    let (major, minor) = doclang::version(doc)?.split_once('.')?;
+    let number = |s: &str| {
+        (!s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+            .then(|| s.parse().unwrap_or(u64::MAX))
+    };
+    Some((number(major)?, number(minor)?))
 }
 
 /// The spec's conformance clause: an instance with no version is checked
@@ -148,7 +371,7 @@ fn version_check(doc: &Document, out: &mut Vec<Finding>) {
         return;
     }
     let (rule, message) = match doclang::version(doc) {
-        Some(crate::SPEC_VERSION) => return,
+        Some(v) if v == crate::SPEC_VERSION || crate::COMPATIBLE_VERSIONS.contains(&v) => return,
         Some(v) => (
             "other",
             format!(
@@ -170,6 +393,7 @@ fn version_check(doc: &Document, out: &mut Vec<Finding>) {
         element: doc.root.id(),
         path: format!("/{}", doc.root.name()),
         message,
+        severity: Severity::Warning,
     });
 }
 
@@ -497,6 +721,7 @@ mod schema {
                 element: el.id(),
                 path: path.to_owned(),
                 message,
+                severity: Severity::Defect,
             })
         };
 
@@ -982,6 +1207,7 @@ mod rules {
                     element: v.el.id(),
                     path: v.path.to_owned(),
                     message,
+                    severity: Severity::Defect,
                 })
             };
             let children = elements(v.el);
@@ -1542,7 +1768,11 @@ mod tests {
     fn another_or_no_version_is_a_warning_and_still_valid() {
         let current = format!("<doclang version=\"{}\"/>", crate::SPEC_VERSION);
         assert_eq!(validate(&Document::parse(&current).unwrap()), []);
-        for src in ["<doclang version=\"0.7\"/>", "<doclang/>"] {
+        for compatible in crate::COMPATIBLE_VERSIONS {
+            let src = format!("<doclang version=\"{compatible}\"/>");
+            assert_eq!(validate(&Document::parse(&src).unwrap()), []);
+        }
+        for src in ["<doclang version=\"0.8\"/>", "<doclang/>"] {
             let all = validate(&Document::parse(src).unwrap());
             assert_eq!(all.len(), 1, "{src}");
             assert_eq!(all[0].layer, Layer::Version);
@@ -1622,53 +1852,225 @@ mod tests {
         );
     }
 
+    fn package(parts: &[(&str, &str)]) -> crate::archive::Package {
+        use std::io::Write;
+        let mut buf = std::io::Cursor::new(Vec::new());
+        {
+            let mut w = zip::ZipWriter::new(&mut buf);
+            for (name, data) in parts {
+                w.start_file(*name, zip::write::SimpleFileOptions::default())
+                    .unwrap();
+                w.write_all(data.as_bytes()).unwrap();
+            }
+            w.finish().unwrap();
+        }
+        crate::archive::load_bytes(&buf.into_inner())
+            .unwrap()
+            .package
+            .unwrap()
+    }
+
+    const TYPES: &str = "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"mp3\" ContentType=\"audio/mpeg\"/><Default Extension=\"pdf\" ContentType=\"application/pdf\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/document.xml\" ContentType=\"application/vnd.doclang.document+xml\"/></Types>";
+
+    fn rels(extra: &str) -> String {
+        format!("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"r1\" Type=\"http://doclang.ai/ns/package/2026/relationships/document\" Target=\"document.xml\"/>{extra}</Relationships>")
+    }
+
+    fn source_rel(target: &str) -> String {
+        format!("<Relationship Id=\"s\" Type=\"http://doclang.ai/ns/package/2026/relationships/source\" Target=\"{target}\"/>")
+    }
+
+    fn descriptor_rel(target: &str) -> String {
+        format!("<Relationship Id=\"m\" Type=\"http://doclang.ai/ns/package/2026/relationships/source-metadata\" Target=\"{target}\"/>")
+    }
+
+    const DESCRIPTOR: &str =
+        "<source xmlns=\"http://doclang.ai/ns/package/2026/source-metadata\" name=\"report.pdf\"/>";
+
+    fn archive_rules(markup: &str, parts: &[(&str, &str)]) -> Vec<(&'static str, String, bool)> {
+        let doc = Document::parse(markup).unwrap();
+        let mut all = vec![("document.xml", markup)];
+        all.extend_from_slice(parts);
+        archive(&doc, &package(&all))
+            .into_iter()
+            .map(|f| (f.rule, f.path.clone(), f.is_defect()))
+            .collect()
+    }
+
+    const DOC: &str = "<doclang version=\"0.10\"><picture><src uri=\"assets/a.png\"/></picture><page_break/><text>b</text></doclang>";
+
     #[test]
-    fn a_recording_needs_its_track_and_a_track_one_recording_per_kind() {
-        use crate::archive::{Modality, Recording};
-        let doc =
-            Document::parse("<doclang><track><bdiv/><seconds value=\"0\"/></track></doclang>")
-                .unwrap();
-        let r = |modality, track, name: &str| Recording {
-            modality,
-            track,
-            name: name.to_owned(),
-        };
+    fn a_well_formed_archive_has_no_archive_findings() {
+        let r = rels(&format!(
+            "{}{}",
+            source_rel("source.pdf"),
+            descriptor_rel("source-metadata.xml")
+        ));
         assert_eq!(
-            recordings(
-                &doc,
+            archive_rules(
+                DOC,
                 &[
-                    r(Modality::Audio, 1, "audio/1.wav"),
-                    r(Modality::Video, 1, "video/1.mp4")
+                    ("[Content_Types].xml", TYPES),
+                    ("_rels/.rels", &r),
+                    ("pages/1.png", "png"),
+                    ("pages/2.png", "png"),
+                    ("assets/a.png", "png"),
+                    ("source.pdf", "%PDF"),
+                    ("source-metadata.xml", DESCRIPTOR),
                 ]
             ),
             []
         );
-        let found = recordings(
-            &doc,
-            &[
-                r(Modality::Audio, 1, "audio/1.mp3"),
-                r(Modality::Audio, 1, "audio/1.wav"),
-                r(Modality::Video, 2, "video/2.mp4"),
-            ],
-        );
-        assert_eq!(found.len(), 2, "{found:?}");
-        assert!(found
-            .iter()
-            .all(|f| f.rule == "archive-recordings" && f.is_defect()));
     }
 
     #[test]
-    fn a_source_part_needs_its_content_type() {
-        use crate::archive::Source;
-        let doc = Document::parse("<doclang/>").unwrap();
-        let typed = Source {
-            content_type: Some("application/pdf".to_owned()),
+    fn the_opc_metadata_is_required() {
+        let found = archive_rules(DOC, &[("assets/a.png", "png")]);
+        assert_eq!(
+            found,
+            [
+                (
+                    "archive-content-types",
+                    "[Content_Types].xml".to_owned(),
+                    true
+                ),
+                ("archive-relationships", "_rels/.rels".to_owned(), true),
+                ("archive-unreferenced", "document.xml".to_owned(), false),
+            ]
+        );
+        let found = archive_rules(
+            DOC,
+            &[
+                ("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>"),
+                ("_rels/.rels", "<Relationships"),
+                ("assets/a.png", "png"),
+            ],
+        );
+        let rules: Vec<_> = found.iter().map(|f| (f.0, f.1.as_str())).collect();
+        assert_eq!(
+            rules,
+            [
+                ("archive-content-types", "[Content_Types].xml"),
+                ("archive-content-types", "document.xml"),
+                ("archive-content-types", "_rels/.rels"),
+                ("archive-content-types", "assets/a.png"),
+                ("archive-relationships", "_rels/.rels"),
+                ("archive-unreferenced", "document.xml"),
+            ]
+        );
+    }
+
+    #[test]
+    fn positional_parts_stay_within_the_document() {
+        let r = rels("");
+        let markup = "<doclang version=\"0.10\"><head><page_break/></head><track><bdiv/><seconds value=\"0\"/></track></doclang>";
+        let found = archive_rules(
+            markup,
+            &[
+                ("[Content_Types].xml", TYPES),
+                ("_rels/.rels", &r),
+                ("pages/2.png", "png"),
+                ("audio/1.mp3", "a"),
+                ("audio/1.png", "a"),
+                ("audio/2.mp3", "a"),
+            ],
+        );
+        let rules: Vec<_> = found.iter().map(|f| (f.0, f.1.as_str())).collect();
+        assert_eq!(
+            rules,
+            [
+                ("archive-recordings", "audio/1.png"),
+                ("archive-recordings", "audio/2.mp3"),
+                ("archive-pages", "pages/2.png"),
+            ]
+        );
+    }
+
+    #[test]
+    fn markup_references_resolve_and_parts_are_accounted_for() {
+        let r = rels("");
+        let found = archive_rules(
+            DOC,
+            &[
+                ("[Content_Types].xml", TYPES),
+                ("_rels/.rels", &r),
+                ("notes.xml", "<n/>"),
+            ],
+        );
+        assert_eq!(
+            found,
+            [
+                (
+                    "archive-references",
+                    "/doclang/picture[1]/src[1]".to_owned(),
+                    true
+                ),
+                ("archive-unreferenced", "notes.xml".to_owned(), false),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_source_is_one_part_of_the_archive_with_a_valid_descriptor() {
+        let rules = |extra: &str, parts: &[(&str, &str)]| {
+            let r = rels(extra);
+            let mut all = vec![
+                ("[Content_Types].xml", TYPES),
+                ("_rels/.rels", r.as_str()),
+                ("assets/a.png", "png"),
+            ];
+            all.extend_from_slice(parts);
+            archive_rules(DOC, &all)
+                .into_iter()
+                .filter(|f| f.0 == "archive-source")
+                .map(|f| f.1)
+                .collect::<Vec<_>>()
         };
-        assert_eq!(source(&doc, None), []);
-        assert_eq!(source(&doc, Some(&typed)), []);
-        let found = source(&doc, Some(&Source { content_type: None }));
-        assert_eq!(found.len(), 1);
-        assert!(found[0].rule == "archive-source" && found[0].is_defect());
+        let external = "<Relationship Id=\"s\" Type=\"http://doclang.ai/ns/package/2026/relationships/source\" Target=\"https://example.com/a.pdf\" TargetMode=\"External\"/>";
+        assert_eq!(rules(external, &[]), ["_rels/.rels"]);
+        assert_eq!(rules(&source_rel("source.pdf"), &[]), ["_rels/.rels"]);
+        assert_eq!(
+            rules(
+                &format!("{}{}", source_rel("a.pdf"), source_rel("b.pdf")),
+                &[("a.pdf", "%PDF"), ("b.pdf", "%PDF")]
+            ),
+            ["_rels/.rels"]
+        );
+        assert_eq!(
+            rules(
+                &descriptor_rel("source-metadata.xml"),
+                &[("source-metadata.xml", DESCRIPTOR)]
+            ),
+            ["_rels/.rels"]
+        );
+        let described = format!("{}{}", source_rel("source.pdf"), descriptor_rel("m.xml"));
+        assert_eq!(
+            rules(&described, &[("source.pdf", "%PDF"), ("m.xml", "<source")]),
+            ["m.xml"]
+        );
+        assert_eq!(
+            rules(
+                &described,
+                &[("source.pdf", "%PDF"), ("m.xml", "<source name=\"a\"/>")]
+            ),
+            ["m.xml"]
+        );
+    }
+
+    #[test]
+    fn archive_rules_follow_the_declared_version() {
+        let parts = [("notes.xml", "<n/>")];
+        let rules = |markup: &str| {
+            archive_rules(markup, &parts)
+                .into_iter()
+                .map(|f| f.0)
+                .collect::<Vec<_>>()
+        };
+        let all = rules("<doclang><src uri=\"missing.png\"/></doclang>");
+        assert!(all.contains(&"archive-references") && all.contains(&"archive-unreferenced"));
+        let earlier = rules("<doclang version=\"0.9\"><src uri=\"missing.png\"/></doclang>");
+        assert_eq!(earlier, ["archive-content-types", "archive-relationships"]);
+        assert_eq!(rules("<doclang version=\"0.7\"/>"), Vec::<&str>::new());
     }
 
     #[test]

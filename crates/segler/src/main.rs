@@ -153,12 +153,6 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
     }
 }
 
-fn load(file: &Path) -> Result<String, String> {
-    archive::load(file)
-        .map(|loaded| loaded.markup)
-        .map_err(|e| format!("{}: {e}", file.display()))
-}
-
 fn inspect(file: &Path) -> Result<(), String> {
     let loaded = archive::load(file).map_err(|e| format!("{}: {e}", file.display()))?;
     let summary = Summary::of(&loaded.markup).map_err(|e| format!("{}: {e}", file.display()))?;
@@ -187,10 +181,15 @@ fn inspect(file: &Path) -> Result<(), String> {
         for r in &loaded.recordings {
             println!("recording   {} (track {})", r.name, r.track);
         }
-        if let Some(source) = &loaded.source {
+        if let Some(source) = loaded.package.as_ref().and_then(|p| p.source()) {
             println!(
-                "source      {}",
-                source.content_type.as_deref().unwrap_or("no content type")
+                "source      {} ({}{})",
+                source.part,
+                source.content_type.as_deref().unwrap_or("no content type"),
+                source
+                    .file_name
+                    .map(|n| format!(", originally {n}"))
+                    .unwrap_or_default()
             );
         }
     }
@@ -206,8 +205,9 @@ fn validate_file(file: &Path) -> Result<ExitCode, String> {
     let loaded = archive::load(file).map_err(|e| format!("{}: {e}", file.display()))?;
     let doc = Document::parse(&loaded.markup).map_err(|e| format!("{}: {e}", file.display()))?;
     let mut findings = validate::validate(&doc);
-    findings.extend(validate::recordings(&doc, &loaded.recordings));
-    findings.extend(validate::source(&doc, loaded.source.as_ref()));
+    if let Some(package) = &loaded.package {
+        findings.extend(validate::archive(&doc, package));
+    }
     for f in &findings {
         println!("{}  {}  {}\n    {}", f.layer, f.rule, f.path, f.message);
     }
@@ -761,14 +761,18 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
     files.sort();
 
     let mut problems = 0usize;
+    for problem in compatibility(dir) {
+        problems += 1;
+        println!("compatible  {problem}");
+    }
     let (mut identical, mut valid, mut invalid, mut skipped, mut agreed) =
         (0usize, 0usize, 0usize, 0usize, 0usize);
     for file in &files {
-        let markup = match load(file) {
-            Ok(markup) => markup,
+        let (markup, package) = match archive::load(file) {
+            Ok(loaded) => (loaded.markup, loaded.package),
             Err(e) => {
                 problems += 1;
-                println!("unreadable  {e}");
+                println!("unreadable  {}: {e}", file.display());
                 continue;
             }
         };
@@ -801,12 +805,14 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
             skipped += 1;
             continue;
         }
-        let findings: Vec<_> = validate::validate(&doc)
-            .into_iter()
-            .filter(|f| f.is_defect())
-            .collect();
+        let mut findings = validate::validate(&doc);
+        if let Some(package) = &package {
+            findings.extend(validate::archive(&doc, package));
+        }
+        findings.retain(|f| f.is_defect());
         let schema = findings.iter().any(|f| f.layer == Layer::Schema);
         let rules = findings.iter().any(|f| f.layer == Layer::Rules);
+        let packaged = findings.iter().any(|f| f.layer == Layer::Archive);
         match (expectation(file), findings.is_empty()) {
             (Expect::Valid, false) => {
                 problems += 1;
@@ -851,18 +857,21 @@ fn corpus(dir: &Path, toolkit: bool) -> Result<ExitCode, String> {
 
         if toolkit {
             match toolkit_verdict(file) {
-                Ok((their_schema, their_rules)) => {
-                    if (their_schema, their_rules) == (schema, rules) {
+                Ok(theirs) => {
+                    let their_archive = theirs.archive.unwrap_or(packaged);
+                    if (theirs.schema, theirs.rules, their_archive) == (schema, rules, packaged) {
                         agreed += 1;
                     } else {
                         problems += 1;
                         println!(
-                            "disagree    {}: schema ours={} toolkit={}, rules ours={} toolkit={}",
+                            "disagree    {}: schema ours={} toolkit={}, rules ours={} toolkit={}, archive ours={} toolkit={}",
                             file.display(),
                             verdict(schema),
-                            verdict(their_schema),
+                            verdict(theirs.schema),
                             verdict(rules),
-                            verdict(their_rules)
+                            verdict(theirs.rules),
+                            verdict(packaged),
+                            verdict(their_archive)
                         );
                         for f in &findings {
                             println!(
@@ -899,10 +908,44 @@ fn verdict(has_findings: bool) -> &'static str {
     }
 }
 
+struct ToolkitVerdict {
+    schema: bool,
+    rules: bool,
+    archive: Option<bool>,
+}
+
+fn compatibility(dir: &Path) -> Vec<String> {
+    let schemas = dir.join("doclang").join("schemas");
+    let read = |version: &str, file: &str| {
+        let path = schemas.join(version).join(file);
+        fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))
+    };
+    let mut problems = Vec::new();
+    for version in segler_core::COMPATIBLE_VERSIONS {
+        for file in ["doclang.xsd", "doclang.sch"] {
+            match (read(segler_core::SPEC_VERSION, file), read(version, file)) {
+                (Ok(current), Ok(earlier)) => {
+                    let named = |v: &str| format!("version=\"{v}.0\"");
+                    let earlier =
+                        earlier.replace(&named(version), &named(segler_core::SPEC_VERSION));
+                    if earlier != current {
+                        problems.push(format!(
+                            "{file} of DocLang {version} differs from {}'s in more than its version",
+                            segler_core::SPEC_VERSION
+                        ));
+                    }
+                }
+                (Err(e), _) | (_, Err(e)) => problems.push(e),
+            }
+        }
+    }
+    problems
+}
+
 /// Run the reference toolkit on a file and return whether its XSD and
 /// Schematron layers found problems. Uses `-n` so that a document without
 /// the namespace is judged on its content, as this validator judges it.
-fn toolkit_verdict(file: &Path) -> Result<(bool, bool), String> {
+fn toolkit_verdict(file: &Path) -> Result<ToolkitVerdict, String> {
     let output = Process::new("doclang")
         .args(["validate", "--format", "json", "-n"])
         .arg(file)
@@ -910,7 +953,11 @@ fn toolkit_verdict(file: &Path) -> Result<(bool, bool), String> {
         .map_err(|e| format!("cannot run doclang: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     if output.status.success() && !stdout.trim_start().starts_with('{') {
-        return Ok((false, false));
+        return Ok(ToolkitVerdict {
+            schema: false,
+            rules: false,
+            archive: None,
+        });
     }
     let json: serde_json::Value =
         serde_json::from_str(&stdout).map_err(|e| format!("toolkit output is not JSON: {e}"))?;
@@ -921,7 +968,11 @@ fn toolkit_verdict(file: &Path) -> Result<(bool, bool), String> {
             .map(|valid| !valid)
             .ok_or_else(|| format!("toolkit output has no {name}.valid"))
     };
-    Ok((layer("xsd")?, layer("schematron")?))
+    Ok(ToolkitVerdict {
+        schema: layer("xsd")?,
+        rules: layer("schematron")?,
+        archive: json.get("archive").map(|_| layer("archive")).transpose()?,
+    })
 }
 
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
