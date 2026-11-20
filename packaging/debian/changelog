@@ -1,3 +1,11 @@
+segler (0.4.0) unstable; urgency=medium
+
+  * Compare compatible schemas whatever their patch version
+  * Ship third-party notices in every package
+  * Support DocLang 0.10 and check archives against its rules
+
+ -- David M. Anderson <david.anderson@excelano.com>  Fri, 20 Nov 2026 07:22:21 -0600
+
 segler (0.3.0) unstable; urgency=medium
 
   * Check that an archive's original source part names its content type
