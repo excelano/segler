@@ -10,31 +10,27 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.3.0"
+version = "0.4.0"
 
 [locales."de-de"]
 whats-new = """
-Segler zeigt eine Transkriptspur (track) jetzt so, wie ein Untertitel-Editor \
-sie zeigt: eine Zeitspalte neben dem Text, jeder Sprecher vor seinem Beitrag, \
-Kapiteltitel als Überschriften und Vorschaubilder für Titelbild und \
-Einzelbilder. Der Text eines Beitrags, ein Sprechername und ein Kapiteltitel \
-lassen sich direkt bearbeiten, ebenso Anfangs- und Endzeit eines Abschnitts. \
-Enthält ein Archiv Audio- oder Videoaufnahmen einer Spur, listet Segler sie \
-auf und prüft, dass jede zu einer Spur des Dokuments gehört. Trägt ein Archiv \
-das Originaldokument, aus dem es entstanden ist, prüft Segler, dass dessen Typ \
-angegeben ist, und zeigt ihn an. Beim Bearbeiten bleibt der Leerraum erhalten: \
-Was Sie eingeben, wird so gespeichert, dass es genauso wieder gelesen wird.
+Segler unterstützt jetzt DocLang 0.10 und prüft Archive nach dessen \
+Paketregeln: Jeder Teil hat einen Inhaltstyp, die Beziehungen des Archivs \
+nennen sein Dokument und sein Originaldokument, jede Datei, auf die das \
+Dokument verweist, liegt im Archiv, und eine Datei, auf die nichts verweist, \
+wird als Warnung gemeldet. Dokumente, die DocLang 0.9 angeben, öffnen ohne \
+Versionswarnung, denn die Regeln von 0.9 sind dieselben wie die von 0.10. Die \
+Pakete enthalten jetzt die Lizenzen des fremden Codes, aus dem Segler gebaut \
+ist.
 """
 
 [locales."en-us"]
 whats-new = """
-Segler now shows a transcript track the way a subtitle editor does: a time \
-column beside the text, each speaker before their turn, chapter titles as \
-headings, and thumbnails for the cover and frames. A turn's text, a speaker's \
-name and a chapter title are edited in place, and so are a cue's start and \
-end times. When an archive carries audio or video recordings of a track, \
-Segler lists them and checks that each belongs to a track the document has. \
-When an archive carries the original document it was made from, Segler checks \
-that its type is declared and shows it. Editing keeps whitespace as typed: \
-what you enter is saved so that it reads back the same.
+Segler now supports DocLang 0.10 and checks archives against its packaging \
+rules: every part has a content type, the archive's relationships name its \
+document and its original source, every file the document refers to is in \
+the archive, and a file nothing refers to is reported as a warning. Documents \
+that declare DocLang 0.9 open without a version warning, because the 0.9 \
+rules are the same as 0.10's. The packages now include the licenses of the \
+third-party code Segler is built from.
 """
