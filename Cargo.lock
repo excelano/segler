@@ -2919,6 +2919,8 @@ dependencies = [
  "clap",
  "segler-core",
  "serde_json",
+ "tempfile",
+ "zip",
 ]
 
 [[package]]
