@@ -1731,6 +1731,59 @@ mod tests {
             .collect()
     }
 
+    type Expected = &'static [(&'static str, &'static str, &'static str)];
+
+    #[test]
+    fn each_shape_and_rule_reports_its_defect() {
+        let cases: &[(&str, Expected)] = &[
+        ("<doclang><text color=\"red\">a</text></doclang>", &[("xsd", "/doclang/text[1]", "<text> does not take a color attribute")]),
+        ("<doclang><table><fcel/>a<layer value=\"body\"/><nl/></table></doclang>", &[("table-virtual-text-element-head", "/doclang/table[1]", "in table and index cells (virtual text), property elements in the element head must appear before any non-whitespace text content; found text before element head: \"a\"")]),
+        ("<doclang><table><text>a</text></table></doclang>", &[("xsd", "/doclang/table[1]", "a cell begins with an OTSL token; found <text>"), ("table-structure", "/doclang/table[1]", "table and index must have a cell-starting token as first element after the optional element head; found text")]),
+        ("<doclang><track><bdiv/><seconds value=\"1\"/><minutes value=\"2\"/><chapter>x</chapter></track></doclang>", &[("xsd", "/doclang/track[1]", "a cue block's end timestamp is hours? minutes? seconds msecs?; found <chapter>")]),
+        ("<doclang><track><text>a</text><bdiv/><seconds value=\"1\"/></track></doclang>", &[("xsd", "/doclang/track[1]", "a cue block begins with <bdiv>; found <text>"), ("track-structure", "/doclang/track[1]", "Track must have bdiv (optionally preceded by a single cover) as first element after the optional element head; found text")]),
+        ("<doclang><track><bdiv/><minutes value=\"1\"/></track></doclang>", &[("xsd", "/doclang/track[1]", "a cue block's start timestamp is hours? minutes? seconds msecs?; found nothing")]),
+        ("<doclang><list><ldiv><text>a</text></ldiv>a</list></doclang>", &[("xsd", "/doclang/list[1]/ldiv[1]", "<ldiv> may hold one <marker> and nothing else; found <text>")]),
+        ("<doclang><track><bdiv><text>a</text></bdiv><seconds value=\"1\"/></track></doclang>", &[("xsd", "/doclang/track[1]/bdiv[1]", "<bdiv> is an empty element; <text> is not allowed inside it")]),
+        ("<doclang><text><layer value=\"middle\"/>a</text></doclang>", &[("xsd", "/doclang/text[1]/layer[1]", "value=\"middle\" on <layer> is not one of body, background, furniture")]),
+        ("<doclang><field_item><key>k</key></field_item></doclang>", &[("field-structure-placement", "/doclang/field_item[1]", "field_heading and field_item must be descendants of field_region")]),
+        ("<doclang><text>a</text><head/></doclang>", &[("xsd", "/doclang", "<head> must be the first child of <doclang>")]),
+        ("<doclang><text><layer value=\"body\"/><label/>a</text></doclang>", &[("xsd", "/doclang/text[1]", "<label> is out of order in the element head of <text>")]),
+        ("<doclang><text>a<layer value=\"body\"/></text></doclang>", &[("element-head-placement", "/doclang/text[1]", "property elements in the element head must appear before any non-whitespace text content; found text before element head: \"a\"")]),
+        ("<doclang><list><text>a</text></list></doclang>", &[("xsd", "/doclang/list[1]", "a list item begins with <ldiv>; found <text>"), ("list-structure", "/doclang/list[1]", "list must have ldiv as first element after the optional element head; found text")]),
+        ("<doclang><key>k</key></doclang>", &[("field-structure-placement", "/doclang/key[1]", "key and value must be descendants of field_item")]),
+        ("<doclang><text><location value=\"600\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/>a</text></doclang>", &[("location-block-order", "/doclang/text[1]", "location block must satisfy x0_norm <= x1_norm and y0_norm <= y1_norm, where *_norm is each coordinate normalized by its effective resolution"), ("location-value-range", "/doclang/text[1]/location[1]", "location value must satisfy 0 <= value < axis_limit; found value=600, axis_limit=512, axis=x, location-index=1")]),
+        ("<doclang><track><cover><text>a</text><src uri=\"a.png\"/></cover><bdiv/><seconds value=\"1\"/></track></doclang>", &[("xsd", "/doclang/track[1]/cover[1]", "<src> must come first in the body of <cover>")]),
+        ("<doclang version=\"1\"/>", &[("xsd", "/doclang", "version=\"1\" on <doclang> is not a MAJOR.MINOR version")]),
+        ("<doclang><text><location value=\"-1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/>a</text></doclang>", &[("xsd", "/doclang/text[1]/location[1]", "value=\"-1\" on <location> is not a non-negative integer"), ("location-value-range", "/doclang/text[1]/location[1]", "location value must satisfy 0 <= value < axis_limit; found value=-1, axis_limit=512, axis=x, location-index=1")]),
+        ("<doclang>stray</doclang>", &[("xsd", "/doclang", "<doclang> does not allow text content (\"stray\")")]),
+        ("<doclang xmlns=\"urn:other\"><text>a</text></doclang>", &[("xsd", "/doclang", "root element is in namespace \"urn:other\", not https://www.doclang.ai/ns/v0")]),
+        ("<doclang><picture><text>a</text><src uri=\"a.png\"/></picture></doclang>", &[("xsd", "/doclang/picture[1]", "<src> must come first in the picture body"), ("picture-body", "/doclang/picture[1]", "element src must be the first element of the picture body when present")]),
+        ("<doclang><picture class=\"chart\"><text>a</text><tabular><fcel/>1<nl/></tabular></picture></doclang>", &[("xsd", "/doclang/picture[1]", "<tabular> must directly follow <src>, or come first without one"), ("picture-body", "/doclang/picture[1]", "element tabular must immediately follow src when src is present, otherwise it may be the first body element")]),
+        ("<doclang><picture><tabular><fcel/>1<nl/></tabular></picture></doclang>", &[("picture-body", "/doclang/picture[1]", "element tabular is only allowed in picture with class=\"chart\"")]),
+        ("<doclang><track><bdiv/><seconds value=\"60\"/></track></doclang>", &[("xsd", "/doclang/track[1]/seconds[1]", "value=\"60\" on <seconds> is not an integer from 0 to 59")]),
+        ("<doclang><text><href/>a</text></doclang>", &[("xsd", "/doclang/text[1]/href[1]", "<href> requires a uri attribute")]),
+        ("<text>a</text>", &[("xsd", "/text", "root element is <text>, not <doclang>")]),
+        ("<doclang><text><thread thread_id=\"1\"/>a</text><heading level=\"1\"><thread thread_id=\"1\"/>b</heading></doclang>", &[("thread-host-type-consistency", "/doclang", "all thread elements with the same thread_id must use the same host element type; thread_id 1 mixes types")]),
+        ("<doclang><track>words<bdiv/><seconds value=\"1\"/></track></doclang>", &[("track-structure", "/doclang/track[1]", "Track must not contain non-whitespace text before its first cue block (bdiv); found \"words\"")]),
+        ("<doclang><field_region><field_item><key>a</key><key>b</key></field_item></field_region></doclang>", &[("field-structure-placement", "/doclang/field_region[1]/field_item[1]", "a field_item may contain at most one own descendant key; found own-key-count=2")]),
+        ("<doclang><text><location value=\"1\"/><location value=\"2\"/>a</text></doclang>", &[("xsd", "/doclang/text[1]", "<text> has 2 <location> elements; a location block is exactly four"), ("location-block-order", "/doclang/text[1]", "location block must satisfy x0_norm <= x1_norm and y0_norm <= y1_norm, where *_norm is each coordinate normalized by its effective resolution")]),
+        ("<doclang><thread thread_id=\"1\"/><text><xref thread_id=\"1\"/><href uri=\"x\"/>a</text></doclang>", &[("xsd", "/doclang", "<thread> belongs in the element head of <doclang>, before any content"), ("xsd", "/doclang/text[1]", "<href> is out of order in the element head of <text>"), ("xref-href-mutual-exclusivity", "/doclang/text[1]", "element head must not contain both xref and href elements; they are mutually exclusive")]),
+        ("<doclang><text><xref thread_id=\"7\"/>a</text></doclang>", &[("xref-thread-defined", "/doclang/text[1]/xref[1]", "xref references thread_id=\"7\" but no thread element defines that id")]),
+        ];
+        for (src, expected) in cases {
+            let found: Vec<_> = validate(&Document::parse(src).unwrap())
+                .into_iter()
+                .filter(|f| f.is_defect() && f.layer != Layer::Version)
+                .map(|f| (f.rule, f.path, f.message))
+                .collect();
+            let found: Vec<_> = found
+                .iter()
+                .map(|(r, p, m)| (*r, p.as_str(), m.as_str()))
+                .collect();
+            assert_eq!(found, *expected, "{src}");
+        }
+    }
+
     #[test]
     fn a_valid_document_has_no_findings() {
         let src = r#"<doclang xmlns="https://www.doclang.ai/ns/v0" version="0.9"><head><default_resolution width="1000"/></head>
@@ -1957,6 +2010,46 @@ mod tests {
                 ("archive-relationships", "_rels/.rels"),
                 ("archive-unreferenced", "document.xml"),
             ]
+        );
+    }
+
+    #[test]
+    fn the_document_relationship_is_one_and_targets_the_markup() {
+        let types = ("[Content_Types].xml", TYPES);
+        let defects = |rels: &str| -> Vec<String> {
+            archive_rules(
+                DOC,
+                &[types, ("_rels/.rels", rels), ("assets/a.png", "png")],
+            )
+            .into_iter()
+            .filter(|f| f.0 == "archive-relationships")
+            .map(|f| f.1)
+            .collect()
+        };
+        let none = "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"/>";
+        assert_eq!(defects(none), ["_rels/.rels"]);
+        let elsewhere = "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"r1\" Type=\"http://doclang.ai/ns/package/2026/relationships/document\" Target=\"other.xml\"/></Relationships>";
+        assert_eq!(defects(elsewhere), ["_rels/.rels"]);
+        assert_eq!(defects(&rels("")), Vec::<String>::new());
+    }
+
+    #[test]
+    fn malformed_content_types_are_a_defect() {
+        let found = archive_rules(
+            DOC,
+            &[
+                ("[Content_Types].xml", "<Types"),
+                ("_rels/.rels", &rels("")),
+                ("assets/a.png", "png"),
+            ],
+        );
+        assert_eq!(
+            found,
+            [(
+                "archive-content-types",
+                "[Content_Types].xml".to_owned(),
+                true
+            )]
         );
     }
 

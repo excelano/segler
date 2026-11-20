@@ -269,33 +269,180 @@ fn edit_undo_returns_to_the_original() {
     );
 }
 
+const RICH: &str = "<doclang version=\"0.10\"><heading level=\"2\">Title</heading><caption>A caption</caption><text><label value=\"n1\"/><layer value=\"furniture\"/><location value=\"10\"/><location value=\"20\"/><location value=\"30\"/><location value=\"40\"/>Footer</text><list class=\"ordered\"><ldiv/>First<ldiv><marker>b)</marker></ldiv>Second<text>Nested</text></list><list><ldiv/>Plain</list><table><caption>T</caption><ched/>A<lcel/><nl/><fcel/><text>x</text><fcel/>y<nl/></table><picture><caption>Fig</caption><src uri=\"assets/a.png\"/></picture><track><cover><src uri=\"c.png\"/></cover><bdiv/><seconds value=\"1\"/><seconds value=\"2\"/><chapter>Intro</chapter><frame><src uri=\"f.png\"/></frame><audio><src uri=\"a.mp3\"/></audio><voice>Ann</voice> Hi.<bdiv/><seconds value=\"3\"/>Later.</track><code><label value=\"rust\"/><content>fn main() {}\nrun();</content></code><formula>x^2</formula><group><text>Inside</text></group><page_break/><foo>odd</foo></doclang>\n";
+
 #[test]
-fn a_bad_edit_is_an_error() {
+fn render_prints_every_kind_of_block() {
     let dir = TempDir::new().unwrap();
-    let file = markup(&dir, "a.dclg", "<doclang><text>old</text></doclang>");
-    let run = segler(&["edit", arg(&file), "-e", "paint /doclang/text[1] red"]);
-    assert!(!run.ok);
-    assert!(
-        run.stderr.contains("paint is not an edit"),
-        "{}",
-        run.stderr
+    let file = markup(&dir, "rich.dclg", RICH);
+    let run = segler(&["render", arg(&file), "1"]);
+    assert!(run.ok, "{}", run.stderr);
+    assert_eq!(
+        run.stdout,
+        r#"## Title
+[caption] A caption
+Footer
+1. First
+b) Second
+  Nested
+- Plain
+[table: T]
+| *A* | ^ |
+| (…) | y |
+[picture assets/a.png] Fig
+[track]
+  cover c.png
+  ## Intro
+  0:01–0:02 [frame f.png] [audio a.mp3]
+    Ann: Hi.
+  0:03
+    Later.
+```rust
+fn main() {}
+run();
+```
+$ x^2 $
+[group]
+  Inside
+"#
     );
+    assert_eq!(segler(&["render", arg(&file), "2"]).stdout, "<foo> odd\n");
+}
+
+#[test]
+fn page_shows_boxes_and_what_each_row_carries() {
+    let dir = TempDir::new().unwrap();
+    let file = markup(&dir, "rich.dclg", RICH);
+    let run = segler(&["page", arg(&file), "1"]);
+    assert!(run.ok, "{}", run.stderr);
+    assert!(
+        run.stdout.starts_with(
+            r#"page 1 of 2
+boxes 1
+  text           0.020 0.039 0.059 0.078
+tree
+  heading[2]       "Title"
+  caption          "A caption"
+  text             "Footer"  (label=n1, layer=furniture, located)
+  list[ordered]    "Firstb)SecondNested"
+"#
+        ),
+        "{}",
+        run.stdout
+    );
+    assert!(run
+        .stdout
+        .contains("code             \"fn main() {} run();\"  (label=rust)"));
+}
+
+const EDITABLE: &str = "<doclang><text>a</text><text>b</text><list><ldiv/>one<ldiv/>two</list><table><fcel/>1<fcel/>2<nl/></table><group/></doclang>";
+
+const EVERY_EDIT: &[&str] = &[
+    "attr /doclang/list[1] class ordered",
+    "label /doclang/text[1] L",
+    "layer /doclang/text[2] furniture",
+    "bounds /doclang/text[1] 1 2 3 4",
+    "item /doclang/list[1] 1 deux",
+    "cell /doclang/table[1] 0 1 two",
+    "cellkind /doclang/table[1] 0 0 ched",
+    "rename /doclang/text[2] heading",
+    "move /doclang/text[1] /doclang/group[1] 0",
+    "insert /doclang 0 text",
+];
+
+fn edit_args<'a>(file: &'a str, edits: &[&'a str]) -> Vec<&'a str> {
+    let mut args = vec!["edit", file];
+    for e in edits {
+        args.extend(["-e", e]);
+    }
+    args
+}
+
+#[test]
+fn every_kind_of_edit_applies_and_undoes() {
+    let dir = TempDir::new().unwrap();
+    let file = markup(&dir, "a.dclg", EDITABLE);
+    let run = segler(&edit_args(arg(&file), EVERY_EDIT));
+    assert!(run.ok, "{}", run.stderr);
+    assert_eq!(
+        run.stdout,
+        "<doclang><text/><heading><layer value=\"furniture\"/>b</heading><list class=\"ordered\"><ldiv/>one<ldiv/>deux</list><table><ched/>1<fcel/>two<nl/></table><group><text><label value=\"L\"/><location value=\"1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/>a</text></group></doclang>"
+    );
+    let mut args = edit_args(arg(&file), EVERY_EDIT);
+    args.push("--undo");
+    let run = segler(&args);
+    assert!(run.ok, "{}", run.stdout);
+    assert_eq!(
+        run.stdout,
+        "10 edits applied and undone; document matches the original\n"
+    );
+}
+
+#[test]
+fn a_dash_clears_what_an_edit_would_set() {
+    let dir = TempDir::new().unwrap();
+    let file = markup(
+        &dir,
+        "a.dclg",
+        "<doclang><text><label value=\"L\"/><layer value=\"furniture\"/><location value=\"1\"/><location value=\"2\"/><location value=\"3\"/><location value=\"4\"/>a</text><list class=\"ordered\"><ldiv/>x</list></doclang>",
+    );
+    let run = segler(&edit_args(
+        arg(&file),
+        &[
+            "label /doclang/text[1] -",
+            "layer /doclang/text[1] -",
+            "bounds /doclang/text[1] -",
+            "attr /doclang/list[1] class -",
+        ],
+    ));
+    assert!(run.ok, "{}", run.stderr);
+    assert_eq!(
+        run.stdout,
+        "<doclang><text>a</text><list><ldiv/>x</list></doclang>"
+    );
+}
+
+#[test]
+fn a_malformed_edit_says_what_is_wrong() {
+    let dir = TempDir::new().unwrap();
+    let file = markup(&dir, "a.dclg", EDITABLE);
+    for (edit, message) in [
+        (
+            "text /doclang/text[1]",
+            "edit \"text /doclang/text[1]\" is incomplete",
+        ),
+        ("move /doclang/text[1] /doclang x", "x is not an index"),
+        (
+            "rename /doclang/text[1] nonsense",
+            "nonsense is not a DocLang element",
+        ),
+        ("bounds /doclang/text[1] 1 2 z 4", "z is not a grid value"),
+        (
+            "cellkind /doclang/table[1] 0 0 zz",
+            "zz is not a cell token",
+        ),
+        ("text /doclang/text[9] x", "no element at /doclang/text[9]"),
+    ] {
+        let run = segler(&["edit", arg(&file), "-e", edit]);
+        assert!(!run.ok, "{edit}");
+        assert_eq!(run.stderr, format!("segler: {message}\n"));
+    }
 }
 
 fn spec_checkout(earlier_changes: &str) -> TempDir {
     let dir = TempDir::new().unwrap();
     let schemas = dir.path().join("doclang").join("schemas");
-    let schema = |version: &str, body: &str| {
-        format!("<xs:schema version=\"{version}.0\">{body}</xs:schema>")
+    let schema = |version: &str, patch: u32, body: &str| {
+        format!("<xs:schema version=\"{version}.{patch}\">{body}</xs:schema>")
     };
-    for (version, body) in [
-        (SPEC_VERSION, ""),
-        (COMPATIBLE_VERSIONS[0], earlier_changes),
+    for (version, patch, body) in [
+        (SPEC_VERSION, 1, ""),
+        (COMPATIBLE_VERSIONS[0], 0, earlier_changes),
     ] {
         let at = schemas.join(version);
         fs::create_dir_all(&at).unwrap();
-        fs::write(at.join("doclang.xsd"), schema(version, body)).unwrap();
-        fs::write(at.join("doclang.sch"), schema(version, body)).unwrap();
+        fs::write(at.join("doclang.xsd"), schema(version, patch, body)).unwrap();
+        fs::write(at.join("doclang.sch"), schema(version, patch, body)).unwrap();
     }
     for sub in ["valid", "invalid"] {
         fs::create_dir_all(dir.path().join("examples").join(sub)).unwrap();
