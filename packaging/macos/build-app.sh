@@ -353,6 +353,7 @@ sed -e "s/@VERSION@/${version}/g" -e "s/@BUILD@/${build}/g" \
 plutil -lint "${app}/Contents/Info.plist" >/dev/null
 
 install -m 0755 "$binary" "${app}/Contents/MacOS/segler-desktop"
+install -m 0644 "${root}/THIRD-PARTY-NOTICES.txt" "${app}/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 
 # A released bundle's executable has to agree with the floor its property
 # list declares, and Cargo's default does not: measured on this tree's first

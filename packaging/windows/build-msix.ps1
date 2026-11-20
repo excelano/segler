@@ -349,6 +349,7 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Path (Join-Path $stage 'Assets') -Force | Out-Null
 
 Copy-Item $Binary (Join-Path $stage 'segler-desktop.exe')
+Copy-Item (Join-Path $root 'THIRD-PARTY-NOTICES.txt') (Join-Path $stage 'THIRD-PARTY-NOTICES.txt')
 
 # Only the window. The `segler` command-line tool is in the same workspace and
 # in the same Debian package, and it is deliberately not in this one: a packaged

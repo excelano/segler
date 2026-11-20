@@ -64,4 +64,6 @@ specification disagree, the specification is right and this is a bug.
 ## License
 
 Apache-2.0, the same as DocLang, so that any part of this can go where the
-format lives.
+format lives. The licenses of the crates compiled into the application are in
+[THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), which every package
+carries beside it.

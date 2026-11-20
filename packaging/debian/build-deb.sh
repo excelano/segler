@@ -133,6 +133,7 @@ done
 # errors. slipcase-desktop ships its MIT text verbatim and passes, because
 # MIT is not among the common licences and has no such rule.
 install -m 0644 "${here}/copyright" "${stage}/usr/share/doc/segler/copyright"
+install -m 0644 "${root}/THIRD-PARTY-NOTICES.txt" "${stage}/usr/share/doc/segler/THIRD-PARTY-NOTICES.txt"
 
 # Debian policy wants a changelog in every binary package, and lintian makes
 # its absence an error: somebody installing from an apt repository has no other
