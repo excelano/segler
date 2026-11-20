@@ -925,10 +925,9 @@ fn compatibility(dir: &Path) -> Vec<String> {
         for file in ["doclang.xsd", "doclang.sch"] {
             match (read(segler_core::SPEC_VERSION, file), read(version, file)) {
                 (Ok(current), Ok(earlier)) => {
-                    let named = |v: &str| format!("version=\"{v}.0\"");
-                    let earlier =
-                        earlier.replace(&named(version), &named(segler_core::SPEC_VERSION));
-                    if earlier != current {
+                    if unversioned(&earlier, version)
+                        != unversioned(&current, segler_core::SPEC_VERSION)
+                    {
                         problems.push(format!(
                             "{file} of DocLang {version} differs from {}'s in more than its version",
                             segler_core::SPEC_VERSION
@@ -940,6 +939,18 @@ fn compatibility(dir: &Path) -> Vec<String> {
         }
     }
     problems
+}
+
+fn unversioned(schema: &str, version: &str) -> String {
+    let opening = format!("version=\"{version}.");
+    let Some(start) = schema.find(&opening) else {
+        return schema.to_owned();
+    };
+    let value = start + "version=\"".len();
+    let end = schema[value..]
+        .find('"')
+        .map_or(schema.len(), |n| value + n);
+    format!("{}{}", &schema[..value], &schema[end..])
 }
 
 /// Run the reference toolkit on a file and return whether its XSD and
