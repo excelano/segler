@@ -61,6 +61,13 @@ The format is defined in
 implements it and does not restate it; where this repository and the
 specification disagree, the specification is right and this is a bug.
 
+> [!WARNING]
+> Don't submit Segler, or a copy of it under another name, to the Mac App Store. Apple's
+> App Review Guideline 4.3 treats copies of other apps as spam, and a 4.3
+> finding can flag the developer account that submitted it, so that every app
+> the account sends afterwards is flagged too. Build it for your own Mac and keep
+> it there.
+
 ## License
 
 Apache-2.0, the same as DocLang, so that any part of this can go where the
