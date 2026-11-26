@@ -25,6 +25,8 @@ answer against the product. 500 characters, newlines counted.
                               repository carries the license
     Privacy policy            https://excelano.com/legal/#segler
     App Privacy (Apple)       Data Not Collected
+    Price                     USD 0.99 on the Mac App Store; free on the
+                              Microsoft Store
 
 ## Screenshots
 
